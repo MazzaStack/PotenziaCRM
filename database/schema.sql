@@ -247,7 +247,7 @@ CREATE TABLE IF NOT EXISTS tasaciones_logs (
 
 -- Inicializar usuario SuperAdmin principal con credenciales cifradas (scrypt)
 INSERT OR IGNORE INTO usuarios (usuario, password_hash, nombre_display) 
-VALUES ('GermanMazza', 'scrypt:32768:8:1$cu2ClapQnWIvrLi1$af8eb408502d8c20e4c8975413843e68d594a74054d633bcca34a6af2eaceaee7d9b4da396b6964fd3e6732eb26068308908e9fa3215f2ae98efd0131d684938', 'German Mazza');
+VALUES ('GermanMazza', 'scrypt:32768:8:1$YIMczrvNunbUCRp0$b32e08cc82a02df43423c399531c1db65e07b36f25d20cd8d78fd69778f96f51a113c8017c804e0feee24a961d094a4a376035a39eb16732d0d3ad7ed46ee60b', 'German Mazza');
 
 -- ==========================================
 -- PLANIFICADOR DE MENSAJES (10 SEMANAS)

@@ -1,0 +1,7 @@
+{
+    "id": "db_backup",
+    "nombre": "Gestión de Backups y Restauración",
+    "version": "1.0.0",
+    "description": "Sistema automatizado y manual de backups de base de datos con capacidad de restauración y programación periódica.",
+    "enabled": true
+}

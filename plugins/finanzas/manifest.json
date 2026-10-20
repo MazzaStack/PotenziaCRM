@@ -1,0 +1,8 @@
+{
+  "id": "finanzas",
+  "name": "Módulo de Finanzas Premium",
+  "version": "1.0.0",
+  "description": "Seguimiento de operaciones, cuenta corriente de agentes, comisiones y deudas. Módulo AI-Ready.",
+  "author": "German Mazzaferro",
+  "enabled": true
+}

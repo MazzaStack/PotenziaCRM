@@ -1,0 +1,512 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Matriz de Privilegios y Aislamiento{% endblock %}
+
+{% block extra_head %}
+<style>
+    .privilege-section-title {
+        background-color: var(--secondary-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        font-weight: bold;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .grid-header {
+        font-weight: bold;
+        text-align: center;
+        background-color: rgba(255, 255, 255, 0.05);
+        padding: 0.5rem;
+    }
+    .grid-cell {
+        text-align: center;
+        padding: 0.5rem;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .grid-row-title {
+        padding: 0.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        font-weight: 500;
+    }
+    .nav-tabs .nav-link {
+        color: var(--secondary-color);
+        border: none;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s;
+    }
+    .nav-tabs .nav-link.active {
+        color: var(--primary-color);
+        background-color: transparent;
+        border-bottom: 3px solid var(--accent-color);
+        font-weight: bold;
+    }
+    .nav-tabs .nav-link:hover {
+        color: var(--primary-color);
+        border-bottom: 3px solid var(--accent-color);
+    }
+    .card-override {
+        background-color: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        transition: border-color 0.3s;
+    }
+    .card-override:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-1 text-dark"><i class="bi bi-shield-lock-fill text-warning me-2"></i>Matriz de Privilegios y Aislamiento</h1>
+                <p class="text-secondary mb-0 small">Configurá los permisos visuales, menús y acciones para cada rol, oficina o agente suelto.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('auth.admin_oficinas') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-building me-1"></i> Gestión de Oficinas
+                </a>
+                <a href="{{ url_for('auth.admin_usuarios') }}" class="btn btn-outline-dark btn-sm">
+                    <i class="bi bi-people-fill me-1"></i> Usuarios
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form action="{{ url_for('auth.admin_privilegios') }}" method="POST" id="privilegiosForm">
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs border-secondary mb-4" id="privilegiosTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold px-4" id="roles-tab" data-bs-toggle="tab" data-bs-target="#roles-panel" type="button" role="tab">
+                    <i class="bi bi-people-fill me-2"></i>1. Permisos por Rol
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold px-4" id="oficinas-tab" data-bs-toggle="tab" data-bs-target="#oficinas-panel" type="button" role="tab">
+                    <i class="fas fa-building me-2 text-primary"></i>2. Permisos por Oficina
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold px-4" id="sueltos-tab" data-bs-toggle="tab" data-bs-target="#sueltos-panel" type="button" role="tab">
+                    <i class="fas fa-user-tag me-2 text-warning"></i>3. Agentes Sueltos
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold px-4" id="usuarios-tab" data-bs-toggle="tab" data-bs-target="#usuarios-panel" type="button" role="tab">
+                    <i class="bi bi-person-fill-lock me-2"></i>4. Anulaciones por Usuario
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Contents -->
+        <div class="tab-content text-white" id="privilegiosTabContent">
+            
+            <!-- TAB 1: ROLES MATRIX -->
+            <div class="tab-pane fade show active" id="roles-panel" role="tabpanel">
+                <div class="card bg-dark border-secondary shadow p-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-grid-3x3-gap text-accent me-2"></i>Matriz Global de Roles</h5>
+                    <p class="text-muted small">Los cambios aquí aplican de forma predeterminada para cada rol general del sistema.</p>
+
+                    <!-- SECCIÓN: PLUGINS -->
+                    <div class="privilege-section-title">
+                        <i class="bi bi-plugin me-2"></i>Módulos y Plugins
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-dark table-bordered border-secondary mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="w-50 bg-secondary bg-opacity-25">Módulo / Plugin</th>
+                                    {% for r in roles %}
+                                    <th class="grid-header text-uppercase">{{ r }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pl in plugins %}
+                                <tr>
+                                    <td class="grid-row-title"><span class="fw-bold">{{ pl.nombre }}</span></td>
+                                    {% for r in roles %}
+                                    {% set key = "rol__" ~ r ~ "__plugin__" ~ pl.id %}
+                                    <td class="grid-cell">
+                                        <input class="form-check-input" type="checkbox" name="perm__rol__{{ r }}__plugin__{{ pl.id }}" {% if active_rules[key] %}checked{% endif %}>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- SECCIÓN: MENÚ LATERAL -->
+                    <div class="privilege-section-title">
+                        <i class="bi bi-layout-sidebar-inset me-2"></i>Menús Laterales Visibles
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-dark table-bordered border-secondary mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="w-50 bg-secondary bg-opacity-25">Sección del Menú</th>
+                                    {% for r in roles %}
+                                    <th class="grid-header text-uppercase">{{ r }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in menu_items %}
+                                <tr>
+                                    <td class="grid-row-title">{{ m.nombre }}</td>
+                                    {% for r in roles %}
+                                    {% set key = "rol__" ~ r ~ "__menu_item__" ~ m.id %}
+                                    <td class="grid-cell">
+                                        <input class="form-check-input" type="checkbox" name="perm__rol__{{ r }}__menu_item__{{ m.id }}" {% if active_rules[key] %}checked{% endif %}>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- SECCIÓN: ACCIONES -->
+                    <div class="privilege-section-title">
+                        <i class="bi bi-lightning-charge-fill me-2"></i>Acciones Operativas
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-dark table-bordered border-secondary mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="w-50 bg-secondary bg-opacity-25">Acción</th>
+                                    {% for r in roles %}
+                                    <th class="grid-header text-uppercase">{{ r }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ac in actions %}
+                                <tr>
+                                    <td class="grid-row-title">{{ ac.nombre }}</td>
+                                    {% for r in roles %}
+                                    {% set key = "rol__" ~ r ~ "__accion__" ~ ac.id %}
+                                    <td class="grid-cell">
+                                        <input class="form-check-input" type="checkbox" name="perm__rol__{{ r }}__accion__{{ ac.id }}" {% if active_rules[key] %}checked{% endif %}>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: OFICINAS MATRIX -->
+            <div class="tab-pane fade" id="oficinas-panel" role="tabpanel">
+                <div class="card bg-dark border-secondary shadow p-4">
+                    <h5 class="fw-bold mb-3"><i class="fas fa-building text-primary me-2"></i>Personalización por Oficina</h5>
+                    <p class="text-muted small">Activá reglas específicas para una oficina. Sobreescriben las reglas generales de rol para todos los miembros de esa sucursal.</p>
+
+                    <div class="accordion" id="accordionOficinas">
+                        {% for ofi in oficinas %}
+                        {% set ofi_id_str = ofi.id|string %}
+                        {% set ns_ofi = namespace(has_override=false) %}
+                        {% for k in active_rules.keys() %}
+                            {% if k.startswith("oficina__" ~ ofi_id_str ~ "__") %}
+                                {% set ns_ofi.has_override = true %}
+                            {% endif %}
+                        {% endfor %}
+
+                        <div class="accordion-item bg-dark border-secondary mb-3 rounded overflow-hidden">
+                            <h2 class="accordion-header" id="headingOfi{{ ofi.id }}">
+                                <button class="accordion-button collapsed bg-secondary bg-opacity-25 text-white fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOfi{{ ofi.id }}">
+                                    <i class="fas fa-building me-2 text-info"></i> {{ ofi.nombre }}
+                                    <span class="badge bg-secondary ms-2">{{ ofi.total_usuarios or 0 }} miembros</span>
+                                    {% if ofi.es_portal_clientes %}<span class="badge bg-warning text-dark ms-2">Portal Clientes</span>{% endif %}
+                                </button>
+                            </h2>
+                            <div id="collapseOfi{{ ofi.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionOficinas">
+                                <div class="accordion-body bg-dark border-top border-secondary p-4">
+                                    <div class="d-flex align-items-center mb-4 p-3 bg-secondary bg-opacity-25 rounded">
+                                        <div class="form-check form-switch me-3">
+                                            <input class="form-check-input" type="checkbox" name="toggle__oficina__{{ ofi.id }}" id="toggle_override_ofi_{{ ofi.id }}" {% if ns_ofi.has_override %}checked{% endif %} onchange="toggleOficinaOverrides('{{ ofi.id }}')">
+                                            <label class="form-check-label fw-bold text-white" for="toggle_override_ofi_{{ ofi.id }}">Activar reglas personalizadas para {{ ofi.nombre }}</label>
+                                        </div>
+                                        <span class="text-muted small ms-auto">Si está inactivo, hereda las reglas estándar por Rol.</span>
+                                    </div>
+
+                                    <div id="ofi-controls-{{ ofi.id }}" class="{% if not ns_ofi.has_override %}opacity-50{% endif %}">
+                                        <!-- Plugins -->
+                                        <h6 class="text-accent fw-bold border-bottom border-secondary pb-1 mb-3"><i class="bi bi-plugin me-1"></i>Plugins de Oficina</h6>
+                                        <div class="row g-3 mb-4">
+                                            {% for pl in plugins %}
+                                            {% set key = "oficina__" ~ ofi_id_str ~ "__plugin__" ~ pl.id %}
+                                            <div class="col-md-4">
+                                                <div class="form-check form-switch card-override p-3 rounded">
+                                                    <input class="form-check-input ofi-checkbox-{{ ofi.id }}" type="checkbox" name="perm__oficina__{{ ofi.id }}__plugin__{{ pl.id }}" {% if active_rules[key] %}checked{% endif %} {% if not ns_ofi.has_override %}disabled{% endif %}>
+                                                    <label class="form-check-label fw-bold small text-white">{{ pl.nombre }}</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <!-- Menu Items -->
+                                        <h6 class="text-accent fw-bold border-bottom border-secondary pb-1 mb-3"><i class="bi bi-layout-sidebar-inset me-1"></i>Menús Laterales de Oficina</h6>
+                                        <div class="row g-3 mb-4">
+                                            {% for m in menu_items %}
+                                            {% set key = "oficina__" ~ ofi_id_str ~ "__menu_item__" ~ m.id %}
+                                            <div class="col-md-3">
+                                                <div class="form-check form-switch card-override p-3 rounded">
+                                                    <input class="form-check-input ofi-checkbox-{{ ofi.id }}" type="checkbox" name="perm__oficina__{{ ofi.id }}__menu_item__{{ m.id }}" {% if active_rules[key] %}checked{% endif %} {% if not ns_ofi.has_override %}disabled{% endif %}>
+                                                    <label class="form-check-label small text-white">{{ m.nombre }}</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <!-- Acciones -->
+                                        <h6 class="text-accent fw-bold border-bottom border-secondary pb-1 mb-3"><i class="bi bi-lightning-charge-fill me-1"></i>Acciones de Oficina</h6>
+                                        <div class="row g-3">
+                                            {% for ac in actions %}
+                                            {% set key = "oficina__" ~ ofi_id_str ~ "__accion__" ~ ac.id %}
+                                            <div class="col-md-4">
+                                                <div class="form-check form-switch card-override p-3 rounded">
+                                                    <input class="form-check-input ofi-checkbox-{{ ofi.id }}" type="checkbox" name="perm__oficina__{{ ofi.id }}__accion__{{ ac.id }}" {% if active_rules[key] %}checked{% endif %} {% if not ns_ofi.has_override %}disabled{% endif %}>
+                                                    <label class="form-check-label small text-white">{{ ac.nombre }}</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: AGENTES SUELTOS MATRIX -->
+            <div class="tab-pane fade" id="sueltos-panel" role="tabpanel">
+                <div class="card bg-dark border-secondary shadow p-4">
+                    <h5 class="fw-bold mb-3"><i class="fas fa-user-tag text-warning me-2"></i>Configuración para Agentes Sueltos</h5>
+                    <p class="text-muted small">
+                        Los <strong>Agentes Sueltos</strong> operan sin oficina. Por seguridad, no pueden ver finanzas de oficina, búsquedas cruzadas ni Mi ClaudIA. Acá podés personalizar qué módulos adicionales pueden ver.
+                    </p>
+
+                    {% set ns_sueltos = namespace(has_override=false) %}
+                    {% for k in active_rules.keys() %}
+                        {% if k.startswith("agentes_sueltos__sueltos__") %}
+                            {% set ns_sueltos.has_override = true %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="d-flex align-items-center mb-4 p-3 bg-secondary bg-opacity-25 rounded">
+                        <div class="form-check form-switch me-3">
+                            <input class="form-check-input" type="checkbox" name="toggle__agentes_sueltos" id="toggle_override_sueltos" {% if ns_sueltos.has_override %}checked{% endif %} onchange="toggleSueltosOverrides()">
+                            <label class="form-check-label fw-bold text-white" for="toggle_override_sueltos">Personalizar matriz general para Agentes Sueltos</label>
+                        </div>
+                    </div>
+
+                    <div id="sueltos-controls" class="{% if not ns_sueltos.has_override %}opacity-50{% endif %}">
+                        <!-- Plugins -->
+                        <h6 class="text-accent fw-bold border-bottom border-secondary pb-1 mb-3"><i class="bi bi-plugin me-1"></i>Plugins Permitidos</h6>
+                        <div class="row g-3 mb-4">
+                            {% for pl in plugins %}
+                            {% set key = "agentes_sueltos__sueltos__plugin__" ~ pl.id %}
+                            <div class="col-md-4">
+                                <div class="form-check form-switch card-override p-3 rounded">
+                                    <input class="form-check-input sueltos-checkbox" type="checkbox" name="perm__agentes_sueltos__sueltos__plugin__{{ pl.id }}" {% if active_rules[key] %}checked{% endif %} {% if not ns_sueltos.has_override %}disabled{% endif %}>
+                                    <label class="form-check-label fw-bold small text-white">{{ pl.nombre }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Menu Items -->
+                        <h6 class="text-accent fw-bold border-bottom border-secondary pb-1 mb-3"><i class="bi bi-layout-sidebar-inset me-1"></i>Secciones del Menú</h6>
+                        <div class="row g-3 mb-4">
+                            {% for m in menu_items %}
+                            {% set key = "agentes_sueltos__sueltos__menu_item__" ~ m.id %}
+                            <div class="col-md-3">
+                                <div class="form-check form-switch card-override p-3 rounded">
+                                    <input class="form-check-input sueltos-checkbox" type="checkbox" name="perm__agentes_sueltos__sueltos__menu_item__{{ m.id }}" {% if active_rules[key] %}checked{% endif %} {% if not ns_sueltos.has_override %}disabled{% endif %}>
+                                    <label class="form-check-label small text-white">{{ m.nombre }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Acciones -->
+                        <h6 class="text-accent fw-bold border-bottom border-secondary pb-1 mb-3"><i class="bi bi-lightning-charge-fill me-1"></i>Acciones Operativas</h6>
+                        <div class="row g-3">
+                            {% for ac in actions %}
+                            {% set key = "agentes_sueltos__sueltos__accion__" ~ ac.id %}
+                            <div class="col-md-4">
+                                <div class="form-check form-switch card-override p-3 rounded">
+                                    <input class="form-check-input sueltos-checkbox" type="checkbox" name="perm__agentes_sueltos__sueltos__accion__{{ ac.id }}" {% if active_rules[key] %}checked{% endif %} {% if not ns_sueltos.has_override %}disabled{% endif %}>
+                                    <label class="form-check-label small text-white">{{ ac.nombre }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: USER OVERRIDES -->
+            <div class="tab-pane fade" id="usuarios-panel" role="tabpanel">
+                <div class="card bg-dark border-secondary shadow p-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-person-gear text-accent me-2"></i>Anulaciones Específicas por Usuario</h5>
+                    <p class="text-muted small">Permite conceder o revocar permisos a un agente específico independientemente de su rol u oficina.</p>
+
+                    <div class="accordion" id="accordionUsuarios">
+                        {% for u in usuarios %}
+                        {% if u.usuario != 'GermanMazza' %}
+                        {% set ns = namespace(has_override=false) %}
+                        {% for k in active_rules.keys() %}
+                            {% if k.startswith("usuario__" ~ u.usuario ~ "__") %}
+                                {% set ns.has_override = true %}
+                            {% endif %}
+                        {% endfor %}
+
+                        <div class="accordion-item bg-dark border-secondary mb-3 rounded overflow-hidden">
+                            <h2 class="accordion-header" id="heading{{ u.id }}">
+                                <button class="accordion-button collapsed bg-secondary bg-opacity-25 text-white fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ u.id }}">
+                                    {{ u.nombre_display or u.usuario }} ({{ u.usuario }}) 
+                                    <span class="badge bg-primary ms-2">{{ u.rol | upper }}</span>
+                                    {% if u.oficina_nombre %}
+                                    <span class="badge bg-dark border border-secondary text-info ms-1">{{ u.oficina_nombre }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary ms-1">Agente Suelto</span>
+                                    {% endif %}
+                                </button>
+                            </h2>
+                            <div id="collapse{{ u.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionUsuarios">
+                                <div class="accordion-body bg-dark border-top border-secondary p-4">
+                                    <div class="d-flex align-items-center mb-4 p-3 bg-secondary bg-opacity-25 rounded">
+                                        <div class="form-check form-switch me-3">
+                                            <input class="form-check-input" type="checkbox" name="toggle__usuario__{{ u.usuario }}" id="toggle_override_{{ u.usuario }}" {% if ns.has_override %}checked{% endif %} onchange="toggleUserOverrides('{{ u.usuario }}')">
+                                            <label class="form-check-label fw-bold text-white" for="toggle_override_{{ u.usuario }}">Activar permisos personalizados</label>
+                                        </div>
+                                    </div>
+
+                                    <div id="user-controls-{{ u.usuario }}" class="{% if not ns.has_override %}opacity-50{% endif %}">
+                                        <!-- Plugins -->
+                                        <h6 class="text-accent fw-bold border-bottom border-secondary pb-1 mb-3"><i class="bi bi-plugin me-1"></i>Plugins</h6>
+                                        <div class="row g-3 mb-4">
+                                            {% for pl in plugins %}
+                                            {% set key = "usuario__" ~ u.usuario ~ "__plugin__" ~ pl.id %}
+                                            <div class="col-md-4">
+                                                <div class="form-check form-switch card-override p-3 rounded">
+                                                    <input class="form-check-input user-checkbox-{{ u.usuario }}" type="checkbox" name="perm__usuario__{{ u.usuario }}__plugin__{{ pl.id }}" {% if active_rules[key] %}checked{% endif %} {% if not ns.has_override %}disabled{% endif %}>
+                                                    <label class="form-check-label fw-bold small text-white">{{ pl.nombre }}</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <!-- Menu Items -->
+                                        <h6 class="text-accent fw-bold border-bottom border-secondary pb-1 mb-3"><i class="bi bi-layout-sidebar-inset me-1"></i>Secciones del Menú</h6>
+                                        <div class="row g-3 mb-4">
+                                            {% for m in menu_items %}
+                                            {% set key = "usuario__" ~ u.usuario ~ "__menu_item__" ~ m.id %}
+                                            <div class="col-md-3">
+                                                <div class="form-check form-switch card-override p-3 rounded">
+                                                    <input class="form-check-input user-checkbox-{{ u.usuario }}" type="checkbox" name="perm__usuario__{{ u.usuario }}__menu_item__{{ m.id }}" {% if active_rules[key] %}checked{% endif %} {% if not ns.has_override %}disabled{% endif %}>
+                                                    <label class="form-check-label small text-white">{{ m.nombre }}</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <!-- Acciones -->
+                                        <h6 class="text-accent fw-bold border-bottom border-secondary pb-1 mb-3"><i class="bi bi-lightning-charge-fill me-1"></i>Acciones Autorizadas</h6>
+                                        <div class="row g-3">
+                                            {% for ac in actions %}
+                                            {% set key = "usuario__" ~ u.usuario ~ "__accion__" ~ ac.id %}
+                                            <div class="col-md-4">
+                                                <div class="form-check form-switch card-override p-3 rounded">
+                                                    <input class="form-check-input user-checkbox-{{ u.usuario }}" type="checkbox" name="perm__usuario__{{ u.usuario }}__accion__{{ ac.id }}" {% if active_rules[key] %}checked{% endif %} {% if not ns.has_override %}disabled{% endif %}>
+                                                    <label class="form-check-label small text-white">{{ ac.nombre }}</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sticky Footer for Actions -->
+        <div class="mt-4 p-3 bg-dark border border-secondary rounded shadow-lg d-flex justify-content-between align-items-center">
+            <span class="text-white-50 small"><i class="bi bi-info-circle me-1"></i>Asegurate de presionar "Guardar" para registrar las modificaciones.</span>
+            <button type="submit" class="btn btn-warning px-5 fw-bold text-dark shadow-sm">
+                <i class="bi bi-check-circle-fill me-1"></i> Guardar Cambios de Accesos
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleUserOverrides(username) {
+        const toggle = document.getElementById(`toggle_override_${username}`);
+        const container = document.getElementById(`user-controls-${username}`);
+        const checkboxes = document.querySelectorAll(`.user-checkbox-${username}`);
+        
+        if (toggle.checked) {
+            container.classList.remove('opacity-50');
+            checkboxes.forEach(cb => cb.removeAttribute('disabled'));
+        } else {
+            container.classList.add('opacity-50');
+            checkboxes.forEach(cb => {
+                cb.setAttribute('disabled', 'true');
+                cb.checked = false;
+            });
+        }
+    }
+
+    function toggleOficinaOverrides(oficinaId) {
+        const toggle = document.getElementById(`toggle_override_ofi_${oficinaId}`);
+        const container = document.getElementById(`ofi-controls-${oficinaId}`);
+        const checkboxes = document.querySelectorAll(`.ofi-checkbox-${oficinaId}`);
+        
+        if (toggle.checked) {
+            container.classList.remove('opacity-50');
+            checkboxes.forEach(cb => cb.removeAttribute('disabled'));
+        } else {
+            container.classList.add('opacity-50');
+            checkboxes.forEach(cb => {
+                cb.setAttribute('disabled', 'true');
+                cb.checked = false;
+            });
+        }
+    }
+
+    function toggleSueltosOverrides() {
+        const toggle = document.getElementById('toggle_override_sueltos');
+        const container = document.getElementById('sueltos-controls');
+        const checkboxes = document.querySelectorAll('.sueltos-checkbox');
+        
+        if (toggle.checked) {
+            container.classList.remove('opacity-50');
+            checkboxes.forEach(cb => cb.removeAttribute('disabled'));
+        } else {
+            container.classList.add('opacity-50');
+            checkboxes.forEach(cb => {
+                cb.setAttribute('disabled', 'true');
+                cb.checked = false;
+            });
+        }
+    }
+</script>
+{% endblock %}

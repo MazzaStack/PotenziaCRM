@@ -1,0 +1,7 @@
+{
+    "id": "lotes_excel",
+    "name": "Visor de Lotes Excel",
+    "version": "1.0.0",
+    "description": "Carga y visualización interactiva de lotes con filtros avanzados por partido, localidad, barrio, tipología, etc.",
+    "enabled": true
+}

@@ -1,0 +1,8 @@
+{
+  "id": "leads_externo",
+  "name": "Portal Público de Captación y Búsqueda (Leads Externo)",
+  "version": "1.0.0",
+  "description": "Buscador de propiedades 3-en-1 Marca Blanca, Tasador con Rango Teaser, Validación por WhatsApp y Alertas al SuperAdmin.",
+  "author": "German Mazzaferro",
+  "enabled": true
+}

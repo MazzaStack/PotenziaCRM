@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ f.titulo }} | {{ agency_name or agency.nombre or 'Potenzia CRM' }}</title>
+    <!-- OpenGraph & Social Sharing Meta Tags -->
+    <meta property="og:title" content="{{ f.titulo }} - {{ f.moneda }} {{ '{:,.0f}'.format(f.precio or 0).replace(',', '.') }}">
+    <meta property="og:description" content="{{ f.tipo_propiedad }} en {{ f.barrio or 'CABA' }} - {{ f.ambientes or 1 }} amb - {{ '{:,.0f}'.format(f.m2_total or 0) }} m²">
+    {% if f.foto_portada %}
+    <meta property="og:image" content="{{ f.foto_portada }}">
+    {% endif %}
+    <meta property="og:type" content="website">
+
+    <!-- Bootstrap 5 CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root {
+            --brand-primary: #1A365D;
+            --brand-accent: #2B6CB0;
+            --brand-gold: #D69E2E;
+            --brand-success: #25D366;
+            --bg-light: #F8FAFC;
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-light);
+            color: #2D3748;
+            overflow-x: hidden;
+        }
+        .navbar-custom {
+            background-color: var(--brand-primary);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .property-carousel img {
+            height: 480px;
+            object-fit: cover;
+            border-radius: 18px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        @media (max-width: 768px) {
+            .property-carousel img {
+                height: 280px;
+                border-radius: 12px;
+            }
+        }
+        .spec-item {
+            background: white;
+            border-radius: 14px;
+            padding: 16px 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            text-align: center;
+            border: 1px solid #edf2f7;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .spec-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        }
+        .spec-item i {
+            font-size: 1.6rem;
+            color: var(--brand-accent);
+            display: block;
+            margin-bottom: 4px;
+        }
+        .spec-item .value {
+            font-weight: 700;
+            font-size: 1.15rem;
+            color: var(--brand-primary);
+        }
+        .spec-item .label {
+            font-size: 0.75rem;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .sticky-agent-card {
+            position: sticky;
+            top: 24px;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.08);
+            background: white;
+            border: 1px solid #e2e8f0;
+        }
+        .agent-avatar {
+            width: 84px;
+            height: 84px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 3px solid var(--brand-gold);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .btn-whatsapp-direct {
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+            font-weight: 700;
+            border: none;
+            border-radius: 50px;
+            padding: 14px 20px;
+            box-shadow: 0 8px 20px rgba(37, 211, 102, 0.35);
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .btn-whatsapp-direct:hover {
+            background: linear-gradient(135deg, #20ba59, #0e7266);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(37, 211, 102, 0.45);
+        }        @media (max-width: 991px) {
+            .mobile-bottom-bar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                box-shadow: 0 -4px 25px rgba(0,0,0,0.15);
+                padding: 12px 16px;
+                z-index: 1040;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                border-top: 1px solid #e2e8f0;
+            }
+            body {
+                padding-bottom: 85px;
+            }
+        }
+        @media (min-width: 992px) {
+            .mobile-bottom-bar {
+                display: none !important;
+            }
+        }
+        .carousel-control-prev-icon,
+        .carousel-control-next-icon {
+            background-color: rgba(0, 0, 0, 0.65);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            background-size: 50%;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR BRAND -->
+    <nav class="navbar navbar-dark navbar-custom py-3">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="#">
+                <img src="{{ company_logo or '/static/img/potenzia_logo_transparent.png' }}" alt="{{ agency_name or agency.nombre or 'Potenzia CRM' }}" class="me-2" style="height: 38px; max-width: 140px; object-fit: contain;">
+                <span>{{ agency_name or agency.nombre or 'Potenzia CRM' }}</span>
+            </a>
+            <span class="navbar-text text-white-50 small d-none d-sm-inline">
+                <i class="bi bi-shield-check text-warning me-1"></i> Ficha de Propiedad Exclusiva
+            </span>
+        </div>
+    </nav>
+            <span class="navbar-text text-white-50 small d-none d-sm-inline">
+                <i class="bi bi-shield-check text-warning me-1"></i> Ficha de Propiedad Exclusiva
+            </span>
+        </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <div class="container py-4">
+        <div class="row g-4">
+            
+            <!-- LEFT COLUMN: GALERÍA Y DETALLES -->
+            <div class="col-lg-8">
+                
+                <!-- CARRUSEL DE FOTOS -->
+                {% set fotos_list = f.fotos if f.fotos else ([f.foto_portada] if f.foto_portada else []) %}
+                <div id="propertyCarousel" class="carousel slide property-carousel mb-4 shadow-sm rounded-4 overflow-hidden" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for foto in fotos_list %}
+                        <div class="carousel-item {% if loop.first %}active{% endif %}">
+                            <img src="{{ foto }}" class="d-block w-100" alt="Foto {{ loop.index }}" onclick="openLightbox({{ loop.index0 }})" title="Hacé clic para ver en pantalla completa 🔍" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600';">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if fotos_list|length > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- TÍTULO, UBICACIÓN Y PRECIO -->
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4 border">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                        <div>
+                            {% set mb = evaluar_oportunidad_mercado(f) %}
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                <span class="badge bg-primary px-3 py-1.5 rounded-pill">{{ (f.tipo_operacion or 'Venta')|upper }}</span>
+                                <span class="badge bg-secondary px-3 py-1.5 rounded-pill">{{ (f.tipo_propiedad or 'Departamento')|capitalize }}</span>
+                                {% if mb.badge_tipo == 'rebaja' %}
+                                <span class="badge bg-danger shadow-sm px-3 py-1.5 rounded-pill text-white fw-bold d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-graph-down-arrow"></i> {{ mb.badge_texto_cliente }}
+                                </span>
+                                {% elif mb.badge_tipo == 'nuevo' %}
+                                <span class="badge bg-success shadow-sm px-3 py-1.5 rounded-pill text-white fw-bold d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-stars"></i> {{ mb.badge_texto_cliente }}
+                                </span>
+                                {% elif mb.badge_tipo == 'negociable' %}
+                                <span class="badge bg-warning text-dark shadow-sm px-3 py-1.5 rounded-pill fw-bold d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-tag-fill"></i> {{ mb.badge_texto_cliente }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <h2 class="fw-bold text-dark mb-1 fs-3 fs-md-2">{{ f.titulo }}</h2>
+                            <p class="text-muted mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ f.direccion_mostrada or f.barrio or 'Zona Destacada' }}</p>
+                        </div>
+                        <div class="text-lg-end mt-2 mt-lg-0">
+                            <h2 class="fw-bold text-success mb-0 fs-3 fs-md-2">{{ f.moneda or 'USD' }} {{ "{:,.0f}".format(f.precio or 0).replace(',', '.') }}</h2>
+                            {% if f.expensas and f.expensas > 0 %}
+                            <small class="text-muted d-block">+ ${{ "{:,.0f}".format(f.expensas).replace(',', '.') }} expensas</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARACTERÍSTICAS PRINCIPALES (BULLETS) -->
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-info-circle-fill text-primary me-2"></i>Características Principales</h5>
+                    <div class="row g-2 g-md-3">
+                        {% if f.ambientes %}
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-door-open"></i>
+                                <div class="value">{{ f.ambientes }}</div>
+                                <div class="label">Ambientes</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if f.dormitorios %}
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-journal-album"></i>
+                                <div class="value">{{ f.dormitorios }}</div>
+                                <div class="label">Dormitorios</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if f.banos %}
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-droplet-fill"></i>
+                                <div class="value">{{ f.banos }}</div>
+                                <div class="label">Baños</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if f.m2_cubiertos %}
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-arrows-fullscreen"></i>
+                                <div class="value">{{ "{:,.0f}".format(f.m2_cubiertos).replace(',', '.') }} m²</div>
+                                <div class="label">Cubiertos</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if f.m2_total %}
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-bounding-box-circles"></i>
+                                <div class="value">{{ "{:,.0f}".format(f.m2_total).replace(',', '.') }} m²</div>
+                                <div class="label">Totales</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if f.cocheras %}
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-car-front"></i>
+                                <div class="value">{{ f.cocheras }}</div>
+                                <div class="label">Cocheras</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if f.antiguedad %}
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-clock-history"></i>
+                                <div class="value">{{ f.antiguedad }}</div>
+                                <div class="label">Antigüedad</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if f.orientacion %}
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-compass"></i>
+                                <div class="value text-truncate">{{ f.orientacion }}</div>
+                                <div class="label">Orientación</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- DESCRIPCIÓN SANITIZADA -->
+                {% if f.descripcion %}
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4 border">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-text-paragraph text-primary me-2"></i>Descripción del Inmueble</h5>
+                    <div class="text-secondary lh-lg" style="white-space: pre-line; font-size: 1.05rem;">
+                        {{ f.descripcion }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- MAPA DE UBICACIÓN -->
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4 border">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-map-fill text-primary me-2"></i>Ubicación en la Zona</h5>
+                    <div id="propertyMap" style="height: 320px; width: 100%; border-radius: 14px;" class="shadow-sm"></div>
+                    <small class="text-muted mt-2 d-block text-center">
+                        <i class="bi bi-geo-alt"></i> {{ f.direccion_mostrada or f.barrio or 'Buenos Aires' }}
+                    </small>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: TARJETA DEL ASESOR INMOBILIARIO (DESKTOP) -->
+            <div class="col-lg-4">
+                <div class="sticky-agent-card p-4 text-center">
+                    <div class="mb-3">
+                        <img src="{{ f.agente_avatar or '/static/img/no-photo.png' }}" 
+                             alt="{{ f.agente_nombre }}" 
+                             class="agent-avatar mb-3"
+                             onerror="this.onerror=null;this.src='/static/img/no-photo.png';">
+                        <h4 class="fw-bold text-dark mb-0">{{ f.agente_nombre or 'Asesor Inmobiliario' }}</h4>
+                        <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1 fw-semibold mt-1">
+                            <i class="bi bi-person-badge me-1"></i> Asesor Inmobiliario
+                        </span>
+                    </div>
+
+                    <p class="text-muted small px-2 mb-4">
+                        Estoy a disposición para coordinar una visita personalizada a esta propiedad, brindarte asesoramiento técnico y responder todas tus consultas.
+                    </p>
+
+                    <!-- BOTÓN WHATSAPP DIRECTO -->
+                    <a href="{{ wa_link }}" target="_blank" class="btn-whatsapp-direct w-100 mb-3 fs-5">
+                        <i class="bi bi-whatsapp fs-4"></i> Consultar por WhatsApp
+                    </a>
+
+                    {% if f.agente_telefono %}
+                    <a href="tel:{{ f.agente_telefono }}" class="btn btn-outline-secondary w-100 rounded-pill py-2 fw-semibold mb-2">
+                        <i class="bi bi-telephone me-2"></i> Llamar al {{ f.agente_telefono }}
+                    </a>
+                    {% endif %}
+
+                    {% if f.agente_email %}
+                    <div class="text-muted small mt-3">
+                        <i class="bi bi-envelope me-1"></i> {{ f.agente_email }}
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-4 pt-3 border-top text-center text-muted small">
+                        <img src="{{ company_logo or '/static/img/potenzia_logo_transparent.png' }}" style="height: 22px; max-width: 110px; object-fit: contain;" class="me-1 opacity-75">
+                        <span>{{ agency_name or agency.nombre or 'Potenzia CRM' }}</span>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FOOTER POWERED BY POTENZIA CRM -->
+    <footer class="py-3 text-center mt-5" style="background-color: #0b1329; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <div class="container d-flex justify-content-center align-items-center gap-3 text-white-50">
+            <span style="font-size: 0.88rem; font-weight: 400; letter-spacing: 0.3px;">Powered by</span>
+            <span class="text-white fw-bold" style="font-size: 0.95rem; letter-spacing: 0.5px;">Potenzia CRM</span>
+            <span class="bg-white rounded-2 shadow-sm d-inline-flex align-items-center justify-content-center ms-2" style="background-color: #ffffff !important; padding: 4px 8px;">
+                <img src="/static/img/potenzia_logo_sm.png" alt="Potenzia CRM" style="height: 22px; width: auto; object-fit: contain;">
+            </span>
+        </div>
+    </footer>
+
+    <!-- MOBILE STICKY BOTTOM BAR (APTO MÓVIL) -->
+    <div class="mobile-bottom-bar">
+        <div class="d-flex align-items-center gap-2 overflow-hidden">
+            <img src="{{ f.agente_avatar or '/static/img/no-photo.png' }}" class="rounded-circle border border-warning" style="width: 44px; height: 44px; object-fit: cover; flex-shrink: 0;" onerror="this.src='/static/img/no-photo.png';">
+            <div class="text-truncate">
+                <strong class="d-block text-dark small text-truncate">{{ f.agente_nombre or 'Asesor Inmobiliario' }}</strong>
+                <span class="text-success fw-bold small">{{ f.moneda or 'USD' }} {{ "{:,.0f}".format(f.precio or 0).replace(',', '.') }}</span>
+            </div>
+        </div>
+        <a href="{{ wa_link }}" target="_blank" class="btn-whatsapp-direct px-4 py-2 text-nowrap fs-6" style="border-radius: 30px;">
+            <i class="bi bi-whatsapp fs-5"></i> WhatsApp
+        </a>
+    </div>
+
+    <!-- MODAL LIGHTBOX FULLSCREEN PARA FOTOS -->
+    <div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-fullscreen p-0 m-0">
+            <div class="modal-content border-0 rounded-0 overflow-hidden position-relative" style="background-color: #0b0f19 !important;">
+                
+                <div class="d-flex justify-content-between align-items-center px-4 py-3 bg-dark border-bottom border-secondary border-opacity-25" style="z-index: 2000;">
+                    <span id="lightboxCounter" class="badge bg-secondary bg-opacity-75 fs-6 px-3 py-2 rounded-pill fw-bold text-white">1 / 1</span>
+                    <button type="button" class="btn btn-warning rounded-circle shadow text-dark fw-bold border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg fs-5"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body p-0 d-flex align-items-center justify-content-center position-relative h-100 overflow-hidden">
+                    {% if fotos_list|length > 1 %}
+                    <button class="btn border-0 position-absolute start-0 ms-3 rounded-circle text-white d-flex align-items-center justify-content-center shadow-lg"
+                            onclick="prevPhoto(event)" style="background-color: rgba(0,0,0,0.75); width: 52px; height: 52px; z-index: 1055;">
+                        <i class="bi bi-chevron-left fs-3"></i>
+                    </button>
+                    <button class="btn border-0 position-absolute end-0 me-3 rounded-circle text-white d-flex align-items-center justify-content-center shadow-lg"
+                            onclick="nextPhoto(event)" style="background-color: rgba(0,0,0,0.75); width: 52px; height: 52px; z-index: 1055;">
+                        <i class="bi bi-chevron-right fs-3"></i>
+                    </button>
+                    {% endif %}
+
+                    <img id="lightboxImg" src="" style="max-height: 88vh; max-width: 95vw; width: auto; height: auto; object-fit: contain; border-radius: 8px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const fotosPropiedad = {{ fotos_list | tojson }};
+        let currentPhotoIdx = 0;
+
+        function openLightbox(idx) {
+            currentPhotoIdx = idx;
+            updateLightbox();
+            const myModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
+            myModal.show();
+        }
+
+        function updateLightbox() {
+            if (!fotosPropiedad || fotosPropiedad.length === 0) return;
+            document.getElementById('lightboxImg').src = fotosPropiedad[currentPhotoIdx];
+            document.getElementById('lightboxCounter').innerText = `${currentPhotoIdx + 1} / ${fotosPropiedad.length}`;
+        }
+
+        function nextPhoto(e) {
+            if (e) e.stopPropagation();
+            currentPhotoIdx = (currentPhotoIdx + 1) % fotosPropiedad.length;
+            updateLightbox();
+        }
+
+        function prevPhoto(e) {
+            if (e) e.stopPropagation();
+            currentPhotoIdx = (currentPhotoIdx - 1 + fotosPropiedad.length) % fotosPropiedad.length;
+            updateLightbox();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            const modalEl = document.getElementById('lightboxModal');
+            if (modalEl && modalEl.classList.contains('show')) {
+                if (e.key === 'ArrowRight') nextPhoto();
+                if (e.key === 'ArrowLeft') prevPhoto();
+            }
+        });
+
+        // Inicializar Mapa
+        document.addEventListener('DOMContentLoaded', function() {
+            const mapContainer = document.getElementById('propertyMap');
+            if (!mapContainer) return;
+
+            let lat = {{ f.lat or 'null' }};
+            let lng = {{ f.lng or 'null' }};
+            const barrio = {{ (f.direccion_mostrada or f.barrio or '') | tojson }};
+            const titulo = {{ (f.titulo or 'Propiedad') | tojson }};
+
+            function renderMap(l1, l2) {
+                const map = L.map('propertyMap').setView([l1, l2], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(map);
+
+                L.marker([l1, l2]).addTo(map)
+                    .bindPopup(`<strong>${titulo}</strong><br><small>${barrio || 'Zona de la Propiedad'}</small>`)
+                    .openPopup();
+            }
+
+            if (lat && lng && !isNaN(lat) && !isNaN(lng) && lat !== 0) {
+                renderMap(lat, lng);
+            } else if (barrio) {
+                const query = `${barrio}, Buenos Aires, Argentina`;
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.length > 0) {
+                            renderMap(parseFloat(data[0].lat), parseFloat(data[0].lon));
+                        } else {
+                            mapContainer.style.display = 'none';
+                        }
+                    }).catch(() => {
+                        mapContainer.style.display = 'none';
+                    });
+            } else {
+                mapContainer.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

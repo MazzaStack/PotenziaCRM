@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+{% block title %}Seguimiento de Propiedades (Ventas){% endblock %}
+{% block header %}Seguimiento de Propiedades{% endblock %}
+
+{% block actions %}
+<div class="d-flex gap-2">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalOperacion">
+        <i class="bi bi-plus-circle me-1"></i> Nueva Operación
+    </button>
+    <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportar">
+        <i class="bi bi-file-earmark-excel me-1"></i> Importar Excel
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tablaOperaciones">
+                <thead class="bg-light">
+                    <tr>
+                        {% if current_user.rol in ['admin', 'broker', 'finanzas'] %}
+                        <th>Agente</th>
+                        {% endif %}
+                        <th class="text-center">Control</th>
+                        <th>Mes</th>
+                        <th>Domicilio</th>
+                        <th>Estado</th>
+                        <th>Juris</th>
+                        <th>Colab.</th>
+                        <th>Cierre</th>
+                        <th>Bruto USD</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for op in operaciones %}
+                    <tr>
+                        {% if current_user.rol in ['admin', 'broker', 'finanzas'] %}
+                        <td><span class="badge bg-secondary">{{ op.agente_nombre }}</span></td>
+                        {% endif %}
+                        <td>
+                            <div class="d-flex justify-content-center gap-1">
+                                <span class="badge {{ 'bg-success' if op.comision_rendida else 'bg-danger' }}" title="Comisión Rendida">C</span>
+                                <span class="badge {{ 'bg-success' if op.iva_rendido else 'bg-danger' }}" title="IVA Rendido">I</span>
+                                <span class="badge {{ 'bg-success' if op.doc_rendida else 'bg-danger' }}" title="Documentación">D</span>
+                            </div>
+                        </td>
+                        <td class="small text-muted">{{ op.mes or '-' }}</td>
+                        <td>
+                            <div class="fw-bold">{{ op.domicilio }}</div>
+                            <small class="text-muted">{{ op.puntas or '' }}</small>
+                        </td>
+                        <td>
+                            {% if op.estado == 'Cerrada' %}
+                                <span class="badge bg-success">Cerrada</span>
+                            {% elif op.estado == 'Caida' %}
+                                <span class="badge bg-danger">Caida</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">{{ op.estado or 'En Proceso' }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ op.juris or '-' }}</td>
+                        <td class="small">{{ op.colaborador or '-' }}</td>
+                        <td class="small">{{ op.cierre or '-' }}</td>
+                        <td class="fw-bold text-success">{{ "{:,.0f}".format(op.bruto|float) if op.bruto else '0' }}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary" onclick='editOp({{ op | tojson }})' title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <form action="{{ url_for('borrar_operacion', oid=op.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Borrar esta operación?')">
+                                <button class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                            <i class="bi bi-clipboard-x display-4 d-block mb-3"></i>
+                            No hay operaciones registradas. ¡Cargá la primera o importá tu Excel!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Operación -->
+<div class="modal fade" id="modalOperacion" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <form action="{{ url_for('guardar_operacion') }}" method="POST">
+                <input type="hidden" name="id" id="op_id">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalTitle">Nueva Operación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <!-- Rendiciones -->
+                        <div class="col-12">
+                            <div class="card bg-light border-0">
+                                <div class="card-body d-flex gap-4 flex-wrap">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="comision_rendida" id="op_com_rend">
+                                        <label class="form-check-label fw-bold">Rindió Comisión</label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="iva_rendido" id="op_iva_rend">
+                                        <label class="form-check-label fw-bold">Rindió IVA</label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="doc_rendida" id="op_doc_rend">
+                                        <label class="form-check-label fw-bold">Documentación Rendida</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fila 1 -->
+                        <div class="col-md-3">
+                            <label class="form-label">Mes</label>
+                            <select name="mes" class="form-select" id="op_mes">
+                                <option value="">- Seleccionar -</option>
+                                {% for m in ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'] %}
+                                <option value="{{ m }}">{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Estado Operación</label>
+                            <select name="estado" class="form-select" id="op_estado_gral">
+                                <option value="En Proceso">En Proceso</option>
+                                <option value="Cerrada">Cerrada</option>
+                                <option value="Caida">Caida</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Jurisdicción</label>
+                            <select name="juris" class="form-select" id="op_juris">
+                                <option value="CABA">CABA</option>
+                                <option value="PBA">PBA</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Puntas</label>
+                            <select name="puntas" class="form-select" id="op_puntas">
+                                <option value="C">C</option>
+                                <option value="V">V</option>
+                                <option value="C y V">C y V</option>
+                                <option value="C x R">C x R</option>
+                            </select>
+                        </div>
+
+                        <!-- Fila 2 -->
+                        <div class="col-md-6">
+                            <label class="form-label">Domicilio</label>
+                            <input type="text" name="domicilio" class="form-control" id="op_dom" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Colaborador / Agente 2</label>
+                            <select name="colaborador" class="form-select" id="op_colab">
+                                <option value="">- N/A -</option>
+                                <option value="Rapp">Rapp</option>
+                                <option value="Alto">Alto</option>
+                                <option value="Puro">Puro</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">% Comisión</label>
+                            <select name="porcentaje" class="form-select" id="op_perc">
+                                <option value="3">3%</option>
+                                <option value="4">4%</option>
+                                <option value="5">5%</option>
+                                <option value="6">6%</option>
+                                <option value="7">7%</option>
+                                <option value="8">8%</option>
+                            </select>
+                        </div>
+
+                        <!-- Fila 3: montos y fechas -->
+                        <div class="col-md-3">
+                            <label class="form-label">Monto Bruto (USD)</label>
+                            <input type="number" step="0.01" name="bruto" class="form-control" id="op_bruto">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Monto Neto (USD)</label>
+                            <input type="number" step="0.01" name="neto" class="form-control" id="op_neto">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Forma de Pago</label>
+                            <select name="pago" class="form-select" id="op_pago">
+                                <option value="Boleto">Boleto</option>
+                                <option value="Escritura">Escritura</option>
+                                <option value="Credito">Credito</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Cierre (Fecha)</label>
+                            <input type="date" name="cierre" class="form-control" id="op_cierre">
+                        </div>
+
+                        <!-- Fila 4: estados -->
+                        <div class="col-md-3">
+                            <label class="form-label">Informes</label>
+                            <select name="informes" class="form-select" id="op_inf">
+                                <option value="A pedir">A pedir</option>
+                                <option value="Pedidos">Pedidos</option>
+                                <option value="Presentados">Presentados</option>
+                                <option value="Consultar">Consultar</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Estado Parc</label>
+                            <select name="estado_parc" class="form-select" id="op_estado_parc">
+                                <option value="A pedir">A pedir</option>
+                                <option value="pedido">pedido</option>
+                                <option value="presentado">presentado</option>
+                                <option value="Consultar">Consultar</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Refuerzo</label>
+                            <select name="refuerzo" class="form-select" id="op_ref">
+                                <option value="Falta">Falta</option>
+                                <option value="Hecho">Hecho</option>
+                                <option value="N/A">N/A</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Sucesión</label>
+                            <select name="sucesion" class="form-select" id="op_suc">
+                                <option value="N/A">N/A</option>
+                                <option value="Falta Declaratoria">Falta Declaratoria</option>
+                                <option value="Falta Orden Insc">Falta Orden Insc</option>
+                                <option value="Listo para Tracto">Listo para Tracto</option>
+                                <option value="Desarchivando">Desarchivando</option>
+                            </select>
+                        </div>
+
+                        <!-- Fila 5 -->
+                        <div class="col-md-3">
+                            <label class="form-label">Docs Escribanía</label>
+                            <select name="doc_escribania" class="form-select" id="op_escr">
+                                <option value="A entregar">A entregar</option>
+                                <option value="En proceso">En proceso</option>
+                                <option value="Entrada">Entrada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Proforma</label>
+                            <select name="proforma" class="form-select" id="op_prof">
+                                <option value="Pedir">Pedir</option>
+                                <option value="Pedida">Pedida</option>
+                                <option value="Entregada">Entregada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Ad-Ref Comp</label>
+                            <select name="ad_ref_comp" class="form-select" id="op_ad_comp">
+                                <option value="N/A">N/A</option>
+                                <option value="Credito">Credito</option>
+                                <option value="Venta inm">Venta inm</option>
+                                <option value="Instalación Aire">Instalación Aire</option>
+                                <option value="otros">Otros</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Ad-Ref Vend</label>
+                            <select name="ad_ref_vend" class="form-select" id="op_ad_vend">
+                                <option value="N/A">N/A</option>
+                                <option value="Reubicación">Reubicación</option>
+                                <option value="Inquilino">Inquilino</option>
+                                <option value="Tramite">Tramite</option>
+                            </select>
+                        </div>
+
+                        <!-- Fila 6: fechas y notas -->
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha Reserva</label>
+                            <input type="date" name="fecha_reserva" class="form-control" id="op_fres">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha Firma</label>
+                            <input type="date" name="fecha_firma" class="form-control" id="op_ffir">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Particularidades / Comentarios</label>
+                            <textarea name="particularidades" class="form-control" rows="2" id="op_part"></textarea>
+                        </div>
+
+                        {% if current_user.rol in ['admin', 'broker', 'finanzas'] %}
+                        <div class="col-md-3">
+                            <label class="form-label">Asignado a (Agente)</label>
+                            <select name="agente_id" class="form-select" id="op_agente">
+                                {% for ag in agentes %}
+                                <option value="{{ ag.id }}">{{ ag.nombre_display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Importar -->
+<div class="modal fade" id="modalImportar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('importar_operaciones') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title">Importar desde Excel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <i class="bi bi-file-earmark-arrow-up display-1 text-success mb-3"></i>
+                    <p class="mb-4">Seleccioná tu archivo de seguimiento (.xlsx) para cargar tus operaciones automáticamente.</p>
+                    <input type="file" name="excel_file" class="form-control" accept=".xlsx, .xls" required>
+                    <div class="mt-3 text-start">
+                        <small class="text-muted">
+                            <strong>Nota:</strong> Solo se importan filas que tengan Domicilio + Bruto/Juris. Las listas de opciones del Excel son ignoradas automáticamente.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-success">Iniciar Importación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editOp(op) {
+    document.getElementById('op_id').value = op.id || '';
+    document.getElementById('op_mes').value = op.mes || '';
+    document.getElementById('op_colab').value = op.colaborador || '';
+    document.getElementById('op_dom').value = op.domicilio || '';
+    document.getElementById('op_juris').value = op.juris || 'CABA';
+    document.getElementById('op_puntas').value = op.puntas || 'C';
+    document.getElementById('op_cierre').value = op.cierre || '';
+    document.getElementById('op_bruto').value = op.bruto || '';
+    document.getElementById('op_neto').value = op.neto || '';
+    document.getElementById('op_perc').value = parseInt(op.porcentaje) || 5;
+    document.getElementById('op_pago').value = op.pago || 'Boleto';
+    document.getElementById('op_estado_gral').value = op.estado || 'En Proceso';
+    document.getElementById('op_estado_parc').value = op.estado_parc || 'A pedir';
+    document.getElementById('op_inf').value = op.informes || 'A pedir';
+    document.getElementById('op_ref').value = op.refuerzo || 'Falta';
+    document.getElementById('op_suc').value = op.sucesion || 'N/A';
+    document.getElementById('op_escr').value = op.doc_escribania || 'A entregar';
+    document.getElementById('op_prof').value = op.proforma || 'Pedir';
+    document.getElementById('op_ad_comp').value = op.ad_ref_comp || 'N/A';
+    document.getElementById('op_ad_vend').value = op.ad_ref_vend || 'N/A';
+    document.getElementById('op_fres').value = op.fecha_reserva || '';
+    document.getElementById('op_ffir').value = op.fecha_firma || '';
+    document.getElementById('op_part').value = op.particularidades || '';
+
+    if (document.getElementById('op_agente')) {
+        document.getElementById('op_agente').value = op.agente_id || '';
+    }
+
+    document.getElementById('op_com_rend').checked = op.comision_rendida == 1;
+    document.getElementById('op_iva_rend').checked = op.iva_rendido == 1;
+    document.getElementById('op_doc_rend').checked = op.doc_rendida == 1;
+
+    document.getElementById('modalTitle').innerText = 'Editar Operación';
+    new bootstrap.Modal(document.getElementById('modalOperacion')).show();
+}
+</script>
+{% endblock %}

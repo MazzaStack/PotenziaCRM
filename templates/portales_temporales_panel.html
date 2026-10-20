@@ -1,0 +1,611 @@
+{% extends 'base.html' %}
+
+{% block title %}Portales Temporales Live{% endblock %}
+{% block header %}Portales Temporales Live (15 Días){% endblock %}
+
+{% block content %}
+{% if is_solo_agent %}
+<div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="z-index: 1050; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px);">
+    <div class="card shadow-lg border-0 text-center p-5 mx-3" style="max-width: 550px; border-radius: 24px; background: #ffffff;">
+        <div class="mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10 text-warning" style="width: 80px; height: 80px;">
+                <i class="bi bi-shield-lock-fill fs-1"></i>
+            </div>
+        </div>
+        <h3 class="fw-bold text-dark mb-2">Portales Temporales Live Restringido</h3>
+        <p class="text-muted mb-4 lead fs-6">
+            La creación de <strong>Portales Temporales Live</strong> y el Portal de Clientes están habilitados exclusivamente para miembros pertenecientes a la <strong>Oficina</strong> autorizada.<br><br>
+            Tu usuario opera como <strong>Agente Suelto</strong> (sin oficina asignada).
+        </p>
+        <div class="d-flex gap-2 justify-content-center">
+            <a href="{{ url_for('index') }}" class="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
+                <i class="bi bi-house-door me-2"></i>Volver al Inicio
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="container-fluid px-0" {% if is_solo_agent %}style="filter: grayscale(100%) blur(2px) opacity(0.35); pointer-events: none; user-select: none;"{% endif %}>
+<div class="row mb-4 align-items-center">
+    <div class="col-md-7">
+        <h2 class="fw-bold mb-1"><i class="bi bi-globe-americas text-warning me-2"></i>Portales Temporales Live</h2>
+        <p class="text-muted small mb-0">Gestioná tus selecciones personalizadas de propiedades para clientes. Cada portal tiene vigencia de 15 días con fotos en máxima resolución.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0 d-flex flex-wrap justify-content-md-end gap-2">
+        {% if is_admin and agentes %}
+        <div class="d-inline-block">
+            <form method="GET" action="{{ url_for('captacion_outreach.panel_portales_temporales') }}" class="d-flex align-items-center gap-1">
+                <label class="small text-muted fw-bold me-1 text-nowrap"><i class="bi bi-person-gear me-1"></i>Ver Agente:</label>
+                <select name="agente_id" class="form-select form-select-sm bg-white shadow-sm border-secondary-subtle" onchange="this.form.submit()" style="min-width: 180px;">
+                    <option value="" {% if not filtro_agente or filtro_agente == current_user.id|string %}selected{% endif %}>👤 Mis Portales ({{ current_user.nombre_display or current_user.usuario }})</option>
+                    <option value="todos" {% if filtro_agente == 'todos' %}selected{% endif %}>🌐 Todos los Asesores</option>
+                    <optgroup label="Asesores del Equipo">
+                        {% for ag in agentes %}
+                            {% if ag.id != current_user.id %}
+                            <option value="{{ ag.id }}" {% if filtro_agente == ag.id|string %}selected{% endif %}>
+                                {{ ag.nombre_display or ag.usuario }}
+                            </option>
+                            {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </form>
+        </div>
+        {% endif %}
+        <a href="#seccion-generador-links" class="btn btn-sm btn-warning text-dark fw-bold shadow-sm">
+            <i class="bi bi-lightning-charge-fill me-1"></i> Pegar Enlaces (Nuevo)
+        </a>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- HERRAMIENTA: GENERADOR RÁPIDO DESDE LINKS (ML, ARGENPROP, ZONAPROP) -->
+<!-- ============================================================ -->
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" id="seccion-generador-links" style="border-left: 5px solid #d97706 !important;">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <div>
+            <span class="badge bg-warning text-dark px-2.5 py-1 fw-bold rounded-pill text-uppercase me-2" style="font-size: 0.7rem;">Herramienta Express</span>
+            <h5 class="fw-bold d-inline-block text-dark mb-0 align-middle">
+                <i class="bi bi-link-45deg text-warning me-1 fs-5"></i>Crear Portal Temporal desde Enlaces (hasta 6 links)
+            </h5>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-toggle="collapse" data-bs-target="#collapseGeneradorLinks" aria-expanded="true">
+            <i class="bi bi-chevron-down"></i>
+        </button>
+    </div>
+    
+    <div class="collapse show" id="collapseGeneradorLinks">
+        <div class="card-body p-4">
+            <form id="formGenerarDesdeLinks" onsubmit="handleGenerarPortalLinks(event)">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold text-muted mb-1">Título de la Selección</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light"><i class="bi bi-bookmark-star"></i></span>
+                            <input type="text" class="form-control form-control-sm" id="gen_titulo" name="titulo" 
+                                   placeholder="Ej: Selección Exclusiva de Propiedades" value="Selección de Propiedades">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">Operación</label>
+                        <select class="form-select form-select-sm" id="gen_tipo_operacion" name="tipo_operacion">
+                            <option value="venta" selected>Venta</option>
+                            <option value="alquiler">Alquiler</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Cliente Asociado (Opcional)</label>
+                        <select class="form-select form-select-sm" id="gen_cliente_id" name="cliente_id">
+                            <option value="">-- Sin asignar / General --</option>
+                            {% for c in contactos %}
+                            <option value="{{ c.id }}">{{ c.nombre }} {{ c.apellido or '' }} ({{ c.telefono or c.email or 'Sin contacto' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">Zona / Barrio (Opc.)</label>
+                        <input type="text" class="form-control form-control-sm" id="gen_zona" name="zona" placeholder="Ej: Palermo, Recoleta">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <label class="form-label small fw-bold text-dark mb-0">
+                            <i class="bi bi-collection-play text-primary me-1"></i>Enlaces de Propiedades (MercadoLibre, Argenprop, Zonaprop)
+                        </label>
+                        <span class="text-muted small ms-2">(Ingresá hasta 6 enlaces de publicaciones activas)</span>
+                    </div>
+                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1" onclick="abrirModalPegadoMasivo()">
+                        <i class="bi bi-clipboard-plus me-1"></i>Pegar varios enlaces a la vez
+                    </button>
+                </div>
+
+                <!-- Grilla de 6 Slots de Links -->
+                <div class="row g-2 mb-3">
+                    {% for i in range(1, 7) %}
+                    <div class="col-md-6">
+                        <div class="input-group input-group-sm link-input-group" id="group-link-{{ i }}">
+                            <span class="input-group-text bg-light text-muted fw-bold" style="width: 32px; justify-content: center;">{{ i }}</span>
+                            <input type="url" class="form-control form-control-sm input-link-prop" id="link_input_{{ i }}" name="links" 
+                                   placeholder="Pegá URL de Zonaprop, Argenprop o Mercado Libre..." 
+                                   oninput="detectarPortalLink(this, {{ i }})">
+                            <span class="input-group-text bg-white px-2" id="badge_portal_{{ i }}">
+                                <span class="badge bg-light text-muted border small" style="font-size: 0.68rem;">Esperando</span>
+                            </span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limpiarSlotLink({{ i }})" title="Limpiar casilla">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="d-flex flex-wrap justify-content-between align-items-center pt-2 border-top">
+                    <div class="small text-muted">
+                        <span class="me-3"><i class="bi bi-check-circle-fill text-warning me-1"></i><strong>MercadoLibre</strong></span>
+                        <span class="me-3"><i class="bi bi-check-circle-fill text-info me-1"></i><strong>Argenprop</strong></span>
+                        <span><i class="bi bi-check-circle-fill text-success me-1"></i><strong>Zonaprop</strong></span>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <button type="button" class="btn btn-sm btn-light border text-muted" onclick="limpiarTodosLosSlots()">
+                            <i class="bi bi-trash3 me-1"></i>Limpiar Todo
+                        </button>
+                        <button type="submit" id="btnSubmitLinks" class="btn btn-warning text-dark fw-bold shadow-sm px-4">
+                            <i class="bi bi-lightning-charge-fill me-1"></i>Crear Portal Temporal Live
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Tarjetas de Métricas -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 bg-primary bg-opacity-10 text-primary fs-3">
+                    <i class="bi bi-collection-play"></i>
+                </div>
+                <div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Total Portales Creados</small>
+                    <h3 class="fw-bold text-dark mb-0">{{ portales|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 bg-success bg-opacity-10 text-success fs-3">
+                    <i class="bi bi-eye"></i>
+                </div>
+                <div>
+                    {% set total_vistas = namespace(val=0) %}
+                    {% for p in portales %}{% set total_vistas.val = total_vistas.val + (p.vistas_count or 0) %}{% endfor %}
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Total Visitas de Clientes</small>
+                    <h3 class="fw-bold text-dark mb-0">{{ total_vistas.val }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 bg-warning bg-opacity-10 text-warning fs-3">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                    {% set activos_count = namespace(val=0) %}
+                    {% for p in portales %}{% if not p.expirado %}{% set activos_count.val = activos_count.val + 1 %}{% endif %}{% endfor %}
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Portales Activos Vigentes</small>
+                    <h3 class="fw-bold text-dark mb-0">{{ activos_count.val }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla / Lista de Portales -->
+<div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-list-stars text-primary me-2"></i>
+            {% if is_admin and filtro_agente == 'todos' %}
+                Todos los Portales Temporales Live (Oficina)
+            {% elif is_admin and filtro_agente and filtro_agente != current_user.id|string %}
+                Portales Temporales del Asesor Seleccionado
+            {% else %}
+                Mis Portales Temporales Compartidos
+            {% endif %}
+        </h5>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('captacion_outreach.buscador_compradores') }}" class="btn btn-xs btn-outline-primary">
+                <i class="bi bi-search me-1"></i>Buscador Ventas
+            </a>
+            <a href="{{ url_for('captacion_outreach.buscador_alquileres') }}" class="btn btn-xs btn-outline-success">
+                <i class="bi bi-key me-1"></i>Buscador Alquileres
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase text-muted">
+                    <tr>
+                        <th class="ps-4">Selección / Título</th>
+                        {% if is_admin and filtro_agente == 'todos' %}
+                        <th>Asesor Creador</th>
+                        {% endif %}
+                        <th>Tipo</th>
+                        <th>Propiedades</th>
+                        <th>Enlace Público</th>
+                        <th>Vigencia (15 Días)</th>
+                        <th>Visitas</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in portales %}
+                    {% set portal_url = url_for('captacion_outreach.ver_portal_temporal_publico', slug=p.codigo_slug, _external=True) %}
+                    <tr {% if p.expirado %}class="table-light text-muted opacity-75"{% endif %}>
+                        <td class="ps-4 py-3">
+                            <strong class="text-dark d-block">{{ p.titulo }}</strong>
+                            <small class="text-muted">Creado el {{ p.created_at[:10] if p.created_at else 'Reciente' }}</small>
+                            {% if p.cliente_nombre %}
+                            <div class="small text-primary mt-0.5"><i class="bi bi-person me-1"></i>Para: {{ p.cliente_nombre }} {{ p.cliente_apellido or '' }}</div>
+                            {% endif %}
+                            {% if p.zona %}
+                            <span class="badge bg-light text-secondary border mt-1" style="font-size: 0.7rem;"><i class="bi bi-geo-alt me-1"></i>{{ p.zona }}</span>
+                            {% endif %}
+                        </td>
+                        {% if is_admin and filtro_agente == 'todos' %}
+                        <td>
+                            <span class="badge bg-secondary bg-opacity-10 text-dark border">
+                                <i class="bi bi-person-circle me-1"></i>{{ p.creador_nombre or p.agente_nombre or 'Asesor' }}
+                            </span>
+                        </td>
+                        {% endif %}
+                        <td>
+                            <span class="badge {% if p.tipo_operacion == 'alquiler' %}bg-success{% else %}bg-primary{% endif %} text-uppercase" style="font-size: 0.75rem;">
+                                {{ p.tipo_operacion }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary rounded-pill px-2.5 py-1">
+                                <i class="bi bi-houses me-1"></i>{{ p.total_propiedades or 0 }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-1.5">
+                                <input type="text" class="form-control form-control-sm bg-light" value="{{ portal_url }}" readonly style="max-width: 210px; font-size: 0.8rem;">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="copiarAlPortapapeles('{{ portal_url }}', this)" title="Copiar Enlace">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                <a href="https://wa.me/?text={{ ('Hola, te comparto la selección exclusiva de propiedades que preparé para vos: ' ~ portal_url)|urlencode }}" 
+                                   class="btn btn-sm btn-outline-success" target="_blank" title="Compartir por WhatsApp">
+                                    <i class="bi bi-whatsapp"></i>
+                                </a>
+                            </div>
+                        </td>
+                        <td>
+                            {% if p.expirado %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger fw-bold">
+                                <i class="bi bi-x-circle me-1"></i>Expirado
+                            </span>
+                            {% else %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success fw-bold">
+                                <i class="bi bi-clock-history me-1"></i>Quedan {{ p.dias_restantes }} días
+                            </span>
+                            <div class="text-muted small" style="font-size: 0.75rem;">Hasta {{ p.expires_at[:10] if p.expires_at else '' }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong class="text-dark"><i class="bi bi-eye text-muted me-1"></i>{{ p.vistas_count or 0 }}</strong>
+                            {% if p.ultimo_acceso %}
+                            <div class="text-muted small" style="font-size: 0.75rem;">Últ: {{ p.ultimo_acceso[:10] }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="d-flex justify-content-end gap-1">
+                                <a href="{{ portal_url }}" class="btn btn-sm btn-primary" target="_blank" title="Abrir Portal">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i> Abrir
+                                </a>
+                                <form action="{{ url_for('captacion_outreach.eliminar_portal_temporal_route', pid=p.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Seguro que deseás eliminar este portal temporal?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="{% if is_admin and filtro_agente == 'todos' %}8{% else %}7{% endif %}" class="text-center py-5">
+                            <div class="py-4">
+                                <i class="bi bi-globe text-muted" style="font-size: 3.5rem;"></i>
+                                <h5 class="fw-bold text-dark mt-3">No hay portales temporales en esta vista</h5>
+                                <p class="text-muted small">Podés crear uno pegando hasta 6 links de MercadoLibre, Argenprop o Zonaprop arriba, o buscando propiedades.</p>
+                                <div class="mt-3">
+                                    <a href="#seccion-generador-links" class="btn btn-warning btn-sm text-dark fw-bold me-2">
+                                        <i class="bi bi-lightning-charge-fill me-1"></i>Crear desde Links
+                                    </a>
+                                    <a href="{{ url_for('captacion_outreach.buscador_compradores') }}" class="btn btn-primary btn-sm me-2">Buscador Ventas</a>
+                                    <a href="{{ url_for('captacion_outreach.buscador_alquileres') }}" class="btn btn-success btn-sm">Buscador Alquileres</a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: PEGADO MASIVO DE ENLACES -->
+<!-- ============================================================ -->
+<div class="modal fade" id="modalPegadoMasivo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-light border-bottom">
+                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-clipboard-plus text-primary me-2"></i>Pegado Masivo de Links</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-2">Pegá hasta 6 enlaces de <strong>MercadoLibre, Argenprop o Zonaprop</strong> (uno por línea o separados por espacio/coma):</p>
+                <textarea id="textareaPegadoMasivo" class="form-control font-monospace small" rows="7" 
+                          placeholder="https://www.zonaprop.com.ar/propiedades/...&#10;https://www.argenprop.com/departamento-...&#10;https://departamento.mercadolibre.com.ar/MLA-..."></textarea>
+                <div class="form-text mt-2 small text-muted">
+                    El sistema detectará y distribuirá automáticamente los enlaces en las casillas correspondientes.
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="aplicarPegadoMasivo()">
+                    <i class="bi bi-check2-all me-1"></i>Distribuir en Casillas
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: PROCESANDO EXTRACCIÓN Y FOTOS HD -->
+<!-- ============================================================ -->
+<div class="modal fade" id="modalProcesandoExtraccion" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 p-4 text-center">
+            <div class="mb-3">
+                <div class="spinner-border text-warning" style="width: 3.5rem; height: 3.5rem;" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+            <h5 class="fw-bold text-dark mb-1" id="loadingTitle">Extrayendo Propiedades en Vivo...</h5>
+            <p class="text-muted small mb-3" id="loadingSubtitle">Consultando portales, características completas y fotos en máxima resolución.</p>
+            <div class="progress mb-2" style="height: 8px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" id="loadingBar" role="progressbar" style="width: 100%"></div>
+            </div>
+            <small class="text-muted" style="font-size: 0.75rem;">Esto puede demorar unos segundos según la cantidad de enlaces.</small>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: RESULTADO EXITOSO Y COMPARTIR -->
+<!-- ============================================================ -->
+<div class="modal fade" id="modalExitoPortal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-success text-white border-0 py-3">
+                <h5 class="modal-title fw-bold"><i class="bi bi-check-circle-fill me-2"></i>¡Portal Temporal Live Creado!</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="display-6 text-success mb-2"><i class="bi bi-stars"></i></div>
+                <h4 class="fw-bold text-dark mb-1" id="exitoTituloPortal">Selección de Propiedades</h4>
+                <p class="text-muted small mb-3">
+                    Se extrajeron con éxito <strong id="exitoTotalProps" class="text-dark">0</strong> propiedades en HD. Vigente por 15 días.
+                </p>
+
+                <div class="card bg-light border-0 p-3 rounded-3 mb-3 text-start">
+                    <label class="small fw-bold text-muted mb-1">Enlace Público para Compartir:</label>
+                    <div class="input-group">
+                        <input type="text" id="inputExitoUrl" class="form-control form-control-sm bg-white" readonly>
+                        <button class="btn btn-sm btn-primary" type="button" onclick="copiarAlPortapapeles(document.getElementById('inputExitoUrl').value, this)">
+                            <i class="bi bi-clipboard me-1"></i>Copiar
+                        </button>
+                    </div>
+                </div>
+
+                <div id="exitoAvisosErrores" class="text-start small text-danger mb-3 d-none"></div>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <a id="btnExitoWhatsApp" href="#" target="_blank" class="btn btn-success fw-bold px-3">
+                        <i class="bi bi-whatsapp me-1"></i>Compartir WhatsApp
+                    </a>
+                    <a id="btnExitoAbrir" href="#" target="_blank" class="btn btn-primary fw-bold px-3">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Abrir Portal
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top py-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" onclick="window.location.reload()">Cerrar y Actualizar Lista</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function detectarPortalLink(inputEl, slotNum) {
+    const val = (inputEl.value || '').trim().toLowerCase();
+    const badgeContainer = document.getElementById('badge_portal_' + slotNum);
+    if (!badgeContainer) return;
+
+    if (!val) {
+        badgeContainer.innerHTML = '<span class="badge bg-light text-muted border small" style="font-size: 0.68rem;">Esperando</span>';
+        return;
+    }
+
+    if (val.includes('mercadolibre')) {
+        badgeContainer.innerHTML = '<span class="badge bg-warning text-dark fw-bold border border-warning small" style="font-size: 0.68rem;"><i class="bi bi-bag-check-fill me-1"></i>MercadoLibre</span>';
+    } else if (val.includes('argenprop')) {
+        badgeContainer.innerHTML = '<span class="badge bg-info text-white fw-bold border border-info small" style="font-size: 0.68rem;"><i class="bi bi-building me-1"></i>Argenprop</span>';
+    } else if (val.includes('zonaprop')) {
+        badgeContainer.innerHTML = '<span class="badge bg-success text-white fw-bold border border-success small" style="font-size: 0.68rem;"><i class="bi bi-house-door-fill me-1"></i>Zonaprop</span>';
+    } else {
+        badgeContainer.innerHTML = '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger small" style="font-size: 0.68rem;"><i class="bi bi-exclamation-triangle me-1"></i>No soportado</span>';
+    }
+}
+
+function limpiarSlotLink(slotNum) {
+    const inputEl = document.getElementById('link_input_' + slotNum);
+    if (inputEl) {
+        inputEl.value = '';
+        detectarPortalLink(inputEl, slotNum);
+    }
+}
+
+function limpiarTodosLosSlots() {
+    for (let i = 1; i <= 6; i++) {
+        limpiarSlotLink(i);
+    }
+}
+
+function abrirModalPegadoMasivo() {
+    const modal = new bootstrap.Modal(document.getElementById('modalPegadoMasivo'));
+    modal.show();
+}
+
+function aplicarPegadoMasivo() {
+    const text = document.getElementById('textareaPegadoMasivo').value || '';
+    if (!text.trim()) {
+        alert("Por favor pegá al menos un enlace.");
+        return;
+    }
+
+    // Split by newlines, spaces, or commas
+    const rawTokens = text.split(/[\r\n\s,]+/);
+    const validLinks = [];
+    for (let t of rawTokens) {
+        t = t.trim();
+        if (t.startsWith('http') && (t.includes('mercadolibre') || t.includes('argenprop') || t.includes('zonaprop'))) {
+            if (!validLinks.includes(t)) {
+                validLinks.push(t);
+            }
+        }
+    }
+
+    if (validLinks.length === 0) {
+        alert("No se detectaron enlaces válidos de MercadoLibre, Argenprop o Zonaprop.");
+        return;
+    }
+
+    limpiarTodosLosSlots();
+
+    for (let i = 0; i < Math.min(validLinks.length, 6); i++) {
+        const slotNum = i + 1;
+        const inputEl = document.getElementById('link_input_' + slotNum);
+        if (inputEl) {
+            inputEl.value = validLinks[i];
+            detectarPortalLink(inputEl, slotNum);
+        }
+    }
+
+    const modalEl = document.getElementById('modalPegadoMasivo');
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if (modalInstance) modalInstance.hide();
+}
+
+async function handleGenerarPortalLinks(e) {
+    e.preventDefault();
+
+    const links = [];
+    for (let i = 1; i <= 6; i++) {
+        const inputEl = document.getElementById('link_input_' + i);
+        if (inputEl && inputEl.value.trim()) {
+            links.push(inputEl.value.trim());
+        }
+    }
+
+    if (links.length === 0) {
+        alert("Por favor ingresá al menos 1 enlace de MercadoLibre, Argenprop o Zonaprop.");
+        return;
+    }
+
+    const payload = {
+        titulo: document.getElementById('gen_titulo').value || 'Selección de Propiedades',
+        tipo_operacion: document.getElementById('gen_tipo_operacion').value || 'venta',
+        cliente_id: document.getElementById('gen_cliente_id').value || null,
+        zona: document.getElementById('gen_zona').value || '',
+        links: links
+    };
+
+    // Show loading modal
+    const modalLoadingEl = document.getElementById('modalProcesandoExtraccion');
+    const modalLoading = new bootstrap.Modal(modalLoadingEl);
+    modalLoading.show();
+
+    try {
+        const res = await fetch("{{ url_for('captacion_outreach.crear_portal_desde_links_route') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        modalLoading.hide();
+
+        if (res.ok && data.success) {
+            // Show Success modal
+            document.getElementById('exitoTituloPortal').textContent = data.titulo || payload.titulo;
+            document.getElementById('exitoTotalProps').textContent = data.total_propiedades || '0';
+            document.getElementById('inputExitoUrl').value = data.portal_url;
+            document.getElementById('btnExitoAbrir').href = data.portal_url;
+
+            const waText = encodeURIComponent(`Hola, te comparto la selección exclusiva de propiedades que preparé para vos: ${data.portal_url}`);
+            document.getElementById('btnExitoWhatsApp').href = `https://wa.me/?text=${waText}`;
+
+            // If there were any failed links among multiple
+            const errDiv = document.getElementById('exitoAvisosErrores');
+            if (data.errores && data.errores.length > 0) {
+                errDiv.innerHTML = `<strong>Aviso:</strong> ${data.errores.length} enlace(s) no pudieron ser extraídos o expiraron en el portal original.`;
+                errDiv.classList.remove('d-none');
+            } else {
+                errDiv.classList.add('d-none');
+            }
+
+            const modalExito = new bootstrap.Modal(document.getElementById('modalExitoPortal'));
+            modalExito.show();
+        } else {
+            alert(data.error || "Ocurrió un error al generar el portal temporal. Verificá los enlaces.");
+        }
+    } catch (err) {
+        modalLoading.hide();
+        console.error("Error al crear portal:", err);
+        alert("Error de conexión al procesar los enlaces. Por favor reintentá.");
+    }
+}
+
+function copiarAlPortapapeles(texto, btn) {
+    navigator.clipboard.writeText(texto).then(() => {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check2 text-success"></i> Copiado!';
+        setTimeout(() => {
+            btn.innerHTML = originalHtml;
+        }, 2000);
+    }).catch(err => {
+        prompt("Copiá este enlace:", texto);
+    });
+}
+</script>
+{% endblock %}

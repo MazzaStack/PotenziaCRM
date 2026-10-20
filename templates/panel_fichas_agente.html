@@ -1,0 +1,531 @@
+{% extends 'base.html' %}
+
+{% block title %}Publicaciones a Fichas para Clientes (PAF) - {{ agency.nombre }}{% endblock %}
+{% block header %}Publicaciones a Fichas para Clientes (PAF){% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1"><i class="bi bi-link-45deg text-primary me-2"></i>Publicaciones a Fichas para Clientes</h2>
+        <p class="text-muted small mb-0">
+            Pegá cualquier link de <strong>Zonaprop, Argenprop o Mercado Libre</strong> para clonar la propiedad sin datos de inmobiliarias colegas. Enviá la ficha exclusiva con tu contacto directo y logo de la inmobiliaria.
+        </p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <span class="badge bg-primary px-3 py-2 fs-6 rounded-pill shadow-sm">
+            <i class="bi bi-hourglass-split me-1"></i> Expiración a 60 días
+        </span>
+    </div>
+</div>
+
+<!-- CAJA GENERADORA RÁPIDA -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius: 16px; background: linear-gradient(145deg, #ffffff, #f4f7fa); border-left: 6px solid #1A365D !important;">
+    <div class="card-body p-4">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-magic me-2 text-primary"></i>Generar Nueva Ficha desde Portal</h5>
+        <div class="row g-2">
+            <div class="col-lg-10">
+                <div class="input-group input-group-lg">
+                    <span class="input-group-text bg-white border-end-0 text-primary"><i class="bi bi-link"></i></span>
+                    <input type="url" id="portalUrlInput" class="form-control border-start-0" placeholder="Pegá el link de Zonaprop, Argenprop o Mercado Libre acá (ej: https://www.zonaprop.com.ar/propiedades/...)" autofocus>
+                </div>
+            </div>
+            <div class="col-lg-2">
+                <button type="button" id="btnScrapeUrl" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm h-100 d-flex align-items-center justify-content-center" onclick="procesarUrlPortal()">
+                    <span id="btnScrapeSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                    <i class="bi bi-cloud-arrow-down-fill me-2" id="btnScrapeIcon"></i> Obtener Ficha
+                </button>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-3 mt-3 text-muted small">
+            <span><i class="bi bi-check-circle-fill text-success me-1"></i> Zonaprop</span>
+            <span><i class="bi bi-check-circle-fill text-success me-1"></i> Argenprop</span>
+            <span><i class="bi bi-check-circle-fill text-success me-1"></i> Mercado Libre Inmuebles</span>
+            <span class="ms-auto text-primary fw-semibold"><i class="bi bi-shield-lock me-1"></i> Marca blanca automática</span>
+        </div>
+    </div>
+</div>
+
+<!-- LISTADO DE FICHAS CREADAS Y MÉTRICAS -->
+<div class="card shadow-sm border-0" style="border-radius: 16px;">
+    <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="bi bi-collection-play me-2 text-primary"></i>
+                {% if agente_filtrado == 'todos' %}Todas las Fichas del Equipo{% else %}Mis Fichas Creadas{% endif %} ({% if fichas %}{{ fichas|length }}{% else %}0{% endif %})
+            </h5>
+            {% if current_user.rol in ['admin', 'broker'] and usuarios_lista %}
+            <form method="GET" action="/fichas/panel" class="d-inline-flex align-items-center gap-1 mb-0">
+                <select name="agente_id" class="form-select form-select-sm border-primary text-primary fw-semibold" onchange="this.form.submit()" style="width: auto; font-size: 0.82rem; border-radius: 20px;">
+                    <option value="{{ current_user.id }}" {% if agente_filtrado == current_user.id %}selected{% endif %}>👤 Mis Fichas ({{ current_user.nombre_display or current_user.usuario }})</option>
+                    <option value="todos" {% if agente_filtrado == 'todos' %}selected{% endif %}>🏢 Ver Todas las Fichas (Equipo)</option>
+                    {% for u in usuarios_lista %}
+                        {% if u.id != current_user.id %}
+                        <option value="{{ u.id }}" {% if agente_filtrado == u.id %}selected{% endif %}>👤 Fichas de: {{ u.nombre_display or u.usuario }} ({{ u.rol }})</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+        </div>
+        <span class="text-muted small">Tracking de visitas y aperturas en tiempo real</span>
+    </div>
+    <div class="card-body p-0">
+        {% if fichas and fichas|length > 0 %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Propiedad</th>
+                        {% if agente_filtrado == 'todos' %}<th>Agente</th>{% endif %}
+                        <th>Portal / Origen</th>
+                        <th>Enlace para Cliente</th>
+                        <th class="text-center">Aperturas</th>
+                        <th>Última Visita</th>
+                        <th>Vigencia</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fichas %}
+                    <tr class="{% if f.esta_expirado %}table-light opacity-75{% endif %}">
+                        <td class="ps-4" style="min-width: 250px;">
+                            <div class="d-flex align-items-center">
+                                <img src="{{ f.foto_portada or (f.fotos[0] if f.fotos else '/static/img/no-photo.png') }}" alt="" class="rounded-3 me-3" style="width: 54px; height: 54px; object-fit: cover;" onerror="this.src='/static/img/no-photo.png';">
+                                <div>
+                                    <strong class="d-block text-dark text-truncate" style="max-width: 260px;" title="{{ f.titulo }}">{{ f.titulo }}</strong>
+                                    <small class="text-muted d-block">{{ f.barrio or f.direccion_mostrada or 'CABA' }}</small>
+                                    <span class="badge bg-success bg-opacity-10 text-success fw-bold">{{ f.moneda }} {{ "{:,.0f}".format(f.precio or 0).replace(',', '.') }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        {% if agente_filtrado == 'todos' %}
+                        <td>
+                            <span class="badge bg-dark bg-opacity-75 px-2 py-1"><i class="bi bi-person-fill me-1"></i>{{ f.agente_nombre or 'Asesor' }}</span>
+                        </td>
+                        {% endif %}
+                        <td>
+                            <div class="d-flex flex-column gap-1">
+                                <span class="badge {% if f.portal_origen == 'zonaprop' %}bg-primary{% elif f.portal_origen == 'argenprop' %}bg-danger{% else %}bg-warning text-dark{% endif %} text-uppercase px-2 py-1 align-self-start" style="font-size: 0.72rem;">
+                                    {{ f.portal_origen or 'Portal' }}
+                                </span>
+                                {% if f.url_origen %}
+                                <a href="{{ f.url_origen }}" target="_blank" class="small text-muted text-decoration-none text-truncate d-inline-block" style="max-width: 130px;" title="Ver publicación original en {{ f.portal_origen }}">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i> Link Original
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <code class="p-1 px-2 rounded bg-light border text-primary fw-bold" style="font-size: 0.85rem;">/ficha/{{ f.codigo_slug }}</code>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copiarLinkFicha('/ficha/{{ f.codigo_slug }}', this)" title="Copiar Link Completo">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                <a href="/ficha/{{ f.codigo_slug }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Abrir Ficha en Pestaña Nueva">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            {% if f.vistas_count > 0 %}
+                            <span class="badge bg-success px-3 py-2 fs-6 rounded-pill shadow-sm" title="{{ f.vistas_count }} aperturas humanas reales">
+                                <i class="bi bi-eye-fill me-1"></i> {{ f.vistas_count }}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary bg-opacity-25 text-secondary px-3 py-2 rounded-pill">
+                                0 vistas
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            {% if f.ultimo_acceso %}
+                            <span class="text-dark fw-semibold d-block">{{ f.ultimo_acceso[:16] }}</span>
+                            <small class="text-muted">1ra: {{ f.primer_acceso[:10] if f.primer_acceso else '-' }}</small>
+                            {% else %}
+                            <span class="text-muted">Sin aperturas aún</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if f.esta_expirado %}
+                            <span class="badge bg-danger">Expirado</span>
+                            {% else %}
+                            <span class="badge bg-info text-dark">{{ f.dias_restantes }} días rest.</span>
+                            <small class="d-block text-muted" style="font-size: 0.75rem;">Hasta: {{ f.expires_at[:10] if f.expires_at else '' }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-success" onclick="compartirWhatsAppFicha('{{ f.titulo|escape }}', '/ficha/{{ f.codigo_slug }}')" title="Enviar por WhatsApp">
+                                    <i class="bi bi-whatsapp"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarFicha({{ f.id }})" title="Eliminar Ficha">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center p-5">
+            <div class="bg-primary bg-opacity-10 d-inline-flex p-4 rounded-circle mb-3">
+                <i class="bi bi-link-45deg text-primary" style="font-size: 2.5rem;"></i>
+            </div>
+            <h5 class="fw-bold">No tenés fichas generadas todavía</h5>
+            <p class="text-muted small mb-0">Pegá el link de una propiedad de Zonaprop, Argenprop o Mercado Libre arriba para crear tu primer link marca blanca.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- MODAL DE EDICIÓN Y CONFIRMACIÓN PREVIA -->
+<div class="modal fade" id="modalPreviewFicha" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header bg-dark text-white py-3 px-4" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-check2-circle text-warning me-2"></i> Confirmar y Personalizar Ficha</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <form id="formConfirmarFicha">
+                    <input type="hidden" id="prevPortalOrigen">
+                    <input type="hidden" id="prevUrlOrigen">
+                    <input type="hidden" id="prevLat">
+                    <input type="hidden" id="prevLng">
+
+                    <div class="row g-3">
+                        <!-- COLUMNA IZQUIERDA: DATOS PRINCIPALES -->
+                        <div class="col-lg-7">
+                            <div class="bg-white p-4 rounded-4 shadow-sm border mb-3">
+                                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-card-heading me-1"></i> Información General</h6>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Título de la Propiedad (Sanitizado)</label>
+                                    <input type="text" id="prevTitulo" class="form-control" required>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Moneda</label>
+                                        <select id="prevMoneda" class="form-select">
+                                            <option value="USD">USD</option>
+                                            <option value="ARS">ARS</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Precio</label>
+                                        <input type="number" id="prevPrecio" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Expensas (ARS)</label>
+                                        <input type="number" id="prevExpensas" class="form-control" value="0">
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Operación</label>
+                                        <select id="prevTipoOperacion" class="form-select">
+                                            <option value="venta">Venta</option>
+                                            <option value="alquiler">Alquiler</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Tipo de Inmueble</label>
+                                        <input type="text" id="prevTipoPropiedad" class="form-control" value="Departamento">
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Barrio / Zona</label>
+                                        <input type="text" id="prevBarrio" class="form-control">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Dirección Mostrada</label>
+                                        <input type="text" id="prevDireccion" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- CARACTERÍSTICAS TÉCNICAS (BULLETS) -->
+                            <div class="bg-white p-4 rounded-4 shadow-sm border mb-3">
+                                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-grid-fill me-1"></i> Características Técnicas</h6>
+                                <div class="row g-2">
+                                    <div class="col-4 col-md-3 mb-2">
+                                        <label class="form-label small">Ambientes</label>
+                                        <input type="number" id="prevAmbientes" class="form-control" value="1">
+                                    </div>
+                                    <div class="col-4 col-md-3 mb-2">
+                                        <label class="form-label small">Dormitorios</label>
+                                        <input type="number" id="prevDormitorios" class="form-control" value="0">
+                                    </div>
+                                    <div class="col-4 col-md-3 mb-2">
+                                        <label class="form-label small">Baños</label>
+                                        <input type="number" id="prevBanos" class="form-control" value="1">
+                                    </div>
+                                    <div class="col-4 col-md-3 mb-2">
+                                        <label class="form-label small">Cocheras</label>
+                                        <input type="number" id="prevCocheras" class="form-control" value="0">
+                                    </div>
+                                    <div class="col-4 col-md-3 mb-2">
+                                        <label class="form-label small">M² Cubiertos</label>
+                                        <input type="number" id="prevM2Cub" class="form-control" value="0">
+                                    </div>
+                                    <div class="col-4 col-md-3 mb-2">
+                                        <label class="form-label small">M² Totales</label>
+                                        <input type="number" id="prevM2Tot" class="form-control" value="0">
+                                    </div>
+                                    <div class="col-4 col-md-3 mb-2">
+                                        <label class="form-label small">Antigüedad</label>
+                                        <input type="text" id="prevAntiguedad" class="form-control">
+                                    </div>
+                                    <div class="col-4 col-md-3 mb-2">
+                                        <label class="form-label small">Orientación</label>
+                                        <input type="text" id="prevOrientacion" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DESCRIPCIÓN -->
+                            <div class="bg-white p-4 rounded-4 shadow-sm border">
+                                <h6 class="fw-bold text-primary mb-2"><i class="bi bi-text-left me-1"></i> Descripción Sanitizada</h6>
+                                <textarea id="prevDescripcion" class="form-control" rows="5"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- COLUMNA DERECHA: FOTOS Y LINK -->
+                        <div class="col-lg-5">
+                            
+                            <!-- PERSONALIZACIÓN DE ENLACE Y AGENTE -->
+                            <div class="bg-white p-4 rounded-4 shadow-sm border mb-3">
+                                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-link-45deg me-1"></i> Dirección del Enlace</h6>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">URL Legible de la Ficha</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">/ficha/</span>
+                                        <input type="text" id="prevSlug" class="form-control font-monospace" required>
+                                    </div>
+                                    <small class="text-muted">Podés personalizar el nombre del link si lo deseás.</small>
+                                </div>
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <small class="text-muted d-block fw-bold mb-1">Datos del Asesor (Ficha):</small>
+                                    <strong class="d-block text-dark">{{ agente_config.nombre }}</strong>
+                                    <span class="text-muted small d-block">{{ agente_config.telefono }} · {{ agente_config.email }}</span>
+                                </div>
+                            </div>
+
+                            <!-- GALERÍA DE FOTOS SELECCIONABLES -->
+                            <div class="bg-white p-4 rounded-4 shadow-sm border">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold text-primary mb-0"><i class="bi bi-images me-1"></i> Galería de Fotos (<span id="prevFotosCount">0</span>)</h6>
+                                    <small class="text-muted">Desmarcá fotos con marcas de agua</small>
+                                </div>
+                                <div id="prevFotosContainer" class="d-flex flex-wrap gap-2 overflow-auto p-2 border rounded-3 bg-light" style="max-height: 380px;">
+                                    <!-- Render dinámico de fotos con checkbox -->
+                                </div>
+                            </div>
+
+                        </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-white py-3 px-4" style="border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success btn-lg px-5 fw-bold shadow-sm" onclick="guardarFichaConfirmada()">
+                    <i class="bi bi-check2-circle me-2"></i> Crear Link y Guardar Ficha
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let fotosExtraidas = [];
+
+function procesarUrlPortal() {
+    const url = document.getElementById('portalUrlInput').value.trim();
+    if (!url) {
+        alert('Por favor pegá una URL de Zonaprop, Argenprop o Mercado Libre.');
+        return;
+    }
+
+    const btn = document.getElementById('btnScrapeUrl');
+    const spinner = document.getElementById('btnScrapeSpinner');
+    const icon = document.getElementById('btnScrapeIcon');
+
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+    icon.classList.add('d-none');
+
+    if (window.CRMLoading) {
+        window.CRMLoading.show('🕷️ Extrayendo galería completa, bullets y descripción del portal...');
+    }
+
+    fetch('/fichas/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url })
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+        icon.classList.remove('d-none');
+        if (window.CRMLoading) window.CRMLoading.hide();
+
+        if (!data.success) {
+            alert('Error: ' + (data.error || 'No se pudieron extraer los datos del portal.'));
+            return;
+        }
+
+        const p = data.propiedad;
+        fotosExtraidas = p.fotos || [];
+
+        // Rellenar formulario modal de confirmación
+        document.getElementById('prevPortalOrigen').value = p.portal_origen || '';
+        document.getElementById('prevUrlOrigen').value = p.url_origen || '';
+        document.getElementById('prevLat').value = p.lat || '';
+        document.getElementById('prevLng').value = p.lng || '';
+        document.getElementById('prevTitulo').value = p.titulo || '';
+        document.getElementById('prevMoneda').value = p.moneda || 'USD';
+        document.getElementById('prevPrecio').value = p.precio || 0;
+        document.getElementById('prevExpensas').value = p.expensas || 0;
+        document.getElementById('prevTipoOperacion').value = p.tipo_operacion || 'venta';
+        document.getElementById('prevTipoPropiedad').value = p.tipo_propiedad || 'Departamento';
+        document.getElementById('prevBarrio').value = p.barrio || '';
+        document.getElementById('prevDireccion').value = p.direccion || '';
+        document.getElementById('prevAmbientes').value = p.ambientes || 0;
+        document.getElementById('prevDormitorios').value = p.dormitorios || 0;
+        document.getElementById('prevBanos').value = p.banos || 0;
+        document.getElementById('prevCocheras').value = p.cocheras || 0;
+        document.getElementById('prevM2Cub').value = p.m2_cubiertos || 0;
+        document.getElementById('prevM2Tot').value = p.m2_total || 0;
+        document.getElementById('prevAntiguedad').value = p.antiguedad || '';
+        document.getElementById('prevOrientacion').value = p.orientacion || '';
+        document.getElementById('prevDescripcion').value = p.descripcion || '';
+        document.getElementById('prevSlug').value = p.suggested_slug || '';
+
+        // Renderizar fotos
+        renderFotosPreview(fotosExtraidas);
+
+        const modal = new bootstrap.Modal(document.getElementById('modalPreviewFicha'));
+        modal.show();
+    })
+    .catch(err => {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+        icon.classList.remove('d-none');
+        if (window.CRMLoading) window.CRMLoading.hide();
+        alert('Error de conexión con el servidor al procesar el link.');
+    });
+}
+
+function renderFotosPreview(fotos) {
+    const container = document.getElementById('prevFotosContainer');
+    document.getElementById('prevFotosCount').innerText = fotos.length;
+    container.innerHTML = '';
+
+    if (!fotos || fotos.length === 0) {
+        container.innerHTML = '<div class="p-3 text-muted small">No se detectaron fotos en la publicación.</div>';
+        return;
+    }
+
+    fotos.forEach((foto, i) => {
+        const div = document.createElement('div');
+        div.className = 'position-relative border rounded p-1 bg-white';
+        div.style.width = '110px';
+        div.innerHTML = `
+            <img src="${foto}" style="width: 100%; height: 75px; object-fit: cover; border-radius: 4px;">
+            <div class="form-check position-absolute top-0 start-0 m-1 bg-white rounded px-1 shadow-sm">
+                <input class="form-check-input check-foto" type="checkbox" value="${foto}" id="chk_foto_${i}" checked>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function guardarFichaConfirmada() {
+    // Tomar fotos seleccionadas
+    const fotosSeleccionadas = [];
+    document.querySelectorAll('.check-foto:checked').forEach(chk => {
+        fotosSeleccionadas.push(chk.value);
+    });
+
+    if (fotosSeleccionadas.length === 0 && fotosExtraidas.length > 0) {
+        if (!confirm('¿Seguro que querés guardar la ficha sin ninguna foto seleccionada?')) {
+            return;
+        }
+    }
+
+    const payload = {
+        codigo_slug: document.getElementById('prevSlug').value.trim(),
+        portal_origen: document.getElementById('prevPortalOrigen').value,
+        url_origen: document.getElementById('prevUrlOrigen').value,
+        lat: document.getElementById('prevLat').value,
+        lng: document.getElementById('prevLng').value,
+        titulo: document.getElementById('prevTitulo').value.trim(),
+        moneda: document.getElementById('prevMoneda').value,
+        precio: document.getElementById('prevPrecio').value,
+        expensas: document.getElementById('prevExpensas').value,
+        tipo_operacion: document.getElementById('prevTipoOperacion').value,
+        tipo_propiedad: document.getElementById('prevTipoPropiedad').value,
+        barrio: document.getElementById('prevBarrio').value.trim(),
+        direccion_mostrada: document.getElementById('prevDireccion').value.trim(),
+        ambientes: document.getElementById('prevAmbientes').value,
+        dormitorios: document.getElementById('prevDormitorios').value,
+        banos: document.getElementById('prevBanos').value,
+        cocheras: document.getElementById('prevCocheras').value,
+        m2_cubiertos: document.getElementById('prevM2Cub').value,
+        m2_total: document.getElementById('prevM2Tot').value,
+        antiguedad: document.getElementById('prevAntiguedad').value.trim(),
+        orientacion: document.getElementById('prevOrientacion').value.trim(),
+        descripcion: document.getElementById('prevDescripcion').value.trim(),
+        fotos: fotosSeleccionadas
+    };
+
+    fetch('/fichas/api/guardar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('¡Ficha creada exitosamente! Link listo para compartir: ' + data.full_url);
+            window.location.reload();
+        } else {
+            alert('Error guardando la ficha: ' + (data.error || 'Desconocido'));
+        }
+    })
+    .catch(err => {
+        alert('Error al guardar la ficha en el servidor.');
+    });
+}
+
+function copiarLinkFicha(path, btn) {
+    const fullUrl = window.location.origin + path;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check2 text-success"></i>';
+        setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+    });
+}
+
+function compartirWhatsAppFicha(titulo, path) {
+    const fullUrl = window.location.origin + path;
+    const text = `¡Hola! Te comparto la ficha de esta propiedad: ${titulo}\n${fullUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+function eliminarFicha(id) {
+    if (!confirm('¿Estás seguro de que querés eliminar este enlace? El cliente ya no podrá acceder.')) return;
+    fetch(`/fichas/api/eliminar/${id}`, { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('No se pudo eliminar la ficha.');
+        }
+    });
+}
+</script>
+{% endblock %}

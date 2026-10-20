@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% block title %}Buscador Combinado - {{ agency.nombre }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root { --ferrari-red: {{ agency.color_primario or '#0d6efd' }}; --ferrari-dark: {{ agency.color_secundario or '#1a1a2e' }}; }
+
+  .search-hero {
+    background: linear-gradient(135deg, var(--ferrari-dark) 0%, #16213e 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    color: white;
+    margin-bottom: 2rem;
+  }
+  .search-form-row .form-control, .search-form-row .form-select {
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: white;
+    font-size: 0.88rem;
+  }
+  .search-form-row .form-control::placeholder { color: rgba(255,255,255,0.5); }
+  .search-form-row .form-control:focus, .search-form-row .form-select:focus {
+    background: rgba(255,255,255,0.12);
+    border-color: var(--ferrari-red);
+    color: white;
+    box-shadow: 0 0 0 3px rgba(13,110,253,0.25);
+  }
+  .search-form-row .form-select option { background: #1a1a2e; }
+  .btn-buscar {
+    background: linear-gradient(135deg, var(--ferrari-red), #0a58ca);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 700;
+    padding: 12px 28px;
+    transition: all 0.2s;
+  }
+  .btn-buscar:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(13,110,253,0.4); color: white; }
+
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 2rem 0 1rem;
+  }
+  .section-divider hr { flex: 1; border-color: #dee2e6; }
+
+  .section-badge-ferrari {
+    background: linear-gradient(135deg, var(--ferrari-red), #0a58ca);
+    color: white;
+    padding: 6px 18px;
+    border-radius: 25px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .section-badge-portales {
+    background: #f0f4ff;
+    color: #4361ee;
+    padding: 6px 18px;
+    border-radius: 25px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  /* Resultado Ferrari */
+  .result-card {
+    background: white;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    display: flex;
+    transition: all 0.3s;
+    margin-bottom: 1rem;
+  }
+  .result-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.13); transform: translateY(-2px); }
+  .result-card.ferrari-card { border-left: 4px solid var(--ferrari-red); }
+  .result-card.portal-card { border-left: 4px solid #4361ee; }
+  .result-card-img {
+    width: 140px;
+    min-height: 120px;
+    flex-shrink: 0;
+    object-fit: cover;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: rgba(255,255,255,0.2);
+  }
+  .result-card-img img { width: 100%; height: 100%; object-fit: cover; }
+  .result-card-body { padding: 1rem; flex: 1; }
+  .result-titulo { font-weight: 700; font-size: 0.92rem; margin-bottom: 4px; color: #1a1a2e; }
+  .result-precio { font-size: 1.15rem; font-weight: 800; color: var(--ferrari-red); }
+  .result-meta { font-size: 0.78rem; color: #6c757d; margin-top: 4px; }
+  .result-action { display: flex; align-items: center; padding: 1rem 1rem 1rem 0; }
+  .btn-ver-ficha {
+    background: var(--ferrari-dark);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .btn-ver-ficha:hover { background: var(--ferrari-red); color: white; }
+  .portal-source-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 15px;
+    text-transform: uppercase;
+  }
+  .badge-zonaprop { background: #fff7e6; color: #ff6b35; }
+  .badge-mercadolibre { background: #fff9e6; color: #f0a500; }
+
+  .empty-results {
+    text-align: center;
+    padding: 3rem;
+    color: #6c757d;
+  }
+  .initial-state {
+    text-align: center;
+    padding: 4rem 2rem;
+  }
+  .initial-state .big-icon { font-size: 5rem; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block header %}🔍 Buscador Combinado{% endblock %}
+
+{% block content %}
+<!-- Hero Buscador -->
+<div class="search-hero">
+  <h3 class="fw-bold mb-1">Buscador de Propiedades</h3>
+  <p class="mb-3" style="opacity:0.7; font-size:0.9rem;">
+    Primero te mostramos nuestra cartera de propiedades, luego los resultados de portales externos.
+  </p>
+  <form method="GET" action="{{ url_for('tokko.buscar') }}" class="search-form-row">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <select class="form-select" name="operacion">
+          <option value="venta" {% if filtros.operacion == 'venta' %}selected{% endif %}>Venta</option>
+          <option value="alquiler" {% if filtros.operacion == 'alquiler' %}selected{% endif %}>Alquiler</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select class="form-select" name="tipo">
+          <option value="">Todos los tipos</option>
+          {% for t in [('departamento','Departamento'),('casa','Casa'),('ph','PH'),('lote','Lote')] %}
+          <option value="{{ t[0] }}" {% if filtros.tipo == t[0] %}selected{% endif %}>{{ t[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" name="zona"
+               value="{{ filtros.zona }}" placeholder="Zona, barrio, ciudad...">
+      </div>
+      <div class="col-md-2">
+        <input type="number" class="form-control" name="precio_min"
+               value="{{ filtros.precio_min }}" placeholder="Precio desde">
+      </div>
+      <div class="col-md-2">
+        <input type="number" class="form-control" name="precio_max"
+               value="{{ filtros.precio_max }}" placeholder="Precio hasta">
+      </div>
+      <div class="col-md-1 d-grid">
+        <button type="submit" class="btn-buscar">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% if not buscado %}
+<!-- Estado inicial -->
+<div class="initial-state">
+  <div class="big-icon">🔍</div>
+  <h5 class="fw-bold">Buscá propiedades</h5>
+  <p class="text-muted">Usá el formulario de arriba para buscar. Nuestra cartera aparece primero.</p>
+</div>
+
+{% else %}
+<!-- ──────────────── Sección Cartera Propia ──────────────── -->
+<div class="section-divider">
+  <span class="section-badge-ferrari">
+    🏠 Nuestra Cartera ({{ ferrari|length }})
+  </span>
+  <hr>
+</div>
+
+{% if ferrari %}
+{% for p in ferrari %}
+<div class="result-card ferrari-card">
+  <div class="result-card-img">
+    {% if p.foto_principal %}
+      <img src="{{ p.foto_principal }}" alt="{{ p.titulo }}" onerror="this.parentElement.innerHTML='🏠'">
+    {% else %}
+      🏠
+    {% endif %}
+  </div>
+  <div class="result-card-body">
+    <div class="d-flex align-items-start gap-2 mb-1 flex-wrap">
+      <span class="result-titulo">{{ p.titulo or 'Sin título' }}</span>
+      <span class="portal-source-badge" style="background:#e7f1ff; color:#0d6efd; flex-shrink:0;">Cartera Propia</span>
+    </div>
+    {% if p.precio and p.precio > 0 %}
+    <div class="result-precio">{{ p.moneda or 'USD' }} {{ "{:,.0f}".format(p.precio).replace(",",".") }}</div>
+    {% endif %}
+    <div class="result-meta">
+      {% if p.tipo_propiedad %}{{ p.tipo_propiedad }} · {% endif %}
+      {% if p.ambientes %}{{ p.ambientes }} amb. · {% endif %}
+      {% if p.superficie_cubierta %}{{ p.superficie_cubierta|int }}m² · {% endif %}
+      {% if p.barrio %}📍 {{ p.barrio }}{% endif %}
+    </div>
+  </div>
+  {% if p.url_ficha %}
+  <div class="result-action">
+    <a href="{{ p.url_ficha }}" target="_blank" class="btn-ver-ficha">
+      <i class="bi bi-box-arrow-up-right"></i>
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-results">
+  <i class="bi bi-house-x" style="font-size:2.5rem; color:#dee2e6;"></i>
+  <p class="mt-2 text-muted">No encontramos propiedades en cartera con esos filtros.</p>
+</div>
+{% endif %}
+
+<!-- ──────────────── Sección Portales ──────────────── -->
+<div class="section-divider mt-4">
+  <span class="section-badge-portales">
+    🌐 Portales externos ({{ portales|length }})
+  </span>
+  <hr>
+</div>
+
+{% if portales %}
+{% for p in portales %}
+<div class="result-card portal-card">
+  <div class="result-card-img">
+    {% if p.get('foto_url') or p.get('foto') %}
+      <img src="{{ p.foto_url or p.foto }}" alt="{{ p.titulo }}" onerror="this.parentElement.innerHTML='🏙️'">
+    {% else %}
+      🏙️
+    {% endif %}
+  </div>
+  <div class="result-card-body">
+    <div class="d-flex align-items-start gap-2 mb-1 flex-wrap">
+      <span class="result-titulo">{{ p.get('titulo') or 'Sin título' }}</span>
+      {% set portal_name = p.get('portal','') %}
+      <span class="portal-source-badge {{ 'badge-zonaprop' if 'zonaprop' in portal_name else 'badge-mercadolibre' }}" style="flex-shrink:0;">
+        {{ portal_name|capitalize }}
+      </span>
+    </div>
+    {% if p.get('precio') %}
+    <div class="result-precio" style="color:#4361ee;">
+      {{ p.get('moneda','$') }} {{ p.precio }}
+    </div>
+    {% endif %}
+    <div class="result-meta">
+      {% if p.get('tipo_propiedad') %}{{ p.tipo_propiedad }} · {% endif %}
+      {% if p.get('ambientes') %}{{ p.ambientes }} amb. · {% endif %}
+      {% if p.get('m2_cubiertos') %}{{ p.m2_cubiertos|int }}m² · {% endif %}
+      {% if p.get('barrio') %}📍 {{ p.barrio }}{% endif %}
+    </div>
+  </div>
+  {% if p.get('url') %}
+  <div class="result-action">
+    <a href="{{ p.url }}" target="_blank" class="btn-ver-ficha" style="background:#4361ee;">
+      <i class="bi bi-box-arrow-up-right"></i>
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-results">
+  <i class="bi bi-globe-americas" style="font-size:2.5rem; color:#dee2e6;"></i>
+  <p class="mt-2 text-muted">No encontramos resultados en portales externos para esa búsqueda.</p>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

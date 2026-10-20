@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClaudIA Pro | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- SheetJS para manejo de Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <!-- MODAL DE MAPEO DE EXCEL -->
+    <div id="mappingModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
+        <div style="background: var(--bg-card); padding: 2.5rem; border-radius: 16px; width: 600px; max-width: 95%; border: 1px solid var(--glass-border); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <h2 style="margin-bottom: 0.5rem; color: white;">📍 Mapeo de Columnas Excel</h2>
+            <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem;">Asociá las columnas de tu archivo con los campos de ClaudIA.</p>
+            
+            <div id="mappingFields" style="max-height: 400px; overflow-y: auto; margin-bottom: 2rem;">
+                <!-- Se llena con JS -->
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="closeMappingModal()" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.1); color: white; border: none; border-radius: 8px; cursor: pointer;">Cancelar</button>
+                <button onclick="applyExcelMapping()" style="flex: 2; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Procesar e Importar</button>
+            </div>
+        </div>
+    </div>
+    <!-- LICENSE KILL SWITCH OVERLAY -->
+    <div id="licenseOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(200, 30, 30, 0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; color: white;">
+        <h1 style="font-size: 3rem; margin-bottom: 1rem;">⚠️ Licencia Inválida o Vencida</h1>
+        <p style="font-size: 1.2rem; margin-bottom: 2rem;">El sistema está bloqueado por seguridad. Ingresa una clave válida para continuar.</p>
+        <div style="background: white; padding: 2rem; border-radius: 12px; width: 400px; text-align: center; color: black;">
+            <h3 style="margin-bottom: 1rem;">Activación de ClaudIA Pro</h3>
+            <input type="text" id="emergencyLicenseKey" placeholder="XXXX-XXXX-XXXX-XXXX" style="width: 100%; padding: 10px; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 6px; color: black;">
+            <button onclick="emergencyActivate()" style="width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Activar ahora</button>
+            <p id="emergencyStatus" style="color: #ef4444; margin-top: 1rem; font-size: 0.9rem; font-weight: bold;"></p>
+        </div>
+    </div>
+
+    <aside>
+        <div class="logo">
+            <span>✨</span> ClaudIA Pro
+        </div>
+        <nav>
+            <ul id="mainNav">
+                <li class="active" data-section="monitor">📊 Monitor</li>
+                <li data-section="cerebro">🧠 Cerebro e IA</li>
+                <li data-section="catalog">📦 Catálogo Inteligente</li>
+                <li data-section="system">⚙️ Sistema</li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main>
+        <header>
+            <h1 id="pageTitle">Monitor del Sistema</h1>
+            <button id="saveBtn" class="btn-save" onclick="saveAll()" style="display: none;">Guardar Cambios</button>
+        </header>
+
+        <!-- Sección 1: Monitor -->
+        <section id="monitorSection">
+            <div class="card">
+                <h3>Leads Activos</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Clientes con los que el bot está interactuando actualmente.</p>
+                <div id="leadsContainer">
+                    <p style="color: var(--text-muted)">Cargando leads...</p>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 2rem; border-top: 4px solid #ef4444;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem;">
+                    <span style="font-size: 1.5rem;">🚫</span>
+                    <h3 style="margin: 0;">Lista Negra (Blacklist)</h3>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+                    Números de teléfono bloqueados. ClaudIA los ignorará por completo y no responderá a sus mensajes. Ingresá un número por línea (sin el signo + ni espacios, ej: 5491166667777).
+                </p>
+                <div class="form-group">
+                    <textarea id="blacklist" rows="4" placeholder="Ej: 5491166667777&#10;5491188889999" style="width: 100%; border: 1px solid var(--glass-border); background: var(--bg-card); color: var(--text-color); border-radius: 8px; padding: 12px; font-family: monospace; outline: none; box-sizing: border-box;"></textarea>
+                </div>
+                <button class="btn-save" onclick="saveAll()" style="display: block; margin-top: 1rem; width: 100%; background: #ef4444; border: none;">Guardar Blacklist</button>
+            </div>
+        </section>
+
+        <!-- Sección 2: Cerebro e IA -->
+        <section id="cerebroSection" style="display: none;">
+            <div class="card">
+                <h3>Identidad y Personalidad</h3>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Nombre del Bot</label>
+                        <input type="text" id="botName" placeholder="Ej: ClaudIA Pro">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Rubro (Industry)</label>
+                        <input type="text" id="industry" placeholder="Ej: Inmobiliaria, Gomería">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Tono de Voz</label>
+                        <input type="text" id="tone" placeholder="Ej: profesional, rioplatense">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Instrucción Base / Misión Principal</label>
+                    <textarea id="baseInstructions" rows="4" placeholder="Tu prioridad es vender y agendar turnos..."></textarea>
+                    <small style="color: var(--text-muted)">Define cómo debe actuar ClaudIA, qué puede decir y qué no.</small>
+                </div>
+
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Mensaje de Saludo Global</label>
+                        <textarea id="globalGreeting" rows="3" placeholder="Hola {name}! Soy ClaudIA..."></textarea>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Pregunta Inicial</label>
+                        <textarea id="initialQuestion" rows="3" placeholder="Ej: ¿En qué te puedo ayudar hoy?"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Caminos de Conversación (Paths)</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Definí cómo debe reaccionar ClaudIA ante diferentes situaciones o intenciones del cliente.</p>
+                <div id="pathsContainer">
+                    <!-- Se llenará con JS -->
+                </div>
+                <button class="btn-add" onclick="addNewPath()">+ Agregar Nuevo Camino</button>
+            </div>
+        </section>
+
+        <!-- Sección 3: Catálogo Inteligente -->
+        <section id="catalogSection" style="display: none;">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3>Base de Conocimientos (Catálogo)</h3>
+                    <div class="form-group" style="margin: 0; width: 300px;">
+                        <label style="margin-bottom: 4px;">Modo de Inyección</label>
+                        <select id="botMode" onchange="onModeChange(this.value)" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--bg-card); color: var(--text-color);">
+                            <option value="boutique">Modo Boutique (Inyectar todo el catálogo, < 30 ítems)</option>
+                            <option value="catalog">Modo Catálogo (Búsqueda inteligente dinámica)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                    <button class="btn-save" onclick="document.getElementById('excelInput').click()" style="background: #10b981; border: none;">📊 Importar desde Excel</button>
+                    <input type="file" id="excelInput" style="display: none;" accept=".xlsx, .xls, .csv" onchange="handleExcelFile(this)">
+                </div>
+                
+                <!-- NUEVO: Formulario para añadir productos -->
+                <div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px dashed var(--glass-border);">
+                    <h4 style="margin-bottom: 1rem;">➕ Agregar Nuevo Ítem</h4>
+                    <div id="catalogAddForm" style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+                        <!-- Se generará dinámicamente según el schema -->
+                    </div>
+                    <button class="btn-add" onclick="addCatalogItem()" style="margin-top: 1rem;">Añadir al Catálogo</button>
+                </div>
+
+                <div id="catalogContainer" style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead id="catalogHead"></thead>
+                        <tbody id="catalogBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sección: Reglas de Sinónimos -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div>
+                        <h3 style="margin: 0;">🏷️ Reglas de Sinónimos</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                            Definí una regla por categoría. ClaudIA buscará productos de esa categoría cuando el cliente use cualquiera de las palabras clave. <br>
+                            <b>Ejemplo:</b> Categoría <i>Neumáticos Moto</i> → Keywords: <i>rueda, llanta, goma, cubierta</i>
+                        </p>
+                    </div>
+                    <button class="btn-add" onclick="addSynonymRule()" style="white-space: nowrap;">+ Nueva Regla</button>
+                </div>
+
+                <div id="synonymRulesContainer" style="margin-top: 1.5rem;">
+                    <!-- Se llenará con JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección 4: Sistema (Avanzado) -->
+        <section id="systemSection" style="display: none;">
+            
+            <div class="card" style="border: 1px solid var(--accent);">
+                <h3>Licencia y Activación</h3>
+                <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Clave de Licencia</label>
+                        <input type="text" id="licenseKey" placeholder="XXXX-XXXX-XXXX-XXXX">
+                    </div>
+                    <div id="licenseStatusBadge" style="padding: 10px 15px; border-radius: 6px; font-weight: bold; background: var(--glass-bg); border: 1px solid var(--glass-border);">
+                        Verificando...
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Comportamiento y Filtros</h3>
+                <div class="form-group" style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem;">
+                    <input type="checkbox" id="openMode" style="width: auto;">
+                    <label style="margin: 0;"><b>Modo Abierto:</b> Responder a cualquier persona (ignorando permitidos)</label>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 1rem;">
+                    <input type="checkbox" id="strangersOnly" style="width: auto;">
+                    <label style="margin: 0;"><b>Solo Desconocidos:</b> Ignorar a personas que ya tenés agendadas</label>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 1rem;">
+                    <input type="checkbox" id="checkPreviousChat" style="width: auto;">
+                    <label style="margin: 0;"><b>Conversación Previa:</b> Revisar si hubo charla reciente antes de responder a no agendados</label>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 1rem; padding-left: 2rem;">
+                    <label style="margin: 0; font-size: 0.85rem;">Reiniciar charla si pasaron más de (horas):</label>
+                    <input type="number" id="previousChatHours" min="1" max="168" step="1" style="width: 80px; padding: 6px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--bg-card); color: var(--text-color);" placeholder="24">
+                </div>
+                
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 0.95rem;">⏱️ Delay de Respuesta Humana</h4>
+                <div style="display: flex; gap: 1.5rem; align-items: flex-end;">
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Mínimo (segundos)</label>
+                        <input type="number" id="replyDelayMin" min="0" max="30" step="1" placeholder="4">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Máximo (segundos)</label>
+                        <input type="number" id="replyDelayMax" min="0" max="30" step="1" placeholder="7">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Credenciales API</h3>
+                <div class="form-group">
+                    <label>Groq API Key <span style="font-size: 0.8rem; font-weight: normal; margin-left: 5px;">(¿No tenés una? <a href="https://console.groq.com/keys" target="_blank" style="color: var(--accent-secondary); text-decoration: underline;">Obtén tu API Key en la consola de Groq</a>)</span></label>
+                    <input type="password" id="groqApiKey" placeholder="gsk_...">
+                </div>
+                <div class="form-group">
+                    <label>WhatsApp Admin Phone (Para comandos)</label>
+                    <input type="text" id="adminPhone" placeholder="Ej: 5491166667777">
+                </div>
+                <div class="form-group">
+                    <label>Meta Access Token</label>
+                    <input type="password" id="metaToken" placeholder="EAAB...">
+                </div>
+                <div class="form-group">
+                    <label>Meta Verify Token</label>
+                    <input type="text" id="metaVerifyToken" placeholder="TuVerifyToken">
+                </div>
+            </div>
+
+            <div class="card" style="border-top: 4px solid #3b82f6;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem;">
+                    <span style="font-size: 1.5rem;">🔗</span>
+                    <h3 style="margin: 0;">Integración CRM Inmobiliario</h3>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+                    Configurá los datos de tu CRM para enviar automáticamente los nuevos leads que ingresan a ClaudIA.
+                </p>
+                <div class="form-group" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem;">
+                    <input type="checkbox" id="crmEnabled" style="width: auto;">
+                    <label style="margin: 0;"><b>Habilitar CRM:</b> Enviar automáticamente nuevos leads al CRM</label>
+                </div>
+                <div class="form-group">
+                    <label>URL del Webhook (POST)</label>
+                    <input type="text" id="crmWebhookUrl" placeholder="https://[TU-DOMINIO-CRM]/api/leads/meta">
+                </div>
+                <div class="form-group">
+                    <label>Token de Autenticación (Authorization Bearer)</label>
+                    <input type="password" id="crmWebhookToken" placeholder="ferrari_secure_token_...">
+                </div>
+                <div class="form-group">
+                    <label>Usuario Asignado (Captador por defecto)</label>
+                    <input type="text" id="crmUsuarioAsignado" placeholder="Ej: GermanMazza">
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast">¡Configuración guardada!</div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

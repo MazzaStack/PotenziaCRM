@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ portal.titulo }} | {{ agency_name or agency.nombre or 'Potenzia Real Estate' }}</title>
+    <!-- Bootstrap 5 CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --brand-primary: #1A365D;
+            --brand-accent: #2B6CB0;
+            --brand-gold: #D69E2E;
+            --bg-light: #F8FAFC;
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-light);
+            color: #2D3748;
+        }
+        .hero-banner {
+            background: linear-gradient(135deg, var(--brand-primary) 0%, #2C5282 100%);
+            color: white;
+            padding: 36px 0 44px 0;
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+        }
+        .property-card {
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: all 0.25s ease;
+        }
+        .property-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+        }
+        .carousel-item img {
+            height: 240px;
+            object-fit: cover;
+            width: 100%;
+        }
+        .carousel-control-prev-icon,
+        .carousel-control-next-icon {
+            background-color: rgba(0, 0, 0, 0.65);
+            background-size: 50% 50%;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .carousel-control-prev-icon:hover,
+        .carousel-control-next-icon:hover {
+            background-color: rgba(0, 0, 0, 0.85);
+            transform: scale(1.1);
+        }
+        .price-badge {
+            background: var(--brand-primary);
+            color: white;
+            font-size: 1.15rem;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .feature-chip {
+            background: #EDF2F7;
+            color: #4A5568;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .btn-brand {
+            background-color: var(--brand-primary);
+            color: white;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .btn-brand:hover {
+            background-color: var(--brand-accent);
+            color: white;
+        }
+        .btn-whatsapp-floating {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background-color: #25D366;
+            color: white;
+            border-radius: 50px;
+            padding: 12px 22px;
+            font-weight: 700;
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: transform 0.2s ease;
+        }
+        .btn-whatsapp-floating:hover {
+            transform: scale(1.05);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR PÚBLICO -->
+    <nav class="navbar navbar-expand-lg navbar-dark py-2.5" style="background-color: var(--brand-primary);">
+        <div class="container d-flex justify-content-between align-items-center">
+            <span class="navbar-brand d-flex align-items-center fw-bold fs-6 mb-0">
+                <img src="{{ company_logo or '/static/img/potenzia_logo_transparent.png' }}" alt="{{ agency_name or agency.nombre or 'Potenzia Real Estate' }}" class="me-2" style="height: 32px; max-width: 130px; object-fit: contain;">
+                <span>{{ agency_name or agency.nombre or 'Potenzia Real Estate' }}</span>
+            </span>
+            <span class="badge bg-warning text-dark px-3 py-1.5 rounded-pill fw-bold small">
+                <i class="bi bi-clock-history me-1"></i> Selección Live (15 días)
+            </span>
+        </div>
+    </nav>
+            <span class="badge bg-warning text-dark px-3 py-1.5 rounded-pill fw-bold small">
+                <i class="bi bi-clock-history me-1"></i> Selección Live (15 días)
+            </span>
+        </div>
+    </nav>
+
+    {% if portal.expirado %}
+    <!-- PANTALLA DE EXPIRACIÓN -->
+    <div class="container py-5 my-5 text-center">
+        <div class="card p-5 shadow-sm border-0 rounded-4 mx-auto" style="max-width: 550px; background: white;">
+            <div class="text-warning mb-3">
+                <i class="bi bi-hourglass-bottom" style="font-size: 4rem;"></i>
+            </div>
+            <h3 class="fw-bold text-dark mb-2">Este enlace temporal ha finalizado su vigencia</h3>
+            <p class="text-muted small mb-4">Los portales temporales live están vigentes durante 15 días para garantizar información de mercado en tiempo real. Comunicate con tu asesor para recibir una selección actualizada.</p>
+            {% if portal.agente_telefono %}
+            <a href="https://wa.me/{{ portal.agente_telefono|replace('+', '')|replace(' ', '')|replace('-', '') }}?text={{ ('Hola, quería consultar por la selección de propiedades ' ~ portal.titulo)|urlencode }}" 
+               class="btn btn-success fw-bold py-2.5 px-4 rounded-3 shadow-sm" target="_blank">
+                <i class="bi bi-whatsapp me-2"></i> Contactar a mi Asesor
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+
+    <!-- HERO BANNER -->
+    <section class="hero-banner shadow-sm mb-4">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-inline-flex align-items-center bg-white bg-opacity-20 px-3 py-1 rounded-pill small mb-2 text-white">
+                        <i class="bi bi-stars me-1 text-warning"></i> Selección Personalizada
+                    </div>
+                    <h1 class="fw-bold display-6 mb-2">{{ portal.titulo }}</h1>
+                    <p class="lead opacity-90 fs-6 mb-0">
+                        Hemos seleccionado especialmente para vos <strong>{{ portal.propiedades|length }} propiedades</strong> destacadas del mercado.
+                    </p>
+                </div>
+                <div class="col-lg-4 mt-3 mt-lg-0 text-lg-end">
+                    <div class="d-inline-block bg-white text-dark p-3 rounded-4 shadow-sm text-start" style="min-width: 220px;">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 42px; height: 42px;">
+                                {{ portal.agente_nombre[0] if portal.agente_nombre else 'A' }}
+                            </div>
+                            <div>
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">TU ASESOR ASIGNADO</small>
+                                <strong class="d-block text-dark small">{{ portal.agente_nombre or 'Asesor Inmobiliario' }}</strong>
+                                {% if portal.agente_telefono %}
+                                <small class="text-success fw-semibold"><i class="bi bi-telephone me-1"></i>{{ portal.agente_telefono }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LISTA DE PROPIEDADES (ESTILO ZONAPROP / PORTAL CLIENTE) -->
+    <div class="container pb-5 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="bi bi-houses text-primary me-2"></i>Propiedades Seleccionadas ({{ portal.propiedades|length }})
+            </h5>
+            <small class="text-muted">Hacé clic en cualquier propiedad para ver todas las fotos y detalles</small>
+        </div>
+
+        <div class="row g-4">
+            {% for p in portal.propiedades %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card property-card h-100 d-flex flex-column">
+                    <!-- Carousel de Fotos HD -->
+                    {% set fotos_list = p.fotos if p.fotos and p.fotos|length > 0 else ([p.foto] if p.foto else []) %}
+                    <div id="carousel-prop-{{ loop.index0 }}" class="carousel slide position-relative" data-bs-interval="false">
+                        <div class="carousel-inner rounded-top-4">
+                            {% for f in fotos_list[:8] %}
+                            <div class="carousel-item {% if loop.first %}active{% endif %}">
+                                <img src="{{ f }}" class="d-block w-100" alt="Foto Propiedad" loading="lazy"
+                                     onerror="handleListadoImageError(this)">
+                            </div>
+                            {% else %}
+                            <div class="carousel-item active">
+                                <div class="d-flex flex-column align-items-center justify-content-center bg-light text-muted" style="height: 240px;">
+                                    <i class="bi bi-camera fs-2 mb-1"></i>
+                                    <small class="fw-semibold">Sin fotografías publicadas</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if fotos_list|length > 1 %}
+                        <button class="carousel-control-prev" type="button" data-bs-target="#carousel-prop-{{ loop.index0 }}" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Anterior</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#carousel-prop-{{ loop.index0 }}" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Siguiente</span>
+                        </button>
+                        {% endif %}
+                        
+                        <!-- Badge Dinámico del Termómetro de Mercado -->
+                        {% set mb = evaluar_oportunidad_mercado(p) %}
+                        <div class="position-absolute top-0 start-0 m-2" style="z-index: 5;">
+                            {% if mb.badge_tipo == 'rebaja' %}
+                            <span class="badge bg-danger shadow-sm px-2.5 py-1.5 rounded-pill text-white fw-bold d-inline-flex align-items-center gap-1" style="font-size: 0.78rem;">
+                                <i class="bi bi-graph-down-arrow"></i> {{ mb.badge_texto_cliente }}
+                            </span>
+                            {% elif mb.badge_tipo == 'nuevo' %}
+                            <span class="badge bg-success shadow-sm px-2.5 py-1.5 rounded-pill text-white fw-bold d-inline-flex align-items-center gap-1" style="font-size: 0.78rem;">
+                                <i class="bi bi-stars"></i> {{ mb.badge_texto_cliente }}
+                            </span>
+                            {% elif mb.badge_tipo == 'negociable' %}
+                            <span class="badge bg-warning text-dark shadow-sm px-2.5 py-1.5 rounded-pill fw-bold d-inline-flex align-items-center gap-1" style="font-size: 0.78rem;">
+                                <i class="bi bi-tag-fill"></i> {{ mb.badge_texto_cliente }}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-primary bg-opacity-90 shadow-sm px-2.5 py-1.5 rounded-pill text-white fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.78rem;">
+                                <i class="bi bi-check2-circle"></i> {{ mb.badge_texto_cliente }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="position-absolute top-0 end-0 m-2" id="badge-count-{{ loop.index0 }}">
+                            <span class="badge bg-dark bg-opacity-75 text-white px-2 py-1 small rounded-pill">
+                                <i class="bi bi-images me-1"></i><span class="count-num">{{ fotos_list|length }}</span> fotos
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Cuerpo de la Tarjeta -->
+                    <div class="card-body d-flex flex-column justify-content-between p-3.5">
+                        <div>
+                            <!-- Precio -->
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="price-badge">
+                                    {{ p.moneda or 'USD' }} {{ "{:,.0f}".format(p.precio) if p.precio else 'Consultar' }}
+                                </div>
+                                {% if p.expensas and p.expensas > 0 %}
+                                <small class="text-muted fw-bold">+ ${{ "{:,.0f}".format(p.expensas) }} exp.</small>
+                                {% endif %}
+                            </div>
+
+                            <!-- Título y Ubicación -->
+                            <h6 class="card-title fw-bold text-dark text-truncate-2 mb-1" style="font-size: 1.05rem; min-height: 2.6rem;">
+                                {{ p.titulo }}
+                            </h6>
+                            <p class="text-muted small mb-2 text-truncate">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ p.direccion or p.barrio or portal.zona or 'Excelente ubicación' }}
+                            </p>
+
+                            <!-- Chips de Características -->
+                            <div class="d-flex flex-wrap gap-1.5 mb-3">
+                                {% if p.ambientes %}
+                                <span class="feature-chip"><i class="bi bi-door-open me-1 text-primary"></i>{{ p.ambientes }} amb.</span>
+                                {% endif %}
+                                {% if p.dormitorios %}
+                                <span class="feature-chip"><i class="bi bi-moon me-1 text-primary"></i>{{ p.dormitorios }} dorm.</span>
+                                {% endif %}
+                                {% if p.banos %}
+                                <span class="feature-chip"><i class="bi bi-droplet me-1 text-primary"></i>{{ p.banos }} baños</span>
+                                {% endif %}
+                                {% if p.m2 or p.m2_total %}
+                                <span class="feature-chip"><i class="bi bi-arrows-fullscreen me-1 text-primary"></i>{{ (p.m2_total or p.m2)|round(0)|int }} m²</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Botón Ver Detalle -->
+                        <div class="mt-2 pt-2 border-top">
+                            <a href="/portaltemp/{{ portal.codigo_slug }}/propiedad/{{ loop.index0 }}" 
+                               class="btn btn-brand w-100 py-2 shadow-sm d-flex align-items-center justify-content-center gap-1">
+                                <i class="bi bi-eye-fill"></i> Ver Ficha Completa
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- BOTÓN FLOTANTE WHATSAPP -->
+    {% if portal.agente_telefono %}
+    <a href="https://wa.me/{{ portal.agente_telefono|replace('+', '')|replace(' ', '')|replace('-', '') }}?text={{ ('Hola, estoy viendo la selección de propiedades ' ~ portal.titulo ~ ' y me gustaría hacer una consulta.')|urlencode }}" 
+       class="btn-whatsapp-floating" target="_blank">
+        <i class="bi bi-whatsapp fs-5"></i>
+        <span>Consultar por WhatsApp</span>
+    </a>
+    {% endif %}
+
+    {% endif %}
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-top py-4 text-center text-muted small mt-auto">
+        <div class="container">
+            <p class="mb-1 fw-bold text-dark">{{ agency_name or portal.agente_inmobiliaria or (get_config('agente_inmobiliaria') if get_config is defined else '') or 'Red Inmobiliaria' }}</p>
+            <p class="mb-0 text-muted" style="font-size: 0.8rem;">Portal de Selección Exclusiva en Vivo. Las imágenes y medidas son informativas.</p>
+        </div>
+    </footer>
+    <!-- FOOTER POWERED BY POTENZIA CRM -->
+    <div class="py-3 text-center" style="background-color: #0b1329; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <div class="container d-flex justify-content-center align-items-center gap-3 text-white-50">
+            <span style="font-size: 0.88rem; font-weight: 400; letter-spacing: 0.3px;">Powered by</span>
+            <span class="text-white fw-bold" style="font-size: 0.95rem; letter-spacing: 0.5px;">Potenzia CRM</span>
+            <span class="bg-white rounded-2 shadow-sm d-inline-flex align-items-center justify-content-center ms-2" style="background-color: #ffffff !important; padding: 4px 8px;">
+                <img src="/static/img/potenzia_logo_sm.png" alt="Potenzia CRM" style="height: 22px; width: auto; object-fit: contain;">
+            </span>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function handleListadoImageError(img) {
+        const item = img.closest('.carousel-item');
+        if (!item) return;
+        const carousel = item.closest('.carousel');
+        const isActive = item.classList.contains('active');
+        item.remove();
+        if (carousel) {
+            const remaining = carousel.querySelectorAll('.carousel-item');
+            if (remaining.length > 0) {
+                if (isActive) remaining[0].classList.add('active');
+                const badge = carousel.parentElement.querySelector('.count-num');
+                if (badge) badge.innerText = remaining.length;
+            } else {
+                carousel.querySelector('.carousel-inner').innerHTML = `
+                    <div class="carousel-item active">
+                        <div class="d-flex flex-column align-items-center justify-content-center bg-light text-muted" style="height: 240px;">
+                            <i class="bi bi-camera fs-2 mb-1"></i>
+                            <small class="fw-semibold">Sin fotografías publicadas</small>
+                        </div>
+                    </div>`;
+                const prevBtn = carousel.querySelector('.carousel-control-prev');
+                const nextBtn = carousel.querySelector('.carousel-control-next');
+                if (prevBtn) prevBtn.style.display = 'none';
+                if (nextBtn) nextBtn.style.display = 'none';
+            }
+        }
+    }
+    </script>
+</body>
+</html>

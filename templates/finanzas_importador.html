@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Mapeador de Operaciones - {{ agency.nombre }} Finanzas{% endblock %}
+{% block header %}Importador de Operaciones Excel{% endblock %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col-md-8 mx-auto">
+        <div class="card bg-dark border-secondary shadow">
+            <div class="card-body p-4 text-center">
+                <i class="bi bi-file-earmark-spreadsheet-fill fs-1 text-success mb-3"></i>
+                <h2 class="h4 text-white">Mapeo de Planilla de Seguimiento</h2>
+                <p class="text-muted small">Asigná las columnas de tu Excel de Ventas a los campos de control de la oficina.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if headers %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card bg-dark border-secondary shadow-lg">
+            <div class="card-header border-secondary bg-secondary-subtle">
+                <h5 class="mb-0 text-white"><i class="bi bi-shuffle me-2 text-success"></i>Campos de la Operación</h5>
+                <p class="text-muted small mb-0">Elegí qué columna de tu Excel corresponde a cada campo de seguimiento financiero.</p>
+            </div>
+            <form action="{{ url_for('finanzas_plugin.procesar_importacion_operaciones') }}" method="POST">
+                <input type="hidden" name="temp_filename" value="{{ temp_filename }}">
+                <div class="card-body">
+                    <div class="row g-4">
+                        {% set fields = [
+                            ('domicilio', 'Domicilio de la Propiedad (Requerido)', 'bi-geo-alt-fill', True),
+                            ('juris', 'Jurisdicción / Zona', 'bi-map', False),
+                            ('puntas', 'Puntas (Compra/Venta)', 'bi-people', False),
+                            ('porcentaje', 'Porcentaje (%)', 'bi-percent', False),
+                            ('mes', 'Mes del Cierre (Ej: 06-2026)', 'bi-calendar-event', False),
+                            ('colaborador', 'Colaborador / Co-Broker', 'bi-person-badge', False),
+                            ('cierre', 'Detalles Cierre', 'bi-bookmark-check', False),
+                            ('bruto', 'Comisión Bruta ($ / USD)', 'bi-cash-coin', False),
+                            ('neto', 'Comisión Neta Agente ($ / USD)', 'bi-wallet2', False),
+                            ('pago', 'Forma de Pago', 'bi-credit-card', False),
+                            ('estado_parc', 'Estado Parcial', 'bi-hourglass-split', False),
+                            ('refuerzo', 'Refuerzo / Reserva Adic.', 'bi-plus-circle', False),
+                            ('sucesion', 'Sucesión / Trámite', 'bi-bank', False),
+                            ('doc_escribania', 'Doc. Escribanía', 'bi-file-earmark-text', False),
+                            ('proforma', 'Proforma / Factura', 'bi-receipt', False),
+                            ('ad_ref_comp', 'Ad-Ref Comprador', 'bi-file-earmark-person', False),
+                            ('ad_ref_vend', 'Ad-Ref Vendedor', 'bi-file-earmark-person-fill', False),
+                            ('fecha_reserva', 'Fecha de Reserva', 'bi-calendar-plus', False),
+                            ('fecha_firma', 'Fecha de Firma', 'bi-calendar-check-fill', False),
+                            ('particularidades', 'Particularidades / Notas', 'bi-chat-left-text', False),
+                            ('estado', 'Estado de la Operación', 'bi-flag', False)
+                        ] %}
+                        
+                        {% for field_id, field_name, icon, is_required in fields %}
+                        <div class="col-md-6">
+                            <label class="form-label text-white small">
+                                <i class="bi {{ icon }} me-2 text-success"></i>{{ field_name }}
+                                {% if is_required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            <select name="mapping_{{ field_id }}" class="form-select bg-secondary text-white border-0" {% if is_required %}required{% endif %}>
+                                <option value="">-- Ignorar este campo --</option>
+                                {% for h in headers %}
+                                <option value="{{ h }}" 
+                                    {% if h.lower() == field_id.lower() or (field_id == 'domicilio' and 'domicilio' in h.lower()) or (field_id == 'bruto' and 'bruto' in h.lower()) or (field_id == 'neto' and 'neto' in h.lower()) %}
+                                    selected
+                                    {% endif %}>
+                                    {{ h }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="alert alert-info mt-4 py-2 border-0 bg-opacity-10 bg-info text-info small">
+                        <i class="bi bi-info-circle-fill me-2"></i> Las operaciones que no posean un Domicilio válido o tengan celdas vacías en esa columna serán omitidas automáticamente.
+                    </div>
+                </div>
+                <div class="card-footer border-secondary d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('finanzas_plugin.seguimiento_prop') }}" class="btn btn-outline-light">Cancelar</a>
+                    <button type="submit" class="btn btn-success px-5">Completar Importación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,1550 @@
+{% extends 'base.html' %}
+
+{% block title %}Historias Ig/Wp — Calendario{% endblock %}
+{% block header %}Calendario de Historias{% endblock %}
+
+{% block extra_head %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+<style>
+    /* ── Layout ── */
+    .page-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    /* ── Control Bar ── */
+    .control-bar {
+        background: linear-gradient(135deg, #1a1d2e 0%, #252842 100%);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 16px;
+        padding: 20px 24px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .control-bar-info h5 {
+        color: #e2e8f0;
+        margin: 0 0 4px;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .control-bar-info p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: 0.82rem;
+        line-height: 1.5;
+    }
+
+    .control-bar-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    /* ── Platform Toggles (global, in control bar) ── */
+    .platform-toggle-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 8px 14px;
+    }
+    .platform-toggle-group label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #cbd5e1;
+        font-size: 0.82rem;
+        font-weight: 500;
+        cursor: pointer;
+        user-select: none;
+    }
+    .platform-toggle-group .form-check-input {
+        width: 36px;
+        height: 20px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .platform-toggle-group .platform-icon {
+        font-size: 1rem;
+    }
+    .divider-v { width: 1px; height: 24px; background: rgba(255,255,255,0.12); margin: 0 4px; }
+
+    /* ── Launch Button ── */
+    .btn-launch {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        padding: 10px 22px;
+        font-size: 0.88rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .btn-launch:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    .btn-launch:active { transform: translateY(0); }
+
+    /* ── Calendar ── */
+    #calendar {
+        background: white;
+        padding: 20px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+    }
+    .fc-day { transition: background-color 0.2s; cursor: pointer; }
+    .fc-day:hover { background-color: #f8f9fa; }
+    .fc-day-dragover {
+        background-color: rgba(102, 126, 234, 0.08) !important;
+        border: 2px dashed #667eea !important;
+    }
+
+    /* ── Event Card ── */
+    .event-card {
+        position: relative;
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #1a1d2e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: transform 0.15s;
+    }
+    .event-card:hover { transform: scale(1.02); }
+
+    .event-thumbnail {
+        width: 100%;
+        height: 62px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .event-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .event-bottom-row {
+        position: absolute;
+        bottom: 3px;
+        left: 4px;
+        right: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2px;
+    }
+
+    .status-pill {
+        font-size: 0.56rem;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+    .status-pill.pending  { background: rgba(250, 204, 21, 0.9); color: #000; }
+    .status-pill.done     { background: rgba(34, 197, 94, 0.9);  color: #000; }
+    .status-pill.errored  { background: rgba(239, 68, 68, 0.9);  color: #fff; }
+
+    .platform-indicators {
+        display: flex;
+        gap: 2px;
+    }
+    .platform-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.5rem;
+    }
+    .platform-dot.wa-on  { background: rgba(37, 211, 102, 0.9); }
+    .platform-dot.wa-off { background: rgba(255,255,255,0.15); }
+    .platform-dot.ig-on  { background: rgba(225, 48, 108, 0.9); }
+    .platform-dot.ig-off { background: rgba(255,255,255,0.15); }
+
+    /* ── Action buttons on event card ── */
+    .event-action-bar {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        display: none;
+        gap: 3px;
+    }
+    .event-card:hover .event-action-bar { display: flex; }
+
+    .event-action-btn {
+        width: 22px;
+        height: 22px;
+        border: none;
+        border-radius: 5px;
+        font-size: 0.6rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.15s;
+    }
+    .event-action-btn:hover { opacity: 0.85; }
+    .btn-instant { background: rgba(102, 126, 234, 0.9); color: white; }
+    .btn-delete  { background: rgba(239, 68, 68, 0.9);  color: white; }
+
+    .fc-event {
+        background: transparent !important;
+        border: none !important;
+        padding: 1px 2px !important;
+    }
+
+    /* ── Modal Upload ── */
+    .modal-dark .modal-content {
+        background: #1e2235;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 16px;
+        color: #e2e8f0;
+    }
+    .modal-dark .modal-header {
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        padding: 18px 24px;
+    }
+    .modal-dark .modal-body { padding: 24px; }
+    .modal-dark .modal-footer {
+        border-top: 1px solid rgba(255,255,255,0.08);
+        padding: 16px 24px;
+    }
+
+    .upload-zone {
+        border: 2px dashed rgba(102, 126, 234, 0.5);
+        border-radius: 12px;
+        padding: 28px 20px;
+        text-align: center;
+        transition: border-color 0.2s, background 0.2s;
+        cursor: pointer;
+        position: relative;
+        background: rgba(102, 126, 234, 0.03);
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.07);
+    }
+    .upload-zone input[type="file"] {
+        position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    .upload-zone-icon { font-size: 2rem; margin-bottom: 8px; color: #667eea; }
+    .upload-zone p { margin: 0; color: #94a3b8; font-size: 0.85rem; }
+    .upload-zone strong { color: #e2e8f0; }
+
+    /* ── Platform toggles in modal ── */
+    .platform-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+    }
+    .platform-row .plat-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    .platform-row .plat-label i { font-size: 1.1rem; }
+    .platform-row .plat-desc { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+    .form-switch .form-check-input { width: 42px; height: 22px; cursor: pointer; }
+
+    /* ── Buttons in modal ── */
+    .btn-upload-now {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-weight: 600;
+        padding: 11px 20px;
+        width: 100%;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+    .btn-upload-now:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-upload-schedule {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 10px;
+        color: #cbd5e1;
+        font-weight: 500;
+        padding: 11px 20px;
+        width: 100%;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+    .btn-upload-schedule:hover { background: rgba(255,255,255,0.1); color: white; }
+
+    /* ── Toast ── */
+    #toast-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .crm-toast {
+        background: #1e2235;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 14px 18px;
+        color: #e2e8f0;
+        font-size: 0.87rem;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        min-width: 280px;
+        max-width: 380px;
+        animation: toastIn 0.3s ease;
+    }
+    .crm-toast.success { border-left: 3px solid #22c55e; }
+    .crm-toast.error   { border-left: 3px solid #ef4444; }
+    .crm-toast.info    { border-left: 3px solid #667eea; }
+    .crm-toast-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .crm-toast-text { flex: 1; }
+    .crm-toast-title { font-weight: 600; margin-bottom: 2px; }
+    .crm-toast-body  { color: #94a3b8; font-size: 0.8rem; }
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Select Dropdowns Dark Styling ── */
+    select.form-select, select.form-select option,
+    #agentCalFilter, #agentCalFilter option,
+    #calendarMonthJump, #calendarMonthJump option,
+    #masivoFrequency, #masivoFrequency option {
+        background-color: #1e2235 !important;
+        color: #ffffff !important;
+    }
+    select.form-select option:hover, select.form-select option:checked {
+        background-color: #667eea !important;
+        color: #ffffff !important;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+        .control-bar { flex-direction: column; align-items: flex-start; }
+        .control-bar-actions { width: 100%; }
+        .btn-launch { width: 100%; justify-content: center; }
+        #calendar { padding: 10px; }
+        .fc-toolbar { flex-direction: column; gap: 10px; }
+        .event-thumbnail { height: 45px; }
+        .event-action-btn { display: flex !important; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="toast-container"></div>
+
+<!-- Google Contacts Agenda Alert Banner -->
+<div id="agenda-alert-banner" class="alert mb-4 d-none" style="background: #fef2f2; border: 1px solid #fca5a5; border-left: 5px solid #ef4444; border-radius: 12px; padding: 16px 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 1.6rem;"></i>
+            <div>
+                <strong style="color: #991b1b; font-size: 0.95rem; font-weight: 700;">Agenda de Google Contacts requerida</strong>
+                <p class="mb-0 small" style="color: #7f1d1d; margin-top: 2px; font-weight: 500;">
+                    Para poder publicar historias en WhatsApp Status, debés cargar tu libreta de contactos desde un archivo <strong>.vcf</strong> exportado de Google Contacts.
+                </p>
+            </div>
+        </div>
+        <div>
+            <button class="btn btn-danger btn-sm shadow-sm" onclick="triggerAgendaUpload()" style="background: #ef4444; border: none; border-radius: 8px; font-weight: 600; padding: 7px 18px;">
+                <i class="bi bi-upload me-1"></i> Subir Agenda (.vcf)
+            </button>
+            <input type="file" id="agendaFileInput" accept=".vcf" class="d-none" onchange="uploadAgenda(this)">
+        </div>
+    </div>
+</div>
+
+<div id="agenda-success-banner" class="alert mb-4 d-none" style="background: #f0fdf4; border: 1px solid #86efac; border-left: 5px solid #22c55e; border-radius: 12px; padding: 14px 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill text-success" style="font-size: 1.3rem;"></i>
+            <span class="small" style="color: #14532d; font-size: 0.9rem; font-weight: 500;">
+                Agenda de Google vinculada: <strong id="agenda-contacts-count" style="color: #15803d; font-weight: 700;">0</strong> contactos. Última actualización: <span id="agenda-last-update" style="font-weight:700; color: #15803d;"></span>
+            </span>
+        </div>
+        <button class="btn btn-outline-success btn-xs" onclick="triggerAgendaUpload()" style="font-size: 0.75rem; padding: 5px 14px; border-radius: 6px; font-weight: 600;">
+            <i class="bi bi-arrow-repeat me-1"></i> Actualizar
+        </button>
+    </div>
+</div>
+
+<!-- Control Bar -->
+<div class="control-bar mb-4">
+    <div class="control-bar-info">
+        <h5><i class="bi bi-calendar2-week me-2"></i>Programador de Historias</h5>
+        <p>
+            Arrastrá placas sobre los días o tocá un día para subir imágenes (máx. 6/día).<br>
+            <span style="color:#64748b"><i class="bi bi-clock" style="font-size:0.75rem"></i> Publicaciones automáticas entre las 08:00 y las 23:00 hs.</span>
+        </p>
+    </div>
+
+    <div class="control-bar-actions">
+        <!-- Selector rápido de mes (hasta 12 meses adelante) -->
+        <div class="d-flex align-items-center gap-2 me-2" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 6px 12px;">
+            <i class="bi bi-calendar3 text-primary" style="font-size: 0.9rem;"></i>
+            <select id="calendarMonthJump" class="form-select form-select-sm text-white border-0 bg-transparent" style="font-size: 0.82rem; font-weight: 500; cursor: pointer; min-width: 140px; box-shadow: none; padding: 0 24px 0 0;">
+                <!-- Will be populated dynamically via JS -->
+            </select>
+        </div>
+
+        <!-- Toggles globales para nuevas subidas -->
+        <div class="platform-toggle-group" title="Configura las plataformas y guardá con el botón ✓">
+            <label for="globalWaToggle">
+                <i class="bi bi-whatsapp platform-icon text-success"></i>
+                WhatsApp
+                <input class="form-check-input" type="checkbox" id="globalWaToggle" checked>
+            </label>
+            <div class="divider-v"></div>
+            <label for="globalIgToggle">
+                <i class="bi bi-instagram platform-icon" style="color:#e1306c"></i>
+                Instagram
+                <input class="form-check-input" type="checkbox" id="globalIgToggle">
+            </label>
+            {% if current_user.usuario == 'GermanMazza' %}
+            <div class="divider-v"></div>
+            <label for="globalWaMasivoToggle" title="Bypass 250: envía a toda la agenda. Activo para publicaciones manuales y automáticas." style="color: #fbbf24;">
+                <i class="bi bi-lightning-charge-fill platform-icon" style="color:#fbbf24"></i>
+                Masivo
+                <input class="form-check-input" type="checkbox" id="globalWaMasivoToggle" style="border-color:#fbbf24;">
+            </label>
+            {% endif %}
+            {% if is_admin %}
+            <div class="divider-v"></div>
+            <a href="{{ url_for('configuracion') }}" id="workerBadgeCal" class="text-decoration-none badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 py-2 px-2 d-flex align-items-center gap-1" style="font-size:0.75rem;" title="Worker de fondo. Clic para administrar en Configuración.">
+                <i class="bi bi-cpu-fill"></i> <span id="workerBadgeCalText">Worker Activo</span>
+            </a>
+            <div class="divider-v"></div>
+            <div class="d-flex align-items-center gap-1">
+                <i class="bi bi-people-fill text-info" style="font-size:0.85rem;"></i>
+                <select id="agentCalFilter" class="form-select form-select-sm text-white" onchange="filterCalendarByAgent()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; font-size: 0.76rem; font-weight: 600; cursor: pointer; padding-right: 25px; min-width: 170px;">
+                    <option value="{{ current_user.id }}" selected>👤 Mis Historias ({{ current_user.nombre_display or current_user.usuario }})</option>
+                    <option value="all">👥 Toda la Oficina (Global)</option>
+                    {% for ag in agentes %}
+                        {% if ag.id != current_user.id %}
+                        <option value="{{ ag.id }}">👤 {{ ag.nombre_display or ag.usuario }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="divider-v"></div>
+            <button id="btnSaveToggles" onclick="saveTogglePrefs()" title="Guardar preferencias de plataformas"
+                style="background: linear-gradient(135deg,#667eea,#764ba2); border: none; border-radius: 8px; color: white; font-size: 0.78rem; font-weight: 600; padding: 5px 13px; cursor: pointer; display:flex; align-items:center; gap:5px; transition: opacity 0.2s;">
+                <i class="bi bi-floppy-fill" style="font-size:0.8rem;"></i> Guardar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Calendar and Mass Publisher Layout -->
+<div class="row">
+    <!-- Sidebar: Publicador Masivo -->
+    <div class="col-lg-3 col-md-4 mb-4">
+        <div class="card border-0 shadow-sm" style="background: #1e2235; color: #e2e8f0; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3" style="font-weight: 600; font-size: 1.05rem; color: #e2e8f0;">
+                    <i class="bi bi-collection-play-fill me-2" style="color: #667eea;"></i>
+                    Publicador Masivo
+                </h5>
+                <p class="text-muted small mb-3" style="line-height: 1.4; font-size: 0.8rem;">
+                    Subí muchas imágenes juntas y programalas en cadena de forma automática (1 o más por día).
+                </p>
+
+                <!-- Dropzone masivo -->
+                <div class="upload-zone mb-3" id="dropZoneMasivo" style="padding: 24px 10px; border-color: rgba(102, 126, 234, 0.3); background: rgba(102, 126, 234, 0.02);">
+                    <input type="file" id="masivoFileInput" accept="image/*,video/mp4" multiple style="position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 10;">
+                    <div class="upload-zone-icon" style="font-size: 1.6rem; margin-bottom: 4px; color: #667eea;"><i class="bi bi-folder-plus"></i></div>
+                    <strong style="font-size: 0.8rem; font-weight: 600;">Elegir Archivos</strong>
+                    <p style="font-size: 0.72rem; color: #94a3b8; margin: 2px 0 0;">o arrastralos aquí</p>
+                    <div id="previewFilesMasivo" class="mt-2 d-flex flex-wrap gap-1 justify-content-center"></div>
+                </div>
+
+                {% if is_admin %}
+                <!-- Selector de Agentes Destinatarios (Masivo Admin) -->
+                <div class="mb-3 p-2 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                    <label class="form-label small text-muted text-uppercase mb-1 fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                        <i class="bi bi-person-check-fill text-info me-1"></i> Destinatarios
+                    </label>
+                    <div class="d-flex flex-column gap-1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="masivoTargetMode" id="masivoTargetMe" value="me" checked onchange="toggleTargetAgentsSelection('masivo')">
+                            <label class="form-check-label small" for="masivoTargetMe" style="font-size: 0.78rem;">
+                                👤 Solo para mí
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="masivoTargetMode" id="masivoTargetAll" value="all" onchange="toggleTargetAgentsSelection('masivo')">
+                            <label class="form-check-label small text-warning" for="masivoTargetAll" style="font-size: 0.78rem;">
+                                👥 Todos los agentes ({{ agentes|length }})
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="masivoTargetMode" id="masivoTargetCustom" value="custom" onchange="toggleTargetAgentsSelection('masivo')">
+                            <label class="form-check-label small text-info" for="masivoTargetCustom" style="font-size: 0.78rem;">
+                                🎯 Seleccionar agentes
+                            </label>
+                        </div>
+                    </div>
+                    <div id="masivoCustomAgentsList" class="d-none mt-2 pt-2 border-top border-secondary border-opacity-25">
+                        {% for ag in agentes %}
+                        <div class="form-check small mb-1">
+                            <input class="form-check-input masivo-agent-checkbox" type="checkbox" value="{{ ag.id }}" id="masivo_ag_{{ ag.id }}" {% if ag.id == current_user.id %}checked{% endif %}>
+                            <label class="form-check-label text-truncate" for="masivo_ag_{{ ag.id }}" style="font-size: 0.75rem; max-width: 180px;">
+                                {{ ag.nombre_display or ag.usuario }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Parámetros -->
+                <div class="mb-3">
+                    <label class="form-label small text-muted text-uppercase mb-1 fw-bold" style="font-size: 0.72rem; letter-spacing: 0.5px;">Fecha de Inicio</label>
+                    <input type="date" id="masivoStartDate" class="form-control form-control-sm text-white" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; font-size: 0.8rem;">
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small text-muted text-uppercase mb-1 fw-bold" style="font-size: 0.72rem; letter-spacing: 0.5px;">Placas por día</label>
+                    <select id="masivoFrequency" class="form-select form-select-sm" style="background: #1e2235; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; font-size: 0.8rem; cursor: pointer;">
+                        <option value="1" selected>1 por día</option>
+                        <option value="2">2 por día</option>
+                        <option value="3">3 por día</option>
+                        <option value="4">4 por día</option>
+                        <option value="5">5 por día</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-sm btn-upload-now w-100" onclick="uploadMasivo()" id="btnUploadMasivo" style="border-radius: 10px; font-size: 0.82rem; font-weight: 600; padding: 10px;">
+                    <i class="bi bi-play-circle-fill me-1"></i>
+                    Programar en cadena
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="col-lg-9 col-md-8">
+        <div id="calendar"></div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade modal-dark" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0">
+                        <i class="bi bi-cloud-arrow-up me-2" style="color:#667eea"></i>
+                        Subir Placas
+                    </h5>
+                    <small class="text-muted" id="selectedDateText"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Drop Zone -->
+                <div class="upload-zone mb-3" id="dropZoneModal">
+                    <input type="file" id="mobileFileInput" accept="image/*,video/mp4" multiple>
+                    <div class="upload-zone-icon"><i class="bi bi-images"></i></div>
+                    <strong>Seleccioná o arrastrá imágenes</strong>
+                    <p class="mt-1">JPG, PNG o MP4 · Máximo 6 por día</p>
+                    <div id="previewFiles" class="mt-2 d-flex flex-wrap gap-2 justify-content-center"></div>
+                </div>
+
+                {% if is_admin %}
+                <!-- Selector de Agentes Destinatarios (Modal Admin) -->
+                <div class="mb-3 p-3 rounded" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <label class="form-label small text-muted text-uppercase mb-2 fw-bold d-flex align-items-center gap-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <i class="bi bi-person-check-fill text-info"></i> Programar para Agentes
+                    </label>
+                    <div class="d-flex flex-column gap-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="modalTargetMode" id="modalTargetMe" value="me" checked onchange="toggleTargetAgentsSelection('modal')">
+                            <label class="form-check-label small fw-semibold" for="modalTargetMe">
+                                👤 Solo para mí ({{ current_user.nombre_display }})
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="modalTargetMode" id="modalTargetAll" value="all" onchange="toggleTargetAgentsSelection('modal')">
+                            <label class="form-check-label small fw-semibold text-warning" for="modalTargetAll">
+                                👥 Todos los agentes activos ({{ agentes|length }} agentes)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="modalTargetMode" id="modalTargetCustom" value="custom" onchange="toggleTargetAgentsSelection('modal')">
+                            <label class="form-check-label small fw-semibold text-info" for="modalTargetCustom">
+                                🎯 Seleccionar agentes específicos
+                            </label>
+                        </div>
+                    </div>
+                    <div id="modalCustomAgentsList" class="d-none mt-3 pt-2 border-top border-secondary border-opacity-25">
+                        <div class="row g-2">
+                            {% for ag in agentes %}
+                            <div class="col-6">
+                                <div class="form-check small">
+                                    <input class="form-check-input modal-agent-checkbox" type="checkbox" value="{{ ag.id }}" id="modal_ag_{{ ag.id }}" {% if ag.id == current_user.id %}checked{% endif %}>
+                                    <label class="form-check-label text-truncate" for="modal_ag_{{ ag.id }}" style="font-size: 0.78rem;">
+                                        {{ ag.nombre_display or ag.usuario }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Platform Toggles -->
+                <p class="mb-2" style="font-size:0.8rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;font-weight:600">Publicar en</p>
+
+                <div class="platform-row">
+                    <div class="plat-label">
+                        <i class="bi bi-whatsapp text-success"></i>
+                        <div>
+                            <div>WhatsApp Status</div>
+                            <div class="plat-desc">Publica en el estado de WhatsApp personal</div>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="modalWaToggle" checked>
+                    </div>
+                </div>
+
+                <div class="platform-row">
+                    <div class="plat-label">
+                        <i class="bi bi-instagram" style="color:#e1306c"></i>
+                        <div>
+                            <div>Instagram Stories</div>
+                            <div class="plat-desc">Publica en IG Stories con hardware individual</div>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="modalIgToggle">
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer d-flex flex-column gap-2">
+                <button id="btnScheduleUpload" class="btn-upload-now" onclick="uploadAndPost(false)">
+                    <i class="bi bi-calendar-plus"></i>
+                    Programar para <span id="btnDateLabel">este día</span>
+                </button>
+                <button id="btnPostInstant" class="btn-upload-schedule d-none" onclick="uploadAndPost(true)">
+                    <i class="bi bi-lightning-fill text-warning"></i>
+                    Subir y Publicar AHORA
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Vinculación Instagram -->
+<div class="modal fade modal-dark" id="igLoginModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:#1e2235; border: 1px solid rgba(225, 48, 108, 0.3); color:#e2e8f0;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-instagram me-2" style="color:#e1306c"></i>
+                    Vincular Cuenta de Instagram
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="igModalStatusAlert" class="alert d-none py-2 px-3 small mb-3"></div>
+
+                <!-- Form Login -->
+                <div id="igModalLoginForm">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Usuario de Instagram</label>
+                        <input type="text" id="igModalUser" class="form-control text-white" placeholder="ej: tu.inmobiliaria" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Contraseña</label>
+                        <input type="password" id="igModalPass" class="form-control text-white" placeholder="••••••••" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);">
+                    </div>
+                    <button type="button" id="btnIgModalSubmit" onclick="submitIgModalConnect()" class="btn w-100 fw-bold" style="background: linear-gradient(135deg,#e1306c,#fd1d1d); color:white; border-radius:10px; padding:10px;">
+                        <i class="bi bi-link-45deg me-1"></i> Vincular Instagram
+                    </button>
+                </div>
+
+                <!-- Form Checkpoint -->
+                <div id="igModalCheckpointForm" class="d-none">
+                    <div class="alert alert-warning py-2 small mb-3">
+                        <i class="bi bi-shield-lock-fill me-1"></i> Instagram requiere código de seguridad (SMS / 2FA).
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Código recibido</label>
+                        <input type="text" id="igModalCode" class="form-control text-center font-monospace text-white" placeholder="123456" style="letter-spacing:4px; font-size:1.2rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);">
+                    </div>
+                    <button type="button" id="btnIgModalConfirm" onclick="submitIgModalConfirmCode()" class="btn btn-success w-100 fw-bold" style="border-radius:10px; padding:10px;">
+                        <i class="bi bi-check-circle me-1"></i> Confirmar Código
+                    </button>
+                </div>
+
+                <!-- State Connected -->
+                <div id="igModalConnectedForm" class="d-none text-center py-3">
+                    <i class="bi bi-check-circle-fill text-success mb-2" style="font-size: 2.5rem;"></i>
+                    <h6 class="fw-bold mb-1" id="igModalConnectedUser">Conectado</h6>
+                    <p class="text-muted small mb-3">Las placas publicarán en tus Stories automáticamente.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('calendar');
+    let currentSlotDate = null;
+    const uploadModal = new bootstrap.Modal(document.getElementById('uploadModal'));
+
+    // Variables globales para la agenda
+    let agendaActualizada = false;
+
+    // ── Agenda Upload & Status ──
+    window.triggerAgendaUpload = function () {
+        document.getElementById('agendaFileInput').click();
+    };
+
+    window.uploadAgenda = function (input) {
+        if (!input.files || input.files.length === 0) return;
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        showToast('info', 'Subiendo agenda...', 'Procesando archivo vCard (.vcf)');
+
+        fetch('/api/whatsapp/agenda/upload', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('success', 'Agenda cargada', data.message);
+                    checkAgendaStatus();
+                } else {
+                    showToast('error', 'Error al subir', data.error);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showToast('error', 'Error de red', 'No se pudo subir el archivo.');
+            })
+            .finally(() => {
+                input.value = '';
+            });
+    };
+
+    function checkAgendaStatus() {
+        fetch('/api/whatsapp/agenda')
+            .then(r => r.json())
+            .then(data => {
+                const alertBanner = document.getElementById('agenda-alert-banner');
+                const successBanner = document.getElementById('agenda-success-banner');
+                
+                // Elementos de toggles
+                const globalWa = document.getElementById('globalWaToggle');
+                const modalWa = document.getElementById('modalWaToggle');
+
+                if (data.status === 'actualizada') {
+                    agendaActualizada = true;
+                    alertBanner.classList.add('d-none');
+                    successBanner.classList.remove('d-none');
+                    document.getElementById('agenda-contacts-count').textContent = data.contacts_count;
+                    document.getElementById('agenda-last-update').textContent = data.last_update;
+                } else {
+                    agendaActualizada = false;
+                    successBanner.classList.add('d-none');
+                    alertBanner.classList.remove('d-none');
+                }
+                // Los toggles siempre quedan habilitados para permitir programar para otros agentes
+                if (globalWa) globalWa.disabled = false;
+                if (modalWa) modalWa.disabled = false;
+            })
+            .catch(err => console.error('Error verificando agenda:', err));
+    }
+
+    // Ejecutar verificación inicial de la agenda
+    checkAgendaStatus();
+
+    // ── Toggle Masivo: persistencia y restauración (solo GermanMazza) ──
+    const masivoToggle = document.getElementById('globalWaMasivoToggle');
+
+    // ── Restaurar TODOS los toggles desde localStorage al cargar ──
+    (function restoreToggles() {
+        const wa = localStorage.getItem('toggle_wa');
+        const ig = localStorage.getItem('toggle_ig');
+        const masivo = localStorage.getItem('toggle_masivo');
+        const globalWa = document.getElementById('globalWaToggle');
+        const globalIg = document.getElementById('globalIgToggle');
+        if (globalWa && wa !== null) globalWa.checked = wa === 'true';
+        if (globalIg && ig !== null) globalIg.checked = ig === 'true';
+        if (masivoToggle && masivo !== null) masivoToggle.checked = masivo === 'true';
+    })();
+
+    // ── Función guardar al hacer click en el botón ──
+    window.saveTogglePrefs = function () {
+        const waVal  = document.getElementById('globalWaToggle')?.checked  ?? true;
+        const igVal  = document.getElementById('globalIgToggle')?.checked  ?? false;
+        const masVal = masivoToggle?.checked ?? false;
+
+        // Guardar en localStorage (inmediato, persiste entre recargas)
+        localStorage.setItem('toggle_wa',     waVal  ? 'true' : 'false');
+        localStorage.setItem('toggle_ig',     igVal  ? 'true' : 'false');
+        localStorage.setItem('toggle_masivo', masVal ? 'true' : 'false');
+
+        // Feedback visual en el botón
+        const btn = document.getElementById('btnSaveToggles');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Guardado';
+        btn.style.background = 'linear-gradient(135deg,#22c55e,#16a34a)';
+        setTimeout(() => {
+            btn.innerHTML = orig;
+            btn.style.background = 'linear-gradient(135deg,#667eea,#764ba2)';
+        }, 1800);
+
+        // Sincronizar masivo con el servidor (para el scheduler automático)
+        if (masivoToggle) {
+            fetch('/api/whatsapp/masivo_pref', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ masivo: masVal })
+            }).catch(() => {});
+        }
+
+        showToast('success', 'Preferencias guardadas', `WA: ${waVal ? 'ON' : 'OFF'} · IG: ${igVal ? 'ON' : 'OFF'}${masivoToggle ? ` · Masivo: ${masVal ? '⚡ ON' : 'OFF'}` : ''}`);
+    };
+
+
+
+
+    // ── Toast helper ──
+    function showToast(type, title, body) {
+        const icons = { success: 'bi-check-circle-fill', error: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `crm-toast ${type}`;
+        el.innerHTML = `
+            <i class="bi ${icons[type]} crm-toast-icon"></i>
+            <div class="crm-toast-text">
+                <div class="crm-toast-title">${title}</div>
+                ${body ? `<div class="crm-toast-body">${body}</div>` : ''}
+            </div>
+        `;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 5000);
+    }
+
+    // ── Helper de selección de agentes ──
+    window.toggleTargetAgentsSelection = function(context) {
+        const isCustom = context === 'modal' 
+            ? document.getElementById('modalTargetCustom')?.checked 
+            : document.getElementById('masivoTargetCustom')?.checked;
+        const list = document.getElementById(context === 'modal' ? 'modalCustomAgentsList' : 'masivoCustomAgentsList');
+        if (list) {
+            if (isCustom) list.classList.remove('d-none');
+            else list.classList.add('d-none');
+        }
+    };
+
+    window.filterCalendarByAgent = function() {
+        if (calendar) calendar.refetchEvents();
+    };
+
+    // ── Calendar ──
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        firstDay: 1,
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: ''
+        },
+        buttonText: { today: 'Hoy' },
+        height: 'auto',
+        events: function(info, successCallback, failureCallback) {
+            const filterEl = document.getElementById('agentCalFilter');
+            const filterVal = filterEl ? filterEl.value : '{{ current_user.id }}';
+            fetch(`{{ url_for('historias_api_get') }}?agente_id=${encodeURIComponent(filterVal)}`)
+                .then(r => r.json())
+                .then(data => successCallback(data))
+                .catch(err => failureCallback(err));
+        },
+        eventContent: function (arg) {
+            const props = arg.event.extendedProps;
+            let statusClass = 'pending';
+            if (props.estado === 'completado') statusClass = 'done';
+            else if (props.estado && props.estado.includes('error')) statusClass = 'errored';
+
+            const waClass = props.whatsapp ? 'wa-on' : 'wa-off';
+            const igClass = props.instagram ? 'ig-on' : 'ig-off';
+
+            const html = `
+                <div class="event-card">
+                    <img src="${props.url_path}" class="event-thumbnail" loading="lazy">
+                    <div class="event-overlay"></div>
+
+                    <div class="event-action-bar">
+                        <button class="event-action-btn btn-instant"
+                            onclick="instantPost(${arg.event.id}, event)"
+                            title="Publicar ahora">
+                            <i class="bi bi-lightning-fill"></i>
+                        </button>
+                        <button class="event-action-btn btn-delete"
+                            onclick="deleteHistoria(${arg.event.id}, event)"
+                            title="Eliminar">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="event-bottom-row">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="status-pill ${statusClass}">${props.estado}</span>
+                            ${props.agente_nombre ? `<span class="badge bg-dark bg-opacity-75 text-info px-1 py-0" style="font-size:0.65rem; border-radius:4px; max-width:85px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${props.agente_nombre}"><i class="bi bi-person me-1"></i>${props.agente_nombre}</span>` : ''}
+                        </div>
+                        <div class="platform-indicators">
+                            <div class="platform-dot ${waClass}" title="WhatsApp ${props.whatsapp ? 'ON' : 'OFF'}">
+                                <i class="bi bi-whatsapp"></i>
+                            </div>
+                            <div class="platform-dot ${igClass}" title="Instagram ${props.instagram ? 'ON' : 'OFF'}">
+                                <i class="bi bi-instagram"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            return { html };
+        },
+        dateClick: function (info) {
+            openUploadModal(info.dateStr);
+        }
+    });
+    calendar.render();
+
+    // ── Drag and Drop ──
+    calendarEl.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        const td = e.target.closest('.fc-day');
+        if (td) td.classList.add('fc-day-dragover');
+    });
+    calendarEl.addEventListener('dragleave', function (e) {
+        const td = e.target.closest('.fc-day');
+        if (td) td.classList.remove('fc-day-dragover');
+    });
+    calendarEl.addEventListener('drop', function (e) {
+        e.preventDefault();
+        const td = e.target.closest('.fc-day');
+        if (td) {
+            td.classList.remove('fc-day-dragover');
+            const dateStr = td.getAttribute('data-date');
+            if (e.dataTransfer.files.length > 0) {
+                openUploadModal(dateStr, e.dataTransfer.files);
+            }
+        }
+    });
+
+    // ── Open upload modal ──
+    function openUploadModal(dateStr, preFiles = null) {
+        currentSlotDate = dateStr;
+        const parts = dateStr.split('-');
+        const readable = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        document.getElementById('selectedDateText').textContent = `Fecha: ${readable}`;
+        document.getElementById('btnDateLabel').textContent = readable;
+
+        // Mostrar botón de "Publicar AHORA" SOLO si la fecha seleccionada es hoy
+        const todayStr = new Date().toISOString().split('T')[0];
+        const btnInstant = document.getElementById('btnPostInstant');
+        if (btnInstant) {
+            if (dateStr === todayStr) {
+                btnInstant.classList.remove('d-none');
+            } else {
+                btnInstant.classList.add('d-none'); // Para fechas futuras, SOLO se puede programar
+            }
+        }
+
+        // Sync modal toggles from global toggles
+        const modalWa = document.getElementById('modalWaToggle');
+        const modalIg = document.getElementById('modalIgToggle');
+        const globalWa = document.getElementById('globalWaToggle');
+        const globalIg = document.getElementById('globalIgToggle');
+
+        if (modalWa && globalWa) {
+            modalWa.checked = globalWa.checked;
+            modalWa.disabled = false;
+        }
+        if (modalIg && globalIg) {
+            modalIg.checked = globalIg.checked;
+            modalIg.disabled = false;
+        }
+
+        // Clear preview
+        const preview = document.getElementById('previewFiles');
+        preview.innerHTML = '';
+        document.getElementById('mobileFileInput').value = '';
+
+        if (preFiles) {
+            updatePreview(preFiles);
+            // Store the files so they can be read on submit
+            document.getElementById('mobileFileInput')._preloadedFiles = preFiles;
+        } else {
+            document.getElementById('mobileFileInput')._preloadedFiles = null;
+        }
+
+        uploadModal.show();
+    }
+
+    // ── File Preview ──
+    document.getElementById('mobileFileInput').addEventListener('change', function () {
+        updatePreview(this.files);
+    });
+
+    function updatePreview(files) {
+        const preview = document.getElementById('previewFiles');
+        preview.innerHTML = '';
+        const limit = Math.min(files.length, 6);
+        for (let i = 0; i < limit; i++) {
+            const f = files[i];
+            if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) continue;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.cssText = 'width:50px;height:50px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1)';
+                preview.appendChild(img);
+            };
+            reader.readAsDataURL(f);
+        }
+    }
+
+    // Drop zone in modal
+    const dropZone = document.getElementById('dropZoneModal');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            updatePreview(e.dataTransfer.files);
+            document.getElementById('mobileFileInput')._preloadedFiles = e.dataTransfer.files;
+        }
+    });
+
+    // ── Upload and optionally post instantly ──
+    window.uploadAndPost = function (postNow) {
+        if (postNow) {
+            if (!confirm('¿Seguro que querés publicar de inmediato AHORA en tus redes sociales?')) return;
+        }
+
+        const input = document.getElementById('mobileFileInput');
+        const files = input._preloadedFiles || input.files;
+
+        if (!files || files.length === 0) {
+            showToast('error', 'Sin archivos', 'Seleccioná al menos una imagen o video.');
+            return;
+        }
+        if (!currentSlotDate) {
+            showToast('error', 'Sin fecha', 'No se detectó la fecha seleccionada.');
+            return;
+        }
+
+        const waOn = document.getElementById('modalWaToggle').checked ? 1 : 0;
+        const igOn = document.getElementById('modalIgToggle').checked ? 1 : 0;
+
+        if (!waOn && !igOn) {
+            showToast('error', 'Sin plataforma', 'Activá al menos una red social para publicar.');
+            return;
+        }
+
+        // Build FormData
+        const formData = new FormData();
+        formData.append('date', currentSlotDate);
+        formData.append('whatsapp', waOn);
+        formData.append('instagram', igOn);
+
+        // Agentes destinatarios (Multi-agente para Admins)
+        let targetAgents = 'me';
+        const modalTargetAll = document.getElementById('modalTargetAll');
+        const modalTargetCustom = document.getElementById('modalTargetCustom');
+        if (modalTargetAll && modalTargetAll.checked) {
+            targetAgents = 'all';
+        } else if (modalTargetCustom && modalTargetCustom.checked) {
+            const checked = Array.from(document.querySelectorAll('.modal-agent-checkbox:checked')).map(c => c.value);
+            targetAgents = checked.length > 0 ? checked.join(',') : 'me';
+        }
+        formData.append('target_agents', targetAgents);
+
+        let count = 0;
+        for (let i = 0; i < files.length; i++) {
+            if (!files[i].type.startsWith('image/') && !files[i].type.startsWith('video/')) continue;
+            formData.append('files', files[i]);
+            count++;
+            if (count >= 6) break;
+        }
+        if (count === 0) {
+            showToast('error', 'Archivos inválidos', 'Sólo se aceptan imágenes o videos.');
+            return;
+        }
+
+        // Disable buttons
+        const btnNow  = document.getElementById('btnPostInstant');
+        const btnSch  = document.getElementById('btnScheduleUpload');
+        btnNow.disabled = true;
+        btnSch.disabled = true;
+        const originalNow = btnNow.innerHTML;
+        btnNow.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Subiendo...';
+
+        fetch("{{ url_for('historias_api_upload') }}", { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    showToast('error', 'Error al subir', data.error || 'Error desconocido');
+                    return;
+                }
+                showToast('success', 'Placas subidas', data.message);
+                calendar.refetchEvents();
+                uploadModal.hide();
+
+                // If postNow, fetch the just-created IDs and call /publicar_ahora on them
+                if (postNow) {
+                    btnNow.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Publicando...';
+                    // Give the calendar a moment, then trigger instant post on pending today
+                    setTimeout(() => triggerInstantAll(currentSlotDate, waOn, igOn), 800);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showToast('error', 'Error de red', 'No se pudo conectar con el servidor.');
+            })
+            .finally(() => {
+                btnNow.innerHTML = originalNow;
+                btnNow.disabled = false;
+                btnSch.disabled = false;
+            });
+    };
+
+    // ── Trigger instant publish on all pending stories for a date ──
+    function triggerInstantAll(dateStr, waOn, igOn) {
+        fetch("{{ url_for('historias_api_get') }}")
+            .then(r => r.json())
+            .then(events => {
+                const toPublish = events.filter(ev =>
+                    ev.start === dateStr &&
+                    ev.extendedProps.estado === 'pendiente'
+                );
+                if (toPublish.length === 0) {
+                    showToast('info', 'Sin pendientes', 'No hay historias pendientes para publicar ahora.');
+                    return;
+                }
+
+                const isMasivo = document.getElementById('globalWaMasivoToggle')?.checked ? '1' : '0';
+
+                // Sequential publish
+                let chain = Promise.resolve();
+                toPublish.forEach(ev => {
+                    chain = chain.then(() => instantPostById(ev.id, isMasivo));
+                });
+                chain.then(() => {
+                    calendar.refetchEvents();
+                    showToast('success', 'Publicación completada', `Se procesaron ${toPublish.length} placa(s).`);
+                });
+            });
+    }
+
+    // ── Instant publish a single historia by ID ──
+    function instantPostById(historiaId, isMasivo = '0') {
+        return fetch(`/api/historias/${historiaId}/publicar_ahora?broadcast_masivo=${isMasivo}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const platforms = Object.entries(data.results || {})
+                        .filter(([, v]) => v.success)
+                        .map(([k]) => k).join(', ');
+                    showToast('success', `Placa #${historiaId} publicada`, `En: ${platforms}`);
+                } else {
+                    const errors = Object.entries(data.results || {})
+                        .map(([k, v]) => `${k}: ${v.error || 'Error'}`).join(' | ');
+                    showToast('error', `Error en placa #${historiaId}`, errors || data.error);
+                }
+                return data;
+            })
+            .catch(err => {
+                showToast('error', `Error en placa #${historiaId}`, err.message);
+            });
+    }
+
+    // ── Instant publish from event card button ──
+    window.instantPost = function (id, e) {
+        e.stopPropagation();
+        const isMasivo = document.getElementById('globalWaMasivoToggle')?.checked ? '1' : '0';
+        showToast('info', 'Publicando...', `Enviando placa #${id} a las redes...`);
+        instantPostById(id, isMasivo).then(() => calendar.refetchEvents());
+    };
+
+    // ── Delete ──
+    window.deleteHistoria = function (id, e) {
+        e.stopPropagation();
+        if (!confirm('¿Seguro que querés quitar esta placa del calendario?')) return;
+        fetch("{{ url_for('historias_api_delete', id=0) }}".replace('0', id), { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    calendar.refetchEvents();
+                    showToast('success', 'Placa eliminada', '');
+                } else {
+                    showToast('error', 'Error', data.error);
+                }
+            });
+    };
+
+    // ── Month Navigator Dropdown (next 12 months) ──
+    const monthJumpSelect = document.getElementById('calendarMonthJump');
+    const monthsNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const todayDate = new Date();
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(todayDate.getFullYear(), todayDate.getMonth() + i, 1);
+        const opt = document.createElement('option');
+        opt.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+        opt.textContent = `${monthsNames[d.getMonth()]} ${d.getFullYear()}`;
+        monthJumpSelect.appendChild(opt);
+    }
+    monthJumpSelect.addEventListener('change', function () {
+        calendar.gotoDate(this.value);
+    });
+
+    // ── Default start date for Mass Publisher ──
+    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    document.getElementById('masivoStartDate').value = tomorrowStr;
+
+    // ── Mass Publisher file selection and preview ──
+    const masivoInput = document.getElementById('masivoFileInput');
+    const previewMasivo = document.getElementById('previewFilesMasivo');
+    masivoInput.addEventListener('change', function () {
+        updatePreviewMasivo(this.files);
+    });
+
+    function updatePreviewMasivo(files) {
+        previewMasivo.innerHTML = '';
+        const limit = Math.min(files.length, 12);
+        for (let i = 0; i < limit; i++) {
+            const f = files[i];
+            if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) continue;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.cssText = 'width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1)';
+                previewMasivo.appendChild(img);
+            };
+            reader.readAsDataURL(f);
+        }
+        if (files.length > 12) {
+            const span = document.createElement('span');
+            span.className = 'badge bg-secondary';
+            span.style.cssText = 'font-size: 0.65rem; line-height: 36px; height: 36px; padding: 0 8px; border-radius: 6px;';
+            span.textContent = `+${files.length - 12}`;
+            previewMasivo.appendChild(span);
+        }
+    }
+
+    // Mass Publisher Drag and Drop
+    const dropZoneMasivo = document.getElementById('dropZoneMasivo');
+    dropZoneMasivo.addEventListener('dragover', (e) => { 
+        e.preventDefault(); 
+        dropZoneMasivo.classList.add('dragover'); 
+    });
+    dropZoneMasivo.addEventListener('dragleave', () => {
+        dropZoneMasivo.classList.remove('dragover');
+    });
+    dropZoneMasivo.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZoneMasivo.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            updatePreviewMasivo(e.dataTransfer.files);
+            masivoInput._preloadedFiles = e.dataTransfer.files;
+        }
+    });
+
+    // ── Mass Publisher Upload & distribution ──
+    window.uploadMasivo = function () {
+        const files = masivoInput._preloadedFiles || masivoInput.files;
+        const startDate = document.getElementById('masivoStartDate').value;
+        const frequency = document.getElementById('masivoFrequency').value;
+
+        if (!files || files.length === 0) {
+            showToast('error', 'Sin archivos', 'Seleccioná al menos una imagen o video.');
+            return;
+        }
+        if (!startDate) {
+            showToast('error', 'Sin fecha', 'Seleccioná la fecha de inicio.');
+            return;
+        }
+
+        const waOn = document.getElementById('globalWaToggle').checked ? 1 : 0;
+        const igOn = document.getElementById('globalIgToggle').checked ? 1 : 0;
+
+        if (!waOn && !igOn) {
+            showToast('error', 'Sin plataforma', 'Activá al menos una red social.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('start_date', startDate);
+        formData.append('frequency', frequency);
+        formData.append('whatsapp', waOn);
+        formData.append('instagram', igOn);
+
+        // Agentes destinatarios (Multi-agente Masivo para Admins)
+        let targetAgents = 'me';
+        const masivoTargetAll = document.getElementById('masivoTargetAll');
+        const masivoTargetCustom = document.getElementById('masivoTargetCustom');
+        if (masivoTargetAll && masivoTargetAll.checked) {
+            targetAgents = 'all';
+        } else if (masivoTargetCustom && masivoTargetCustom.checked) {
+            const checked = Array.from(document.querySelectorAll('.masivo-agent-checkbox:checked')).map(c => c.value);
+            targetAgents = checked.length > 0 ? checked.join(',') : 'me';
+        }
+        formData.append('target_agents', targetAgents);
+
+        let count = 0;
+        for (let i = 0; i < files.length; i++) {
+            if (!files[i].type.startsWith('image/') && !files[i].type.startsWith('video/')) continue;
+            formData.append('files', files[i]);
+            count++;
+        }
+        if (count === 0) {
+            showToast('error', 'Archivos inválidos', 'Sólo se aceptan imágenes o videos.');
+            return;
+        }
+
+        const btn = document.getElementById('btnUploadMasivo');
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Programando...';
+
+        fetch('/api/historias/upload_masivo', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    showToast('error', 'Error al procesar', data.error || 'Error desconocido');
+                    return;
+                }
+                showToast('success', 'Publicación Masiva', data.message);
+                calendar.refetchEvents();
+                // Reset form
+                previewMasivo.innerHTML = '';
+                masivoInput.value = '';
+                masivoInput._preloadedFiles = null;
+            })
+            .catch(err => {
+                console.error(err);
+                showToast('error', 'Error de red', 'No se pudo conectar con el servidor.');
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+    };
+
+    // ── IG Modal JS Functions ──
+    let igModalObj = null;
+
+    window.openIgLoginModal = function() {
+        if (!igModalObj) {
+            igModalObj = new bootstrap.Modal(document.getElementById('igLoginModal'));
+        }
+        refreshIgModalStatus();
+        igModalObj.show();
+    };
+
+    function refreshIgModalStatus() {
+        fetch('/api/instagram/status')
+            .then(r => r.json())
+            .then(data => {
+                const headerText = document.getElementById('igStatusTextHeader');
+                const alertBox = document.getElementById('igModalStatusAlert');
+                const formLogin = document.getElementById('igModalLoginForm');
+                const formCheck = document.getElementById('igModalCheckpointForm');
+                const formConn = document.getElementById('igModalConnectedForm');
+
+                formLogin.classList.add('d-none');
+                formCheck.classList.add('d-none');
+                formConn.classList.add('d-none');
+                alertBox.classList.add('d-none');
+
+                if (data.status === 'connected') {
+                    if (headerText) headerText.textContent = `@${data.username}`;
+                    document.getElementById('igModalConnectedUser').textContent = `Conectado como @${data.username}`;
+                    formConn.classList.remove('d-none');
+                } else if (data.status === 'checkpoint_required') {
+                    if (headerText) headerText.textContent = 'Verificar IG';
+                    formCheck.classList.remove('d-none');
+                } else {
+                    if (headerText) headerText.textContent = 'Vincular IG';
+                    formLogin.classList.remove('d-none');
+                }
+            });
+    }
+
+    window.submitIgModalConnect = function() {
+        const user = document.getElementById('igModalUser').value.trim();
+        const pass = document.getElementById('igModalPass').value;
+        const btn = document.getElementById('btnIgModalSubmit');
+        const alertBox = document.getElementById('igModalStatusAlert');
+
+        if (!user || !pass) {
+            alertBox.className = 'alert alert-danger py-2 px-3 small mb-3';
+            alertBox.textContent = 'Ingresá usuario y contraseña.';
+            alertBox.classList.remove('d-none');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Conectando...';
+
+        fetch('/api/instagram/conectar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'connected') {
+                showToast('success', 'Instagram Vinculado', `Conectado como @${user}`);
+                refreshIgModalStatus();
+            } else if (data.status === 'checkpoint_required') {
+                refreshIgModalStatus();
+            } else {
+                alertBox.className = 'alert alert-danger py-2 px-3 small mb-3';
+                alertBox.textContent = `Error: ${data.error || 'No se pudo vincular'}`;
+                alertBox.classList.remove('d-none');
+            }
+        })
+        .catch(err => {
+            alertBox.className = 'alert alert-danger py-2 px-3 small mb-3';
+            alertBox.textContent = 'Error de red o timeout.';
+            alertBox.classList.remove('d-none');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-link-45deg me-1"></i> Vincular Instagram';
+        });
+    };
+
+    window.submitIgModalConfirmCode = function() {
+        const code = document.getElementById('igModalCode').value.trim();
+        const btn = document.getElementById('btnIgModalConfirm');
+        const alertBox = document.getElementById('igModalStatusAlert');
+
+        if (!code) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verificando...';
+
+        fetch('/api/instagram/confirmar_codigo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', 'Instagram Conectado', 'Sesión verificada exitosamente.');
+                refreshIgModalStatus();
+            } else {
+                alertBox.className = 'alert alert-danger py-2 px-3 small mb-3';
+                alertBox.textContent = `Error: ${data.error || 'Código inválido'}`;
+                alertBox.classList.remove('d-none');
+            }
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Confirmar Código';
+        });
+    };
+
+    window.submitIgModalDisconnect = function() {
+        if (!confirm('¿Desvincular la cuenta de Instagram?')) return;
+        fetch('/api/instagram/desvincular', { method: 'POST' })
+            .then(r => r.json())
+            .then(() => {
+                showToast('info', 'Instagram Desvinculado', '');
+                refreshIgModalStatus();
+            });
+    };
+
+    // Initial check for IG status button text on load
+    refreshIgModalStatus();
+
+    {% if is_admin %}
+    function checkCalWorkerStatus() {
+        fetch('/admin/api/worker_status')
+            .then(r => r.json())
+            .then(data => {
+                const el = document.getElementById('workerBadgeCal');
+                const txt = document.getElementById('workerBadgeCalText');
+                if (!el || !txt || !data.success) return;
+                if (data.worker.running) {
+                    el.className = 'text-decoration-none badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 py-2 px-2 d-flex align-items-center gap-1';
+                    txt.textContent = `Worker Activo (PID ${data.worker.pid || ''})`;
+                } else {
+                    el.className = 'text-decoration-none badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 py-2 px-2 d-flex align-items-center gap-1';
+                    txt.textContent = 'Worker Detenido';
+                }
+            })
+            .catch(() => {});
+    }
+    checkCalWorkerStatus();
+    setInterval(checkCalWorkerStatus, 10000);
+    {% endif %}
+});
+</script>
+{% endblock %}

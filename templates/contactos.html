@@ -1,0 +1,827 @@
+{% extends "base.html" %}
+
+{% block title %}Contactos CRM - {{ agency.nombre }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .italic {
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-4">
+        <h2 class="fw-bold"><i class="bi bi-people-fill text-primary me-2"></i>Base de Contactos</h2>
+        <p class="text-muted small mb-0">
+            {% if cold_only %}
+            Contactos con más de 30 días sin seguimiento.
+            {% else %}
+            Listado completo de tu base relacional de clientes.
+            {% endif %}
+        </p>
+    </div>
+    <div
+        class="col-md-8 d-flex flex-wrap align-items-center justify-content-start justify-content-md-end gap-2 mt-3 mt-md-0">
+        
+        <!-- Buscador por nombre -->
+        <form action="{{ url_for('crm_contactos') }}" method="GET" class="flex-grow-1" style="min-width:200px;max-width:280px;">
+            {% if cold_only %}<input type="hidden" name="cold" value="1">{% endif %}
+            <input type="hidden" name="sort" value="{{ sort_by }}">
+            <input type="hidden" name="order" value="{{ order }}">
+            <div class="input-group input-group-sm" style="height:38px;">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" name="busqueda" class="form-control border-start-0"
+                    placeholder="Buscar nombre, apellido, tel..." value="{{ busqueda or '' }}"
+                    style="box-shadow:none;">
+                <button class="btn btn-primary" type="submit" style="border-radius:0 6px 6px 0;">
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+            </div>
+        </form>
+        {% if busqueda %}
+        <a href="{{ url_for('crm_contactos', sort=sort_by, order=order) }}" class="btn btn-outline-secondary btn-sm" style="height:38px;" title="Limpiar búsqueda">
+            <i class="bi bi-x-circle"></i>
+        </a>
+        {% endif %}
+
+        <!-- Botón Gestionar Columnas -->
+        <button class="btn btn-outline-secondary btn-sm shadow-sm" style="height: 38px;" data-bs-toggle="modal" data-bs-target="#modalColumnas">
+            <i class="bi bi-layout-three-columns me-1"></i> Columnas
+        </button>
+
+        <!-- New Contact Button: Full width on mobile, auto on desktop -->
+        <!-- New Contact Button: Full width on mobile, auto on desktop -->
+        <button
+            class="btn btn-primary btn-sm shadow-sm fw-bold px-3 d-flex align-items-center justify-content-center w-100 w-md-auto"
+            style="height: 38px; background: linear-gradient(45deg, #0d6efd, #6610f2); border: none;"
+            onclick="openAddModal()">
+            <i class="bi bi-plus-lg me-1"></i> <span>Nuevo Contacto</span>
+        </button>
+
+        <!-- Sorting: flex-grow on mobile to use space -->
+        <form action="{{ url_for('crm_contactos') }}" method="GET" class="flex-grow-1 flex-md-grow-0 min-w-200">
+            {% if cold_only %}<input type="hidden" name="cold" value="1">{% endif %}
+            {% if busqueda %}<input type="hidden" name="busqueda" value="{{ busqueda }}">{% endif %}
+            <div class="input-group input-group-sm" style="height: 38px;">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-sort-down"></i></span>
+                <select name="sort" class="form-select border-start-0" onchange="this.form.submit()">
+                    <option value="calificacion" {% if sort_by=='calificacion' %}selected{% endif %}>Calificación
+                    </option>
+                    <option value="ultimo_contacto" {% if sort_by=='ultimo_contacto' %}selected{% endif %}>Último
+                        Contacto</option>
+                    <option value="nombre" {% if sort_by=='nombre' %}selected{% endif %}>Nombre</option>
+                </select>
+                <select name="order" class="form-select" onchange="this.form.submit()" style="max-width: 80px;">
+                    <option value="DESC" {% if order=='DESC' %}selected{% endif %}>Desc</option>
+                    <option value="ASC" {% if order=='ASC' %}selected{% endif %}>Asc</option>
+                </select>
+            </div>
+        </form>
+
+        <div class="d-flex gap-2 w-100 w-md-auto">
+            <form action="{{ url_for('importar_excel') }}" method="POST" enctype="multipart/form-data"
+                class="flex-fill">
+                <label for="excel_upload"
+                    class="btn btn-outline-primary btn-sm mb-0 d-flex align-items-center justify-content-center w-100"
+                    style="height: 38px; cursor: pointer;">
+                    <i class="bi bi-file-earmark-arrow-up me-2"></i> <span class="d-none d-sm-inline">Cargar</span>
+                    Excel
+                </label>
+                <input type="file" id="excel_upload" name="archivo_excel" style="display:none"
+                    onchange="this.form.submit()">
+            </form>
+
+            <a href="{{ url_for('exportar_excel') }}"
+                class="btn btn-outline-success btn-sm d-inline-flex align-items-center justify-content-center flex-fill"
+                style="height: 38px;" title="Descargar Excel">
+                <i class="bi bi-file-earmark-arrow-down me-2"></i> <span class="d-none d-sm-inline">Guardar</span> Excel
+            </a>
+        </div>
+
+        <div class="d-flex gap-2 w-100 w-md-auto">
+            <!-- Botón: más antiguos primero (ordena últ. contacto ASC) -->
+            {% set is_oldest = sort_by == 'ultimo_contacto' and order == 'ASC' %}
+            <a href="{{ url_for('crm_contactos', sort='ultimo_contacto', order='ASC' if not is_oldest else 'DESC', cold=1 if cold_only else '') }}"
+                class="btn btn-sm fw-bold flex-fill shadow-sm d-flex align-items-center justify-content-center {{ 'btn-warning text-dark' if is_oldest else 'btn-outline-warning' }}"
+                style="height: 38px;" title="Mostrar los contactados hace más tiempo primero">
+                <i class="bi bi-sort-numeric-up me-1"></i> Más Antiguos
+            </a>
+
+            <a href="{{ url_for('crm_contactos', cold='' if cold_only else 1, sort=sort_by, order=order, busqueda=busqueda if busqueda) }}"
+                class="btn btn-sm fw-bold flex-fill shadow-sm d-flex align-items-center justify-content-center {{ 'btn-danger text-white' if cold_only else 'btn-outline-danger' }}"
+                style="height: 38px;" title="Mostrar contactos con más de 30 días sin seguimiento">
+                <i class="bi bi-clock-history me-2"></i> &gt;30 d
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Banner de Fidelización del Día (Cumpleaños y Aniversarios de Compra) -->
+{% if fidelity and (fidelity.cumples or fidelity.aniversarios) %}
+<div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #e0f2fe 0%, #ede9fe 100%); border-left: 5px solid #6366f1 !important;">
+    <div class="card-body p-3">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fs-4">🎉</span>
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">¡Fidelización del Día!</h6>
+                    <small class="text-muted">Contactos que cumplen años o aniversario de compra hoy. Generá su saludo personalizado con Groq en 1 segundo:</small>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                {% for c in fidelity.cumples %}
+                <button class="btn btn-sm btn-light border shadow-sm fw-bold text-dark d-flex align-items-center gap-1"
+                        onclick="abrirSaludoIA({{ c.id }}, 'cumpleanios', '{{ c.nombre|replace("'", "\\'") }}', '{{ c.telefono or '' }}')">
+                    <span>🎂</span> <span>{{ c.nombre }} {{ c.apellido }}</span>
+                    <span class="badge bg-success text-white ms-1"><i class="bi bi-whatsapp"></i> Saludar IA</span>
+                </button>
+                {% endfor %}
+                {% for a in fidelity.aniversarios %}
+                <button class="btn btn-sm btn-light border shadow-sm fw-bold text-dark d-flex align-items-center gap-1"
+                        onclick="abrirSaludoIA({{ a.id }}, 'aniversario', '{{ a.nombre|replace("'", "\\'") }}', '{{ a.telefono or '' }}')">
+                    <span>🏡</span> <span>{{ a.nombre }} {{ a.apellido }}</span>
+                    <span class="badge bg-primary text-white ms-1"><i class="bi bi-whatsapp"></i> Saludar IA</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive d-none d-md-block">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Contacto</th>
+                        <th>Categoría</th>
+                        <th>Fidelización</th>
+                        <th>Rol / Interés</th>
+                        {% for col in custom_cols %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                        <th>Último Contacto</th>
+                        <th class="text-end pe-4">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in contactos %}
+                    <tr id="row-{{ c.id }}">
+                        <td class="ps-4">
+                            <div class="fw-bold">
+                                {{ c.nombre }} {{ c.apellido }}
+                                {% if c.mac %}
+                                <span class="badge bg-primary ms-1" style="font-size: 0.55rem; padding: 0.25em 0.4em;" title="Proveniente del Meta AI Chatbot">● MAC</span>
+                                {% endif %}
+                            </div>
+                            {% if c.telefono %}
+                            <small class="text-muted">{{ c.telefono }}</small>
+                            {% else %}
+                            <small class="text-muted italic"><i class="bi bi-telephone-x me-1"></i>Sin teléfono</small>
+                            {% endif %}
+                            {% if c.busqueda_activa %}
+                            <span class="badge bg-warning text-dark x-small ms-1"
+                                style="font-size: 0.65rem;">BUSCANDO</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm border-0 bg-light fw-bold text-center"
+                                style="width: 70px;" onchange="updateCategory({{ c.id }}, this.value)">
+                                <option value="A" {% if c.categoria=='A' %}selected{% endif %} class="text-success">A
+                                </option>
+                                <option value="B" {% if c.categoria=='B' %}selected{% endif %} class="text-primary">B
+                                </option>
+                                <option value="C" {% if c.categoria=='C' %}selected{% endif %} class="text-dark">C
+                                </option>
+                                <option value="D" {% if c.categoria=='D' %}selected{% endif %} class="text-danger">D
+                                </option>
+                            </select>
+                        </td>
+                        <td>
+                            <div class="small">
+                                {% set today_md = now.strftime('%m-%d') %}
+                                {% if c.fecha_nacimiento %}
+                                <div class="d-flex align-items-center gap-1">
+                                    <i class="bi bi-cake2 text-info"></i> {{ c.fecha_nacimiento[5:] }}
+                                    {% if c.fecha_nacimiento[5:] == today_md %}
+                                    <button class="btn btn-xs btn-outline-success py-0 px-1 shadow-sm" style="font-size: 0.65rem;"
+                                            onclick="abrirSaludoIA({{ c.id }}, 'cumpleanios', '{{ c.nombre|replace("'", "\\'") }}', '{{ c.telefono or '' }}')"
+                                            title="¡Cumple Hoy! Tocar para generar saludo con IA">
+                                        🎂 ¡Hoy! IA
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% if c.aniversario_casa %}
+                                <div class="d-flex align-items-center gap-1">
+                                    <i class="bi bi-house-heart text-primary"></i> {{ c.aniversario_casa[5:] }}
+                                    {% if c.aniversario_casa[5:] == today_md %}
+                                    <button class="btn btn-xs btn-outline-primary py-0 px-1 shadow-sm" style="font-size: 0.65rem;"
+                                            onclick="abrirSaludoIA({{ c.id }}, 'aniversario', '{{ c.nombre|replace("'", "\\'") }}', '{{ c.telefono or '' }}')"
+                                            title="¡Aniversario de Compra Hoy! Tocar para generar saludo con IA">
+                                        🏡 ¡Hoy! IA
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% if not c.fecha_nacimiento and not c.aniversario_casa %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-info text-dark">{{ c.rol }}</span>
+                            {% if c.referente %}
+                            <div class="x-small text-muted" style="font-size: 0.75rem;">Ref: {{ c.referente }}</div>
+                            {% endif %}
+                        </td>
+                        {% for col in custom_cols %}
+                        <td class="small">{{ c.custom_fields.get(col, '-') }}</td>
+                        {% endfor %}
+                        <td class="small">{{ c.ultimo_contacto or 'Sin fecha' }}</td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group">
+                                {% if c.telefono %}
+                                <a href="https://wa.me/{{ c.telefono|replace('+', '')|replace(' ', '') }}"
+                                    target="_blank" class="btn btn-success btn-sm px-2 shadow-sm" title="WhatsApp">
+                                    <i class="bi bi-whatsapp"></i>
+                                </a>
+                                {% else %}
+                                <button class="btn btn-light btn-sm px-2 text-muted border" disabled
+                                    title="Falta número de teléfono">
+                                    <i class="bi bi-whatsapp"></i>
+                                </button>
+                                {% endif %}
+
+                                <button class="btn btn-outline-success btn-sm px-2"
+                                    onclick="markContactTalked({{ c.id }})" title="Hoy Hablé">
+                                    <i class="bi bi-chat-heart"></i>
+                                </button>
+
+                                <button class="btn btn-outline-primary btn-sm px-2"
+                                    onclick='editContact({{ c|tojson|safe }})' title="Editar">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+
+                                <button class="btn btn-outline-danger btn-sm px-2"
+                                    onclick="confirmarEliminarContacto({{ c.id }}, '{{ c.nombre|replace('\'', '\\\'') }} {{ c.apellido|replace('\'', '\\\'') }}')" title="Enviar a Papelera">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-emoji-smile d-block fs-1 mb-3"></i>
+                            No hay contactos que coincidan.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Card View (Visible only on mobile) -->
+        <div class="d-block d-md-none">
+            {% for c in contactos %}
+            <div class="card border-bottom rounded-0 p-3" id="card-{{ c.id }}">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <span
+                            class="badge {% if c.categoria=='A' %}bg-success{% elif c.categoria=='B' %}bg-primary{% elif c.categoria=='C' %}bg-dark{% else %}bg-danger{% endif %} me-1">
+                            {{ c.categoria }}
+                        </span>
+                        <span class="fw-bold">{{ c.nombre }} {{ c.apellido }}</span>
+                        {% if c.mac %}
+                        <span class="badge bg-primary ms-1" style="font-size: 0.55rem; padding: 0.25em 0.4em;" title="Proveniente del Meta AI Chatbot">● MAC</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted small">
+                        {{ c.ultimo_contacto or 'Sin fecha' }}
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Rol / Interés</small>
+                        <span class="badge bg-light text-dark border">{{ c.rol }}</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Teléfono</small>
+                        <span class="small">{{ c.telefono or 'N/A' }}</span>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-1 mt-2">
+                    {% if c.telefono %}
+                    <a href="https://wa.me/{{ c.telefono|replace('+', '')|replace(' ', '') }}" target="_blank"
+                        class="btn btn-success flex-fill py-2 shadow-sm text-center" title="WhatsApp">
+                        <i class="bi bi-whatsapp"></i>
+                    </a>
+                    {% else %}
+                    <button class="btn btn-light flex-fill py-2 border text-muted" disabled><i
+                            class="bi bi-whatsapp"></i></button>
+                    {% endif %}
+
+                    <button class="btn btn-info text-white flex-fill py-2 shadow-sm"
+                        onclick='openQuickNotes({{ c.id }}, {{ (c.notas or "")|tojson|safe }})' title="Notas">
+                        <i class="bi bi-sticky"></i>
+                    </button>
+
+                    <button class="btn btn-outline-success flex-fill py-2 shadow-sm"
+                        onclick="markContactTalked({{ c.id }})" title="Hoy Hablé">
+                        <i class="bi bi-chat-heart"></i>
+                    </button>
+
+                    <button class="btn btn-outline-primary flex-fill py-2 shadow-sm"
+                        onclick='editContact({{ c|tojson|safe }})' title="Editar">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+
+                    <button class="btn btn-outline-danger flex-fill py-2 shadow-sm"
+                        onclick="confirmarEliminarContacto({{ c.id }}, '{{ c.nombre|replace('\'', '\\\'') }} {{ c.apellido|replace('\'', '\\\'') }}')" title="Enviar a Papelera">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                No hay contactos.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Gestionar Contacto (Alta/Edición) -->
+<div class="modal fade" id="editContactModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-white" style="background: linear-gradient(45deg, #0d6efd, #6610f2);">
+                <h5 class="modal-title fw-bold" id="modalTitle">Gestionar Contacto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="upsertForm" action="{{ url_for('upsert_contacto') }}" method="POST">
+                <input type="hidden" name="id" id="editId">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Nombre</label>
+                            <input type="text" name="nombre" id="editNombre" class="form-control" required
+                                placeholder="Ej: Juan">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Apellido</label>
+                            <input type="text" name="apellido" id="editApellido" class="form-control"
+                                placeholder="Ej: Perez">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Teléfono (WhatsApp)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-success"><i
+                                        class="bi bi-whatsapp"></i></span>
+                                <input type="text" name="telefono" id="editTelefono" class="form-control"
+                                    placeholder="Ej: 1122334455">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Email</label>
+                            <input type="email" name="email" id="editEmail" class="form-control"
+                                placeholder="juan@ejemplo.com">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Categoría</label>
+                            <select name="categoria" id="editCategoria" class="form-select">
+                                <option value="A">A (Frecuente)</option>
+                                <option value="B">B (Intermedio)</option>
+                                <option value="C" selected>C (Base)</option>
+                                <option value="D">D (Baja Calidad)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Calificación (1-5)</label>
+                            <input type="number" name="calificacion" id="editCalificacion" class="form-control" min="0"
+                                max="5" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Rol / Perfil</label>
+                            <input type="text" name="rol" id="editRol" class="form-control" placeholder="Ej: Inversor">
+                        </div>
+
+                        <hr class="my-3 text-muted">
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Cumpleaños 🎂</label>
+                            <input type="date" name="fecha_nacimiento" id="editNacimiento" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Aniversario Casa 🏠</label>
+                            <input type="date" name="aniversario_casa" id="editAniversario" class="form-control">
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch p-3 bg-light rounded shadow-sm">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="editBusquedaActiva"
+                                    name="busqueda_activa">
+                                <label class="form-check-label fw-bold" for="editBusquedaActiva">
+                                    Búsqueda Activa (Filtro IA) 🔍
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="searchFilters" class="col-12 d-none">
+                            <label class="form-label small fw-bold text-muted">¿Qué busca? (Filtros IA)</label>
+                            <textarea name="filtros_busqueda_json" id="editFiltros" class="form-control" rows="2"
+                                placeholder="Ej: 3 ambientes, Colegiales, hasta 180k..."></textarea>
+                        </div>
+                        
+                        <!-- META AI CHATBOT FIELDS -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-primary small text-uppercase fw-bold border-bottom pb-2">Meta AI Chatbot</h6>
+                        </div>
+                        <input type="hidden" name="mac" id="editMac">
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted">Intención IA</label>
+                            <textarea name="intencion_ia" id="editIntencionIa" class="form-control" rows="2" placeholder="Resumen de la IA..."></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="editRecordatorioActivo" name="recordatorio_activo">
+                                <label class="form-check-label fw-bold" for="editRecordatorioActivo">Recordatorio Activo</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Días para aviso</label>
+                            <input type="number" name="recordatorio_dias" id="editRecordatorioDias" class="form-control" placeholder="Ej: 3">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Fecha Objetivo</label>
+                            <input type="date" name="recordatorio_fecha" id="editRecordatorioFecha" class="form-control">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">Notas / Historial</label>
+                            <textarea name="notas" id="editNotas" class="form-control" rows="2"
+                                placeholder="Cualquier detalle importante..."></textarea>
+                        </div>
+                        {% if custom_cols %}
+                        <div class="col-12 mt-4">
+                            <h6 class="text-info small text-uppercase fw-bold border-bottom pb-2">Datos Personalizados</h6>
+                        </div>
+                        {% for col in custom_cols %}
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">{{ col }}</label>
+                            <input type="text" name="{{ col }}" id="custom_field_{{ loop.index }}" class="form-control custom-input-field" data-col-name="{{ col }}">
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger" id="btnDeleteContactInModal" style="display:none;" onclick="deleteCurrentModalContact()">
+                        <i class="bi bi-trash3 me-1"></i> Eliminar
+                    </button>
+                    <div class="d-flex gap-2 ms-auto">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm"
+                            style="background: linear-gradient(45deg, #0d6efd, #6610f2); border: none;">
+                            <i class="bi bi-check-lg me-1"></i> Guardar Contacto
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Notas Rápidas -->
+<div class="modal fade" id="quickNotesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-sticky me-2"></i>Notas del Contacto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <input type="hidden" id="noteContactId">
+                <textarea id="quickNoteText" class="form-control" rows="8"
+                    placeholder="Escribí aquí lo que hablaste con el cliente..."></textarea>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-info text-white fw-bold px-4" onclick="saveQuickNotes()">
+                    <i class="bi bi-check-lg me-1"></i> Guardar Notas
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Saludo de Fidelización con IA (Groq) -->
+<div class="modal fade" id="modalSaludoIA" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0" id="saludoIaTitulo"><i class="bi bi-stars me-2"></i>Saludo de Fidelización IA</h5>
+                    <small class="opacity-75" id="saludoIaSubtitulo">Generado en tiempo real con Groq (openai/gpt-oss-20b)</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <strong class="fs-6" id="saludoIaNombre">Contacto</strong>
+                        <div class="small text-muted" id="saludoIaTel"><i class="bi bi-telephone me-1"></i>--</div>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary border border-primary fs-7" id="saludoIaTipoBadge">🎂 Cumpleaños</span>
+                </div>
+
+                <div id="saludoIaLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary mb-2" role="status" style="width: 2.2rem; height: 2.2rem;"></div>
+                    <p class="text-muted small mb-0">Groq redactando saludo personalizado...</p>
+                </div>
+
+                <div id="saludoIaContent" class="d-none">
+                    <label class="form-label small fw-bold text-muted d-flex justify-content-between">
+                        <span>Mensaje listo para WhatsApp:</span>
+                        <a href="javascript:void(0)" class="text-decoration-none text-primary small" onclick="regenerarSaludoIA()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Regenerar otra opción
+                        </a>
+                    </label>
+                    <textarea id="saludoIaTexto" class="form-control mb-3" rows="6" style="font-size: 0.95rem; line-height: 1.45;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-dark btn-sm fw-bold" onclick="copiarSaludoIA()" id="btnCopiarSaludo" disabled>
+                        <i class="bi bi-clipboard me-1"></i> Copiar
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm fw-bold px-3 shadow-sm" onclick="enviarWhatsAppSaludo()" id="btnEnviarSaludo" disabled style="background-color: #25d366; border-color: #25d366;">
+                        <i class="bi bi-whatsapp me-1"></i> Abrir en WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Form oculto para mover contacto a papelera -->
+<form id="formEliminarContactoDirecto" method="POST" style="display:none;"></form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const editModal = new bootstrap.Modal(document.getElementById('editContactModal'));
+
+    function markContactTalked(id) {
+        let fd = new FormData();
+        fd.append('id', id);
+
+        fetch('/crm/marcar_contacto_hoy', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(d => {
+                if (d.status === 'success') {
+                    // Update cell
+                    const row = document.getElementById(`row-${id}`);
+                    const dateCell = row.cells[4];
+                    dateCell.innerText = d.today;
+                    dateCell.classList.add('fw-bold', 'text-success');
+
+                    // Flash animation
+                    row.style.transition = 'background 0.3s';
+                    row.style.background = '#e8f5e9';
+                    setTimeout(() => row.style.background = 'transparent', 500);
+                }
+            });
+    }
+
+    function updateCategory(id, value) {
+        let formData = new FormData();
+        formData.append('id', id);
+        formData.append('campo', 'categoria');
+        formData.append('valor', value);
+
+        fetch('/crm/update_contacto', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(d => {
+                if (d.status === 'success') {
+                    // Flash animation
+                    const row = document.getElementById(`row-${id}`);
+                    row.style.transition = 'background 0.3s';
+                    row.style.background = '#e8f5e9';
+                    setTimeout(() => row.style.background = 'transparent', 500);
+                }
+            });
+    }
+
+    function editContact(contact) {
+        document.getElementById('editId').value = contact.id;
+        document.getElementById('editNombre').value = contact.nombre || '';
+        document.getElementById('editApellido').value = contact.apellido || '';
+        document.getElementById('editTelefono').value = contact.telefono || '';
+        document.getElementById('editEmail').value = contact.email || '';
+        document.getElementById('editCategoria').value = contact.categoria || 'C';
+        document.getElementById('editCalificacion').value = contact.calificacion || 0;
+        document.getElementById('editRol').value = contact.rol || '';
+        document.getElementById('editNacimiento').value = contact.fecha_nacimiento || '';
+        document.getElementById('editAniversario').value = contact.aniversario_casa || '';
+        document.getElementById('editNotas').value = contact.notas || '';
+        document.getElementById('editFiltros').value = contact.filtros_busqueda_json || '';
+        document.getElementById('editBusquedaActiva').checked = !!contact.busqueda_activa;
+        document.getElementById('editMac').value = contact.mac || 0;
+        document.getElementById('editIntencionIa').value = contact.intencion_ia || '';
+        document.getElementById('editRecordatorioActivo').checked = !!contact.recordatorio_activo;
+        document.getElementById('editRecordatorioDias').value = contact.recordatorio_dias || '';
+        document.getElementById('editRecordatorioFecha').value = contact.recordatorio_fecha || '';
+
+        // Populate Custom Fields
+        const customFields = contact.custom_fields || {};
+        document.querySelectorAll('.custom-input-field').forEach(input => {
+            const colName = input.getAttribute('data-col-name');
+            input.value = customFields[colName] || '';
+        });
+
+        document.getElementById('modalTitle').innerText = 'Editar Contacto';
+        document.getElementById('btnDeleteContactInModal').style.display = 'inline-block';
+        toggleSearchFilters(contact.busqueda_activa);
+        editModal.show();
+    }
+
+    function openAddModal() {
+        document.getElementById('upsertForm').reset();
+        document.getElementById('editId').value = '';
+        document.getElementById('modalTitle').innerText = 'Nuevo Contacto';
+        document.getElementById('btnDeleteContactInModal').style.display = 'none';
+        toggleSearchFilters(false);
+        editModal.show();
+    }
+
+    function confirmarEliminarContacto(id, nombre) {
+        if (confirm(`¿Enviar a "${nombre}" a la Papelera de Reciclaje?\nPodrás restaurarlo en cualquier momento desde la Papelera.`)) {
+            const form = document.getElementById('formEliminarContactoDirecto');
+            form.action = `/crm/eliminar_contacto/${id}`;
+            form.submit();
+        }
+    }
+
+    function deleteCurrentModalContact() {
+        const id = document.getElementById('editId').value;
+        const nombre = (document.getElementById('editNombre').value + ' ' + document.getElementById('editApellido').value).trim();
+        if (id) {
+            confirmarEliminarContacto(id, nombre || 'este contacto');
+        }
+    }
+
+    document.getElementById('editBusquedaActiva').addEventListener('change', function () {
+        toggleSearchFilters(this.checked);
+    });
+
+    function toggleSearchFilters(show) {
+        document.getElementById('searchFilters').classList.toggle('d-none', !show);
+    }
+
+    // Quick Notes Logic
+    const notesModal = new bootstrap.Modal(document.getElementById('quickNotesModal'));
+
+    function openQuickNotes(id, text) {
+        document.getElementById('noteContactId').value = id;
+        document.getElementById('quickNoteText').value = text || '';
+        notesModal.show();
+    }
+
+    function saveQuickNotes() {
+        const id = document.getElementById('noteContactId').value;
+        const text = document.getElementById('quickNoteText').value;
+        const btn = document.querySelector('#quickNotesModal .btn-info');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+
+        let fd = new FormData();
+        fd.append('id', id);
+        fd.append('campo', 'notas');
+        fd.append('valor', text);
+
+        fetch('/crm/update_contacto', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(d => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Guardar Notas';
+                if (d.status === 'success') {
+                    notesModal.hide();
+                    // Optional: animate card
+                    const card = document.getElementById(`card-${id}`);
+                    if (card) {
+                        card.style.transition = 'background 0.3s';
+                        card.style.background = '#e1f5fe';
+                        setTimeout(() => card.style.background = 'transparent', 500);
+                    }
+                    const row = document.getElementById(`row-${id}`);
+                    if (row) {
+                        row.style.transition = 'background 0.3s';
+                        row.style.background = '#e1f5fe';
+                        setTimeout(() => row.style.background = 'transparent', 500);
+                    }
+                }
+            });
+    }
+
+    // --- ASISTENTE IA: SALUDOS DE FIDELIZACIÓN (GROQ) ---
+    const saludoIaModal = new bootstrap.Modal(document.getElementById('modalSaludoIA'));
+    let currentSaludoData = { contactoId: null, tipo: 'cumpleanios', nombre: '', telefono: '' };
+
+    function abrirSaludoIA(contactoId, tipo, nombre, telefono) {
+        currentSaludoData = { contactoId, tipo, nombre, telefono };
+        
+        document.getElementById('saludoIaNombre').innerText = nombre;
+        document.getElementById('saludoIaTel').innerHTML = telefono ? `<i class="bi bi-telephone me-1"></i>${telefono}` : '<span class="text-danger italic">Sin teléfono registrado</span>';
+        
+        const badge = document.getElementById('saludoIaTipoBadge');
+        if (tipo === 'aniversario') {
+            badge.innerText = '🏡 Aniversario de Hogar';
+            badge.className = 'badge bg-primary-subtle text-primary border border-primary fs-7';
+        } else {
+            badge.innerText = '🎂 Cumpleaños';
+            badge.className = 'badge bg-info-subtle text-info border border-info fs-7';
+        }
+
+        document.getElementById('saludoIaLoading').classList.remove('d-none');
+        document.getElementById('saludoIaContent').classList.add('d-none');
+        document.getElementById('btnCopiarSaludo').disabled = true;
+        document.getElementById('btnEnviarSaludo').disabled = true;
+
+        saludoIaModal.show();
+
+        // Disparar llamada a Groq
+        ejecutarGeneracionSaludo();
+    }
+
+    function regenerarSaludoIA() {
+        document.getElementById('saludoIaLoading').classList.remove('d-none');
+        document.getElementById('saludoIaContent').classList.add('d-none');
+        document.getElementById('btnCopiarSaludo').disabled = true;
+        document.getElementById('btnEnviarSaludo').disabled = true;
+        ejecutarGeneracionSaludo();
+    }
+
+    function ejecutarGeneracionSaludo() {
+        fetch('/api/asistente_ia/generar_saludo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contacto_id: currentSaludoData.contactoId,
+                tipo: currentSaludoData.tipo
+            })
+        })
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('saludoIaLoading').classList.add('d-none');
+            document.getElementById('saludoIaContent').classList.remove('d-none');
+            
+            if (d.status === 'success') {
+                document.getElementById('saludoIaTexto').value = d.mensaje;
+                document.getElementById('btnCopiarSaludo').disabled = false;
+                document.getElementById('btnEnviarSaludo').disabled = false;
+            } else {
+                document.getElementById('saludoIaTexto').value = `Error generando saludo: ${d.message || 'Error desconocido'}`;
+            }
+        })
+        .catch(err => {
+            document.getElementById('saludoIaLoading').classList.add('d-none');
+            document.getElementById('saludoIaContent').classList.remove('d-none');
+            document.getElementById('saludoIaTexto').value = `No se pudo conectar con el Asistente IA.`;
+        });
+    }
+
+    function copiarSaludoIA() {
+        const txt = document.getElementById('saludoIaTexto').value;
+        if (!txt) return;
+        navigator.clipboard.writeText(txt).then(() => {
+            const btn = document.getElementById('btnCopiarSaludo');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> ¡Copiado!';
+            setTimeout(() => btn.innerHTML = orig, 1500);
+        });
+    }
+
+    function enviarWhatsAppSaludo() {
+        const txt = document.getElementById('saludoIaTexto').value;
+        const rawTel = currentSaludoData.telefono || '';
+        const cleanTel = rawTel.replace(/\D/g, '');
+        const encoded = encodeURIComponent(txt);
+        
+        let url = cleanTel ? `https://wa.me/${cleanTel}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+        window.open(url, '_blank');
+        saludoIaModal.hide();
+    }
+</script>
+{% endblock %}

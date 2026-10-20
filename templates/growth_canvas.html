@@ -1,0 +1,1032 @@
+{% extends "base.html" %}
+
+{% block title %}Growth Marketing Canvas | SuperAdmin{% endblock %}
+
+{% block content %}
+<div class="growth-canvas-wrapper pb-5">
+    <!-- Top Bar: Project Controls & Status -->
+    <div class="canvas-top-bar d-flex flex-wrap justify-content-between align-items-center py-2 px-4 bg-light border-bottom mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-kanban text-danger fs-5"></i>
+                <span class="fw-bold text-dark">Proyecto:</span>
+                <select id="projectSelector" class="form-select form-select-sm" style="min-width: 220px;" onchange="switchProject(this.value)">
+                    {% for p in projects %}
+                    <option value="{{ p.id }}" {% if active_project and active_project.id == p.id %}selected{% endif %}>
+                        {{ p.nombre }} {% if p.empresa %}({{ p.empresa }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button class="btn btn-outline-primary btn-sm" onclick="openNewProjectModal()" title="Crear nuevo proyecto">
+                <i class="bi bi-plus-circle me-1"></i> Nuevo Proyecto
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="openRenameModal()" title="Editar nombre / empresa">
+                <i class="bi bi-pencil me-1"></i> Renombrar
+            </button>
+            {% if projects|length > 1 %}
+            <button class="btn btn-outline-danger btn-sm" onclick="deleteCurrentProject()" title="Eliminar proyecto">
+                <i class="bi bi-trash"></i>
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="d-flex align-items-center gap-3 mt-2 mt-md-0">
+            <div id="saveStatusIndicator" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 d-flex align-items-center gap-1">
+                <i class="bi bi-check-circle-fill"></i>
+                <span id="saveStatusText">Guardado</span>
+            </div>
+            <button class="btn btn-sm btn-outline-dark" onclick="window.print()" title="Imprimir / Exportar PDF">
+                <i class="bi bi-printer me-1"></i> Imprimir / PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Canvas Header -->
+    <div class="text-center py-4 bg-white border-bottom shadow-sm mb-4">
+        <h1 class="main-canvas-title m-0">
+            <span class="canvas-header-light">GROWTH</span>
+            <span class="canvas-header-bold">MARKETING CANVAS</span>
+        </h1>
+    </div>
+
+    <!-- Canvas Workspace -->
+    <div class="canvas-board-container px-3 px-xl-4">
+        <div id="canvas-container">
+            
+            <!-- TOP ROW: 3 KEY QUESTIONS -->
+            <div id="target-audience" class="top-row-card">
+                <h2 class="card-title">Target Audience</h2>
+                <p class="description">Describe the customers you want to service.</p>
+                <div class="textarea-wrapper">
+                    <textarea id="targetAudience" class="canvas-textarea" placeholder="Your answer." rows="3" oninput="triggerAutoSave()">{{ active_project.data.targetAudience if active_project else '' }}</textarea>
+                </div>
+            </div>
+
+            <div id="value-proposition" class="top-row-card">
+                <h2 class="card-title">Value proposition</h2>
+                <p class="description">Describe the value(s) you are bringing to your customers.. What are the customer gains and pains?</p>
+                <div class="textarea-wrapper">
+                    <textarea id="valueProposition" class="canvas-textarea" placeholder="Your answer." rows="3" oninput="triggerAutoSave()">{{ active_project.data.valueProposition if active_project else '' }}</textarea>
+                </div>
+            </div>
+
+            <div id="one-metric-that-matters" class="top-row-card">
+                <h2 class="card-title">One Metric That Matters</h2>
+                <p class="description">A single number that you care the most about at the current stage of your company.</p>
+                <div class="textarea-wrapper">
+                    <textarea id="oneMetricThatMatters" class="canvas-textarea" placeholder="Your answer." rows="3" oninput="triggerAutoSave()">{{ active_project.data.oneMetricThatMatters if active_project else '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- MIDDLE ROW: 6 FUNNEL PHASES (Pirate Funnel AARRR + Awareness) -->
+            <!-- 1. Awareness -->
+            <div class="canvas-column-description" data-phase="awareness">
+                <h3 class="funnel-col-title">Awareness</h3>
+                <p class="description">Let people know you exist</p>
+                <div class="guide-box">
+                    <strong>How:</strong>
+                    <span class="description d-block">Ads, SEO, Guest-blogs, Social Media, Cold-Mails, Partnerships, News.</span>
+                    <strong class="mt-1 d-block">Metrics:</strong>
+                    <span class="description d-block">CTR, Unique visits, Reads, Engagement, Reach.</span>
+                </div>
+                
+                <div class="posts-list" id="posts-awareness">
+                    <!-- Dynamic cards inserted here -->
+                </div>
+
+                <button class="add-button" onclick="addNewPost('awareness')" title="Añadir opción a Awareness">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
+
+            <!-- 2. Acquisition -->
+            <div class="canvas-column-description" data-phase="acquisition">
+                <h3 class="funnel-col-title">Acquisition</h3>
+                <p class="description">Leads leave their details</p>
+                <div class="guide-box">
+                    <strong>How:</strong>
+                    <span class="description d-block">Gated content, Webinars, Chatbots, Newsletters, Lead-forms, Pop-ups, Exit-intents, Free trail signups</span>
+                    <strong class="mt-1 d-block">Metrics:</strong>
+                    <span class="description d-block">New email addresses, New subscribers, Costs per lead</span>
+                </div>
+
+                <div class="posts-list" id="posts-acquisition">
+                    <!-- Dynamic cards inserted here -->
+                </div>
+
+                <button class="add-button" onclick="addNewPost('acquisition')" title="Añadir opción a Acquisition">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
+
+            <!-- 3. Activation -->
+            <div class="canvas-column-description" data-phase="activation">
+                <h3 class="funnel-col-title">Activation</h3>
+                <p class="description">Customers want to use your service</p>
+                <div class="guide-box">
+                    <strong>How:</strong>
+                    <span class="description d-block">Tutorials, Onboarding, Automated mail campaigns, Offer unique experience</span>
+                    <strong class="mt-1 d-block">Metrics:</strong>
+                    <span class="description d-block">CAC, Magic Moment Metric, Time spent on site</span>
+                </div>
+
+                <div class="posts-list" id="posts-activation">
+                    <!-- Dynamic cards inserted here -->
+                </div>
+
+                <button class="add-button" onclick="addNewPost('activation')" title="Añadir opción a Activation">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
+
+            <!-- 4. Retention -->
+            <div class="canvas-column-description" data-phase="retention">
+                <h3 class="funnel-col-title">Retention</h3>
+                <p class="description">Customers want to come back</p>
+                <div class="guide-box">
+                    <strong>How:</strong>
+                    <span class="description d-block">Email-campaigns, Loyalty bennfits, Notifications, Retargeting ads</span>
+                    <strong class="mt-1 d-block">Metrics:</strong>
+                    <span class="description d-block">Churn, Repeat Purchase Rate, Average Order Value, Customer lifetime value</span>
+                </div>
+
+                <div class="posts-list" id="posts-retention">
+                    <!-- Dynamic cards inserted here -->
+                </div>
+
+                <button class="add-button" onclick="addNewPost('retention')" title="Añadir opción a Retention">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
+
+            <!-- 5. Revenue -->
+            <div class="canvas-column-description" data-phase="revenue">
+                <h3 class="funnel-col-title">Revenue</h3>
+                <p class="description">People spend more money</p>
+                <div class="guide-box">
+                    <strong>How:</strong>
+                    <span class="description d-block">Upsell, Extra features, Improve buy process</span>
+                    <strong class="mt-1 d-block">Metrics:</strong>
+                    <span class="description d-block">Average spent per customer, Amount of services per customer</span>
+                </div>
+
+                <div class="posts-list" id="posts-revenue">
+                    <!-- Dynamic cards inserted here -->
+                </div>
+
+                <button class="add-button" onclick="addNewPost('revenue')" title="Añadir opción a Revenue">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
+
+            <!-- 6. Referral -->
+            <div class="canvas-column-description" data-phase="referral">
+                <h3 class="funnel-col-title">Referral</h3>
+                <p class="description">Customers are talking about you and recommending your services</p>
+                <div class="guide-box">
+                    <strong>How:</strong>
+                    <span class="description d-block">Referral programs, Easy sharable content, Sharable experiences, Rewards for sharing, Built-in Virality</span>
+                    <strong class="mt-1 d-block">Metrics:</strong>
+                    <span class="description d-block">Viral coefficient, Referrals converted, New visits through referral, Referral behaviour</span>
+                </div>
+
+                <div class="posts-list" id="posts-referral">
+                    <!-- Dynamic cards inserted here -->
+                </div>
+
+                <button class="add-button" onclick="addNewPost('referral')" title="Añadir opción a Referral">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- CHANNELS SECTION -->
+        <div id="channels-container">
+            <div id="channels-banner">
+                CHANNELS
+            </div>
+
+            <!-- Row 1 of Channels (10 items) -->
+            <div class="channel-card" onclick="quickAddChannel('Targetting blogs')">
+                <h4>Targetting blogs</h4>
+                <span class="description">Write guest posts on popular blogs</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Publicity')">
+                <h4>Publicity</h4>
+                <span class="description">Use tradition media to get attention</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Unconvential PR')">
+                <h4>Unconvential PR</h4>
+                <span class="description">Do something exceptional to draw attention</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('SEM')">
+                <h4>SEM</h4>
+                <span class="description">Advertise on search engines</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Social & Display Ads')">
+                <h4>Social & Display Ads</h4>
+                <span class="description">Advertise on Facebook, Twitter, Reddit,...</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Offline Ads')">
+                <h4>Offline Ads</h4>
+                <span class="description">TV-Spots, Radio, Flyers, Billboards</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('SEO')">
+                <h4>SEO</h4>
+                <span class="description">Make sure people find your website/content</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Content Marketing')">
+                <h4>Content Marketing</h4>
+                <span class="description">Use your blog to get traction</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Email marketing')">
+                <h4>Email marketing</h4>
+                <span class="description">use email automation and drip-campaigns</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Engeneering as marketing')">
+                <h4>Engeneering as marketing</h4>
+                <span class="description">Make a free tool to generate leads</span>
+            </div>
+
+            <!-- Row 2 of Channels (10 items) -->
+            <div class="channel-card" onclick="quickAddChannel('Viral marketing')">
+                <h4>Viral marketing</h4>
+                <span class="description">Let users pass on your marketing message</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Business Development')">
+                <h4>Business Development</h4>
+                <span class="description">Partnerships with other businesses</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Sales')">
+                <h4>Sales</h4>
+                <span class="description">Directly echange product for dollars</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Affiliate programs')">
+                <h4>Affiliate programs</h4>
+                <span class="description">Let other people do sales for your</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Existing platforms')">
+                <h4>Existing platforms</h4>
+                <span class="description">Leverage the power of existing platforms</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Trade shows')">
+                <h4>Trade shows</h4>
+                <span class="description">Exhibit at industry specific trade shows</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Offline events')">
+                <h4>Offline events</h4>
+                <span class="description">Organise an offline event</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Speaking')">
+                <h4>Speaking</h4>
+                <span class="description">Give awesome tlaks and convince people</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Community building')">
+                <h4>Community building</h4>
+                <span class="description">A community around your brand or pain</span>
+            </div>
+
+            <div class="channel-card" onclick="quickAddChannel('Others')">
+                <h4>Others</h4>
+                <span class="description">...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Datalist for Channel Auto-suggestions inside cards -->
+<datalist id="channelSuggestions">
+    <option value="Targetting blogs">
+    <option value="Publicity">
+    <option value="Unconvential PR">
+    <option value="SEM">
+    <option value="Social & Display Ads">
+    <option value="Offline Ads">
+    <option value="SEO">
+    <option value="Content Marketing">
+    <option value="Email marketing">
+    <option value="Engeneering as marketing">
+    <option value="Viral marketing">
+    <option value="Business Development">
+    <option value="Sales">
+    <option value="Affiliate programs">
+    <option value="Existing platforms">
+    <option value="Trade shows">
+    <option value="Offline events">
+    <option value="Speaking">
+    <option value="Community building">
+    <option value="Others">
+</datalist>
+
+<!-- Modal: New Project -->
+<div class="modal fade" id="newProjectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Nuevo Growth Canvas</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nombre del Proyecto / Experimento</label>
+                    <input type="text" id="newProjectName" class="form-control" placeholder="Ej: Lanzamiento Q4, Startup Beta, etc." required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Empresa / Organización (Opcional)</label>
+                    <input type="text" id="newProjectCompany" class="form-control" placeholder="Ej: IdeasCloud, Inmobiliaria Central, etc.">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary px-4" onclick="createNewProject()">Crear Canvas</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Rename Project -->
+<div class="modal fade" id="renameProjectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Proyecto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nombre</label>
+                    <input type="text" id="editProjectName" class="form-control" value="{{ active_project.nombre if active_project else '' }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Empresa</label>
+                    <input type="text" id="editProjectCompany" class="form-control" value="{{ active_project.empresa if active_project else '' }}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success px-4" onclick="saveProjectDetails()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Modal (when clicking a Channel card) -->
+<div class="modal fade" id="quickAddModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white py-2">
+                <h6 class="modal-title fs-6" id="quickAddTitle">Agregar Canal</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-3">
+                <p class="small text-muted mb-2">Selecciona la fase del Funnel a la que deseas añadir <strong id="quickAddChannelName"></strong>:</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-dark btn-sm text-start" onclick="executeQuickAdd('awareness')">
+                        <i class="bi bi-eye me-2 text-primary"></i> 1. Awareness
+                    </button>
+                    <button class="btn btn-outline-dark btn-sm text-start" onclick="executeQuickAdd('acquisition')">
+                        <i class="bi bi-magnet me-2 text-success"></i> 2. Acquisition
+                    </button>
+                    <button class="btn btn-outline-dark btn-sm text-start" onclick="executeQuickAdd('activation')">
+                        <i class="bi bi-lightning-charge me-2 text-warning"></i> 3. Activation
+                    </button>
+                    <button class="btn btn-outline-dark btn-sm text-start" onclick="executeQuickAdd('retention')">
+                        <i class="bi bi-arrow-repeat me-2 text-info"></i> 4. Retention
+                    </button>
+                    <button class="btn btn-outline-dark btn-sm text-start" onclick="executeQuickAdd('revenue')">
+                        <i class="bi bi-cash-coin me-2 text-success"></i> 5. Revenue
+                    </button>
+                    <button class="btn btn-outline-dark btn-sm text-start" onclick="executeQuickAdd('referral')">
+                        <i class="bi bi-share me-2 text-danger"></i> 6. Referral
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ─── GROWTH MARKETING CANVAS EXACT GROW-FORCE STYLES ─── */
+.growth-canvas-wrapper {
+    background-color: #fafbfc;
+    min-height: calc(100vh - 60px);
+}
+
+.main-canvas-title {
+    letter-spacing: 2px;
+    line-height: 1.1;
+}
+.canvas-header-light {
+    text-transform: uppercase;
+    color: #505452;
+    font-size: clamp(2.2rem, 5vw, 4.2rem);
+    font-weight: 400;
+    margin-right: 12px;
+}
+.canvas-header-bold {
+    text-transform: uppercase;
+    color: #000000;
+    font-size: clamp(2.2rem, 5vw, 4.2rem);
+    font-weight: 800;
+}
+
+/* Canvas Grid Container */
+#canvas-container {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    width: 100%;
+    background-color: #ffffff;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    border: 2px solid #000000;
+}
+
+/* Top Row Cards (Each spans 2 columns: 1/3, 3/5, 5/7) */
+.top-row-card {
+    border: 1px solid #000000;
+    padding: 12px 14px;
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+}
+#target-audience {
+    grid-column: 1 / 3;
+    border-right: 2px solid #000000;
+}
+#value-proposition {
+    grid-column: 3 / 5;
+    border-right: 2px solid #000000;
+}
+#one-metric-that-matters {
+    grid-column: 5 / 7;
+}
+
+.top-row-card h2.card-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #000000;
+    margin-bottom: 4px;
+}
+
+.description {
+    color: #7b807d;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    margin-bottom: 8px;
+}
+
+.canvas-textarea {
+    width: 100%;
+    border: 1px solid #c9cbcc;
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    color: #000000;
+    font-weight: 600;
+    background-color: #fdfdfd;
+    resize: vertical;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+.canvas-textarea:focus {
+    border-color: #0d6efd;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.12);
+}
+
+/* Middle Row: 6 Columns */
+.canvas-column-description {
+    border: 1px solid #000000;
+    padding: 10px 8px 16px 8px;
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    min-height: 480px;
+}
+.funnel-col-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #000000;
+    margin-bottom: 2px;
+}
+.guide-box {
+    margin-bottom: 12px;
+    font-size: 0.8rem;
+}
+.guide-box strong {
+    color: #222222;
+    font-size: 0.82rem;
+}
+
+/* Post Cards inside Funnel Columns */
+.posts-list {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.post-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+.post-input {
+    width: 100%;
+    background-color: #deebf5; /* Light blue Growforce default */
+    padding: 12px 34px 12px 34px;
+    border: 1px solid #000000;
+    color: #000000;
+    font-weight: 700;
+    font-size: 0.85rem;
+    box-sizing: border-box;
+    border-radius: 3px;
+    outline: none;
+    transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.post-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
+}
+.post-container.favorite .post-input {
+    background-color: #e2f0db !important; /* Pastel Green Growforce Favorite */
+}
+
+/* Post Action Buttons (Star on Left, Trash on Right) */
+.favorite-button {
+    position: absolute;
+    left: 4px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    color: #8c8f94;
+    padding: 2px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, transform 0.15s;
+    z-index: 2;
+}
+.favorite-button:hover {
+    color: #f59e0b;
+    transform: scale(1.15);
+}
+.post-container.favorite .favorite-button {
+    color: #eab308; /* Bright gold */
+}
+
+.delete-button {
+    position: absolute;
+    right: 4px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    color: #9ca3af;
+    padding: 2px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, transform 0.15s;
+    z-index: 2;
+}
+.delete-button:hover {
+    color: #dc2626;
+    transform: scale(1.15);
+}
+
+/* Add Button (+) */
+.add-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: 12px auto 6px auto;
+    background-color: #c2291d;
+    color: #ffffff;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(194, 41, 29, 0.4);
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.add-button i {
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+.add-button:hover {
+    background-color: #a81c12;
+    transform: scale(1.08);
+    box-shadow: 0 6px 14px rgba(194, 41, 29, 0.55);
+}
+
+/* ─── CHANNELS BOTTOM SECTION ─── */
+#channels-container {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    grid-row-gap: 0;
+    margin-top: 28px;
+    border: 2px solid #000000;
+    background-color: #000000;
+}
+
+#channels-banner {
+    grid-column: 1 / 11;
+    background-color: #000000;
+    color: #ffffff;
+    text-transform: uppercase;
+    text-align: center;
+    font-weight: 900;
+    font-size: 1.35rem;
+    letter-spacing: 2px;
+    padding: 8px 12px;
+    border-bottom: 2px solid #000000;
+}
+
+.channel-card {
+    border: 1px solid #000000;
+    text-align: center;
+    color: #000000;
+    padding: 8px 4px 10px 4px;
+    background-color: #ffffff;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.18s, transform 0.15s, box-shadow 0.15s;
+    min-height: 75px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.channel-card:hover {
+    background-color: #fff9db;
+    box-shadow: inset 0 0 0 1.5px #f59e0b;
+}
+.channel-card h4 {
+    font-size: 0.8rem;
+    font-weight: 800;
+    margin: 0 0 3px 0;
+    color: #111827;
+}
+.channel-card .description {
+    font-size: 0.68rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.25;
+}
+
+/* Responsive adjustment for small screens */
+@media (max-width: 1200px) {
+    #channels-container {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    #channels-banner {
+        grid-column: 1 / 6;
+    }
+    #canvas-container {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    #target-audience, #value-proposition, #one-metric-that-matters {
+        grid-column: span 3;
+    }
+    .canvas-column-description {
+        grid-column: span 1;
+    }
+}
+@media (max-width: 768px) {
+    #channels-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    #channels-banner {
+        grid-column: 1 / 3;
+    }
+    #canvas-container {
+        grid-template-columns: 1fr;
+    }
+    #target-audience, #value-proposition, #one-metric-that-matters, .canvas-column-description {
+        grid-column: 1 / 2;
+    }
+}
+
+/* Print view optimization */
+@media print {
+    .canvas-top-bar, .sidebar, .add-button, .delete-button, .favorite-button {
+        display: none !important;
+    }
+    .growth-canvas-wrapper {
+        padding: 0 !important;
+    }
+    #canvas-container, #channels-container {
+        box-shadow: none !important;
+    }
+}
+</style>
+
+<script>
+// Project State Data passed from backend
+let currentProjectId = {{ active_project.id if active_project else 1 }};
+let currentProjectName = {{ (active_project.nombre if active_project else 'Test') | tojson }};
+let currentProjectCompany = {{ (active_project.empresa if active_project else 'ideas') | tojson }};
+let canvasData = {{ (active_project.data if active_project else {}) | tojson }};
+
+// Normalize data structure if missing keys
+const PHASES = ['awareness', 'acquisition', 'activation', 'retention', 'revenue', 'referral'];
+PHASES.forEach(p => {
+    if (!Array.isArray(canvasData[p])) {
+        canvasData[p] = [];
+    }
+});
+
+let autoSaveTimer = null;
+let pendingQuickChannel = null;
+
+// Render existing posts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    renderAllPosts();
+});
+
+function renderAllPosts() {
+    PHASES.forEach(phase => {
+        const container = document.getElementById(`posts-${phase}`);
+        if (!container) return;
+        container.innerHTML = '';
+        const items = canvasData[phase] || [];
+        items.forEach((item, index) => {
+            container.appendChild(createPostElement(phase, item, index));
+        });
+    });
+}
+
+function createPostElement(phase, item, index) {
+    const postDiv = document.createElement('div');
+    postDiv.className = `post-container ${item.starred ? 'favorite' : ''}`;
+    postDiv.dataset.phase = phase;
+    postDiv.dataset.id = item.id;
+
+    // Star button
+    const starBtn = document.createElement('button');
+    starBtn.type = 'button';
+    starBtn.className = 'favorite-button';
+    starBtn.title = item.starred ? 'Quitar de favoritos' : 'Marcar favorito (verde)';
+    starBtn.innerHTML = item.starred ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
+    starBtn.onclick = function() {
+        toggleFavorite(phase, item.id);
+    };
+
+    // Text Input
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'post-input';
+    input.value = item.content || '';
+    input.placeholder = 'Escribe una opción...';
+    input.setAttribute('list', 'channelSuggestions');
+    input.oninput = function() {
+        item.content = this.value;
+        triggerAutoSave();
+    };
+
+    // Delete button
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'delete-button';
+    delBtn.title = 'Borrar opción';
+    delBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
+    delBtn.onclick = function() {
+        deletePost(phase, item.id);
+    };
+
+    postDiv.appendChild(starBtn);
+    postDiv.appendChild(input);
+    postDiv.appendChild(delBtn);
+
+    return postDiv;
+}
+
+function addNewPost(phase, initialContent = '') {
+    const newId = 'post_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const newPost = {
+        id: newId,
+        content: initialContent,
+        starred: false
+    };
+
+    if (!Array.isArray(canvasData[phase])) {
+        canvasData[phase] = [];
+    }
+    canvasData[phase].push(newPost);
+
+    const container = document.getElementById(`posts-${phase}`);
+    const el = createPostElement(phase, newPost, canvasData[phase].length - 1);
+    container.appendChild(el);
+
+    // Focus input
+    const input = el.querySelector('input');
+    if (input) {
+        input.focus();
+    }
+
+    saveCanvasImmediate();
+}
+
+function deletePost(phase, id) {
+    if (!Array.isArray(canvasData[phase])) return;
+    canvasData[phase] = canvasData[phase].filter(p => p.id !== id);
+    renderAllPosts();
+    saveCanvasImmediate();
+}
+
+function toggleFavorite(phase, id) {
+    if (!Array.isArray(canvasData[phase])) return;
+    const post = canvasData[phase].find(p => p.id === id);
+    if (post) {
+        post.starred = !post.starred;
+        renderAllPosts();
+        saveCanvasImmediate();
+    }
+}
+
+// Quick Add from Channel Cards
+function quickAddChannel(channelName) {
+    pendingQuickChannel = channelName;
+    document.getElementById('quickAddChannelName').textContent = `"${channelName}"`;
+    const modalEl = document.getElementById('quickAddModal');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+function executeQuickAdd(phase) {
+    if (!pendingQuickChannel) return;
+    addNewPost(phase, pendingQuickChannel);
+    const modalEl = document.getElementById('quickAddModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+    pendingQuickChannel = null;
+}
+
+// Auto Save mechanism with debounce
+function triggerAutoSave() {
+    setSaveStatus('guardando');
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+        saveCanvasImmediate();
+    }, 600);
+}
+
+function collectData() {
+    return {
+        targetAudience: document.getElementById('targetAudience').value,
+        valueProposition: document.getElementById('valueProposition').value,
+        oneMetricThatMatters: document.getElementById('oneMetricThatMatters').value,
+        awareness: canvasData.awareness || [],
+        acquisition: canvasData.acquisition || [],
+        activation: canvasData.activation || [],
+        retention: canvasData.retention || [],
+        revenue: canvasData.revenue || [],
+        referral: canvasData.referral || []
+    };
+}
+
+async function saveCanvasImmediate() {
+    setSaveStatus('guardando');
+    const payloadData = collectData();
+    try {
+        const res = await fetch('/api/growth-canvas/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_id: currentProjectId,
+                nombre: currentProjectName,
+                empresa: currentProjectCompany,
+                data: payloadData
+            })
+        });
+        const json = await res.json();
+        if (json.success) {
+            setSaveStatus('guardado', json.timestamp);
+        } else {
+            setSaveStatus('error');
+        }
+    } catch (err) {
+        console.error('Save error:', err);
+        setSaveStatus('error');
+    }
+}
+
+function setSaveStatus(status, timestamp = '') {
+    const indicator = document.getElementById('saveStatusIndicator');
+    const text = document.getElementById('saveStatusText');
+    if (status === 'guardando') {
+        indicator.className = 'badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 d-flex align-items-center gap-1';
+        text.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+    } else if (status === 'guardado') {
+        indicator.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2 d-flex align-items-center gap-1';
+        text.textContent = timestamp ? `Guardado (${timestamp})` : 'Guardado';
+    } else if (status === 'error') {
+        indicator.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 d-flex align-items-center gap-1';
+        text.textContent = 'Error al guardar';
+    }
+}
+
+// Project switching & CRUD
+function switchProject(id) {
+    if (id) {
+        window.location.href = `/growth-canvas?project_id=${id}`;
+    }
+}
+
+function openNewProjectModal() {
+    document.getElementById('newProjectName').value = '';
+    document.getElementById('newProjectCompany').value = '';
+    new bootstrap.Modal(document.getElementById('newProjectModal')).show();
+}
+
+async function createNewProject() {
+    const nombre = document.getElementById('newProjectName').value.trim();
+    const empresa = document.getElementById('newProjectCompany').value.trim();
+    if (!nombre) {
+        alert('Por favor introduce un nombre para el proyecto.');
+        return;
+    }
+    try {
+        const res = await fetch('/api/growth-canvas/project/new', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, empresa })
+        });
+        const json = await res.json();
+        if (json.success && json.project_id) {
+            window.location.href = `/growth-canvas?project_id=${json.project_id}`;
+        } else {
+            alert('Error creando proyecto: ' + (json.error || ''));
+        }
+    } catch (e) {
+        alert('Error de conexión');
+    }
+}
+
+function openRenameModal() {
+    new bootstrap.Modal(document.getElementById('renameProjectModal')).show();
+}
+
+async function saveProjectDetails() {
+    const nombre = document.getElementById('editProjectName').value.trim();
+    const empresa = document.getElementById('editProjectCompany').value.trim();
+    if (!nombre) {
+        alert('El nombre no puede estar vacío');
+        return;
+    }
+    currentProjectName = nombre;
+    currentProjectCompany = empresa;
+    await saveCanvasImmediate();
+    bootstrap.Modal.getInstance(document.getElementById('renameProjectModal')).hide();
+    // Update select option text
+    const opt = document.querySelector(`#projectSelector option[value="${currentProjectId}"]`);
+    if (opt) {
+        opt.textContent = `${nombre} ${empresa ? '(' + empresa + ')' : ''}`;
+    }
+}
+
+async function deleteCurrentProject() {
+    if (!confirm(`¿Estás seguro de eliminar el canvas "${currentProjectName}"? Esta acción no se puede deshacer.`)) {
+        return;
+    }
+    try {
+        const res = await fetch('/api/growth-canvas/project/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: currentProjectId })
+        });
+        const json = await res.json();
+        if (json.success) {
+            window.location.href = '/growth-canvas';
+        } else {
+            alert('Error eliminando proyecto');
+        }
+    } catch (e) {
+        alert('Error de conexión');
+    }
+}
+</script>
+{% endblock %}

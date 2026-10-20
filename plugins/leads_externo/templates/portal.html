@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador Unificado & Tasador Express | {{ portal_agency_name or agency.nombre or 'Potenzia Real Estate' }}</title>
+    <!-- Bootstrap 5 CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --brand-primary: #1A365D;
+            --brand-accent: #2B6CB0;
+            --brand-gold: #D69E2E;
+            --bg-light: #F7FAFC;
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-light);
+            color: #2D3748;
+        }
+        .hero-banner {
+            background: linear-gradient(135deg, var(--brand-primary) 0%, #2C5282 100%);
+            color: white;
+            padding: 40px 0 60px 0;
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+        }
+        .sidebar-filters {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 20px;
+        }
+        .property-card {
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+        }
+        .property-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+        }
+        .carousel-control-prev-icon,
+        .carousel-control-next-icon {
+            background-color: rgba(0, 0, 0, 0.65);
+            background-size: 50% 50%;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .carousel-control-prev-icon:hover,
+        .carousel-control-next-icon:hover {
+            background-color: rgba(0, 0, 0, 0.85);
+            transform: scale(1.1);
+        }
+        .heat-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .btn-brand {
+            background-color: var(--brand-primary);
+            color: white;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .btn-brand:hover {
+            background-color: var(--brand-accent);
+            color: white;
+        }
+        .btn-gold {
+            background-color: var(--brand-gold);
+            color: white;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .btn-gold:hover {
+            background-color: #B7791F;
+            color: white;
+        }
+        #loadingModal {
+            z-index: 1080 !important;
+        }
+        /* Loading Overlay Spinner */
+        .loading-pulse {
+            width: 70px;
+            height: 70px;
+            border: 6px solid #E2E8F0;
+            border-top-color: var(--brand-accent);
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .amenity-chip {
+            font-size: 0.8rem;
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark py-3" style="background-color: var(--brand-primary);">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="/portal">
+                <img src="{{ company_logo or '/static/img/potenzia_logo_transparent.png' }}" alt="{{ portal_agency_name or agency.nombre or 'Potenzia Real Estate' }}" class="me-2" style="height: 38px; max-width: 140px; object-fit: contain;">
+                <span>{{ portal_agency_name or agency.nombre or 'Potenzia Real Estate' }}</span>
+            </a>
+            <div id="wa-auth-badge" class="ms-auto d-flex gap-2">
+                <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="openAuthModal()">
+                    <i class="bi bi-whatsapp me-1 text-success"></i> Validar WhatsApp
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO BANNER -->
+    <section class="hero-banner text-center position-relative mb-4">
+        <div class="container">
+            <h1 class="fw-bold display-5 mb-2">Buscador Unificado de Portales de Propiedades</h1>
+            <p class="lead opacity-90 mb-0 mx-auto" style="max-width: 650px;">
+                Catálogo completo con filtros de portales (Zonaprop, Argenprop, Meli) con busqueda en vivo.
+            </p>
+        </div>
+    </section>
+
+    <!-- MAIN LAYOUT WITH SIDEBAR -->
+    <div class="container mb-5">
+        <div class="row g-4">
+            <!-- LEFT COLUMN: SIDEBAR FILTERS MENU -->
+            <div class="col-lg-3">
+                <div class="sidebar-filters">
+                    <!-- TASAR MI PROPIEDAD BUTTON -->
+                    <button class="btn btn-gold btn-lg w-100 py-3 mb-4 fw-bold shadow-sm" onclick="openTasadorModal()">
+                        <i class="bi bi-calculator me-2"></i> Tasar mi Propiedad
+                    </button>
+
+                    <!-- BUSCADOR DE PORTALES TITLE -->
+                    <h5 class="fw-bold mb-2 text-dark">
+                        <i class="bi bi-search text-warning me-2"></i>Buscador de Portales
+                    </h5>
+
+                    <h6 class="fw-semibold text-muted mb-3 d-flex align-items-center justify-content-between">
+                        <span><i class="bi bi-sliders text-primary me-2"></i>Filtros Avanzados</span>
+                        <button class="btn btn-sm btn-link text-muted p-0" onclick="limpiarFiltros()">Limpiar</button>
+                    </h6>
+                    
+                    <form id="sidebarForm" onsubmit="event.preventDefault(); ejecutarBusqueda();">
+                        <!-- OPERACIÓN -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Operación</label>
+                            <select class="form-select form-select-sm" id="filterOperacion">
+                                <option value="venta">Venta</option>
+                                <option value="alquiler">Alquiler</option>
+                            </select>
+                        </div>
+
+                        <!-- BARRIO / LOCALIDAD LIBRE -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Barrio / Localidad (Cualquiera)</label>
+                            <input type="text" class="form-control form-control-sm" id="filterBarrio" list="barriosDatalist" placeholder="Ej: Palermo, Villa Ballester, Nordelta...">
+                            <datalist id="barriosDatalist">
+                                {% for b in barrios %}
+                                <option value="{{ b }}"></option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
+
+                        <!-- TIPO DE INMUEBLE ESTÁNDAR PORTALES -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Tipo de Inmueble</label>
+                            <select class="form-select form-select-sm" id="filterTipoProp">
+                                <option value="departamento" selected>Departamento</option>
+                                <option value="ph">PH</option>
+                                <option value="casa">Casa</option>
+                                <option value="terreno">Terreno / Lote</option>
+                                <option value="local">Local / Oficina</option>
+                            </select>
+                        </div>
+
+                        <!-- AMBIENTES Y DORMITORIOS -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Ambientes</label>
+                                <select class="form-select form-select-sm" id="filterAmbientes">
+                                    <option value="">Todos</option>
+                                    <option value="1">1 Amb</option>
+                                    <option value="2">2 Amb</option>
+                                    <option value="3">3 Amb</option>
+                                    <option value="4">4 Amb</option>
+                                    <option value="5">5+ Amb</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Dormitorios</label>
+                                <select class="form-select form-select-sm" id="filterDormitorios">
+                                    <option value="">Todos</option>
+                                    <option value="1">1 Dorm</option>
+                                    <option value="2">2 Dorms</option>
+                                    <option value="3">3 Dorms</option>
+                                    <option value="4">4+ Dorms</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- PRECIO MIN / MAX -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Rango de Precio (USD)</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="number" class="form-control form-control-sm" id="filterMinPrecio" placeholder="Min">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control form-control-sm" id="filterMaxPrecio" placeholder="Max">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SUPERFICIE MÍNIMA -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Superficie Mín. (m²)</label>
+                            <input type="number" class="form-control form-control-sm" id="filterMinM2" placeholder="Ej: 45">
+                        </div>
+
+                        <!-- AMENITIES Y CARACTERÍSTICAS -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Características & Amenities</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input amenity-chk" type="checkbox" id="chkPileta" value="pileta">
+                                    <label class="form-check-label small" for="chkPileta">Pileta</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input amenity-chk" type="checkbox" id="chkParrilla" value="parrilla">
+                                    <label class="form-check-label small" for="chkParrilla">Parrilla</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input amenity-chk" type="checkbox" id="chkCochera" value="cochera">
+                                    <label class="form-check-label small" for="chkCochera">Cochera</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input amenity-chk" type="checkbox" id="chkJardin" value="jardin">
+                                    <label class="form-check-label small" for="chkJardin">Jardín</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ORDENAR POR -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold small">Ordenar Por</label>
+                            <select class="form-select form-select-sm" id="filterOrdenar">
+                                <option value="recientes">Más Recientes</option>
+                                <option value="menor_precio">Menor Precio</option>
+                                <option value="mayor_precio">Mayor Precio</option>
+                                <option value="m2_desc">Más Metros m²</option>
+                            </select>
+                        </div>
+
+                        <button type="button" class="btn btn-brand w-100 py-2 fw-bold" onclick="ejecutarBusqueda()">
+                            <i class="bi bi-search me-1"></i> Aplicar Filtros
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: PROPERTIES GRID CATALOG -->
+            <div class="col-lg-9">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0" id="resultsCountHeader">Catálogo Disponible</h5>
+                    <span class="text-muted small"><i class="bi bi-shield-check text-success me-1"></i> Red Exclusiva Marca Blanca</span>
+                </div>
+
+                <!-- GRID -->
+                <div class="row g-4" id="propertiesGrid">
+                    {% for p in propiedades %}
+                    <div class="col-md-4">
+                        <div class="card property-card h-100">
+                            <div class="position-relative">
+                                <a href="/portal/propiedad/{{ p.id }}">
+                                    <img src="{{ (p.lista_fotos[0] if (p.lista_fotos and p.lista_fotos|length > 0) else (p.foto_url or '/static/img/no-photo.png')) }}" class="card-img-top" style="height: 200px; object-fit: cover;" alt="Propiedad" onerror="this.onerror=null;this.src='/static/img/no-photo.png';">
+                                </a>
+                                <span class="position-absolute top-0 end-0 m-3 badge {{ p.heat_badge.class }} heat-badge">
+                                    {{ p.heat_badge.label }} ({{ p.heat_score }} pts)
+                                </span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="fw-bold text-success mb-0">{{ p.moneda }} {{ "{:,}".format(p.precio or 0) }}</h5>
+                                    <span class="badge bg-light text-dark border">{{ p.barrio or 'CABA' }}</span>
+                                </div>
+                                <h6 class="card-title fw-semibold text-truncate mb-2">
+                                    <a href="/portal/propiedad/{{ p.id }}" class="text-decoration-none text-dark">{{ p.titulo }}</a>
+                                </h6>
+                                <div class="text-muted small mb-3">
+                                    <i class="bi bi-door-open me-1"></i> {{ p.ambientes or 1 }} amb | 
+                                    <i class="bi bi-arrows-fullscreen me-1"></i> {{ p.m2_cubiertos or p.m2_total or 0 }} m²
+                                </div>
+
+                                <div class="bg-light p-2 rounded mb-3 small">
+                                    <strong class="text-secondary"><i class="bi bi-shield-exclamation me-1"></i> Diagnóstico:</strong>
+                                    <ul class="mb-0 ps-3 text-muted">
+                                        {% for f in p.red_flags[:2] %}
+                                        <li>{{ f }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+
+                                <div class="mt-auto d-flex gap-2">
+                                    <a href="/portal/propiedad/{{ p.id }}" class="btn btn-outline-secondary w-50 rounded-pill btn-sm py-2">
+                                        <i class="bi bi-eye me-1"></i> Ficha
+                                    </a>
+                                    <button class="btn btn-brand w-50 rounded-pill btn-sm py-2" onclick="solicitarVisita('{{ p.id }}', '{{ p.titulo|replace('\'', '') }}')">
+                                        <i class="bi bi-calendar-event me-1"></i> Visita
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- PAGINACIÓN CONTROLES -->
+                <div class="col-12 mt-4" id="paginationContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER POWERED BY POTENZIA CRM -->
+    <footer class="py-3 text-center mt-5" style="background-color: #0b1329; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <div class="container d-flex justify-content-center align-items-center gap-3 text-white-50">
+            <span style="font-size: 0.88rem; font-weight: 400; letter-spacing: 0.3px;">Powered by</span>
+            <span class="text-white fw-bold" style="font-size: 0.95rem; letter-spacing: 0.5px;">Potenzia CRM</span>
+            <span class="bg-white rounded-2 shadow-sm d-inline-flex align-items-center justify-content-center ms-2" style="background-color: #ffffff !important; padding: 4px 8px;">
+                <img src="/static/img/potenzia_logo_sm.png" alt="Potenzia CRM" style="height: 22px; width: auto; object-fit: contain;">
+            </span>
+        </div>
+    </footer>
+
+    <!-- MODAL LOADING OVERLAY FOR LIVE PROBES -->
+    <div class="modal fade" id="loadingModal" data-bs-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 text-center p-4">
+                <div class="mx-auto mb-3 loading-pulse"></div>
+                <h4 class="fw-bold text-dark mb-2" id="loadingTitle">Escrapeando en Tiempo Real</h4>
+                <p class="text-muted mb-0 small" id="loadingSubtitle">
+                    Consultando portales con proxies dinámicos y resolviendo Cloudflare para traer las mejores propiedades...
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TASADOR EXPRESS COMPLETO -->
+    <div class="modal fade" id="tasadorModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0">
+                <div class="modal-header border-0 bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-calculator me-2"></i>Tasador Express Profesional</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" id="tasadorFormBody">
+                    <form id="tasadorForm" class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Zona / Barrio / Localidad</label>
+                            <input type="text" class="form-control" id="tasBarrio" list="barriosDatalist" placeholder="Ej: Palermo, Villa Ballester, Nordelta, Tigre" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Tipo de Propiedad</label>
+                            <select class="form-select" id="tasTipoProp">
+                                <option value="departamento">Departamento</option>
+                                <option value="ph">PH</option>
+                                <option value="casa">Casa</option>
+                                <option value="local">Local / Oficina</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Operación</label>
+                            <select class="form-select" id="tasOperacion">
+                                <option value="venta">Venta</option>
+                                <option value="alquiler">Alquiler</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Método de Cómputo</label>
+                            <select class="form-select" id="tasMetodoMetros">
+                                <option value="homogeneizados" selected>Homogeneizados (Cub + 20% Desc)</option>
+                                <option value="cubiertos">Metros Cubiertos</option>
+                                <option value="totales">Metros Totales</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Metros Totales (m²)</label>
+                            <input type="number" class="form-control" id="tasM2Totales" value="60" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Metros Cubiertos (m²)</label>
+                            <input type="number" class="form-control" id="tasM2Cubiertos" value="50">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Ambientes</label>
+                            <select class="form-select" id="tasAmbientes">
+                                <option value="1">1 Ambiente</option>
+                                <option value="2" selected>2 Ambientes</option>
+                                <option value="3">3 Ambientes</option>
+                                <option value="4">4 Ambientes</option>
+                                <option value="5">5+ Ambientes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Estado de Conservación</label>
+                            <select class="form-select" id="tasEstado">
+                                <option value="estrenar">A Estrenar / Impecable (+15%)</option>
+                                <option value="renovada">Renovada a nueva (+10%)</option>
+                                <option value="muy_bueno" selected>Muy Bueno (Base estándar)</option>
+                                <option value="pintar">Para pintar (-10%)</option>
+                                <option value="refaccionar">A Refaccionar / Humedad (-20%)</option>
+                                <option value="critico">Crítico / Daños múltiples (-35%)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Ubicación en Country / Barrio Cerrado</label>
+                            <select class="form-select" id="tasCountry">
+                                <option value="no_country">Propiedad Urbana (Estándar)</option>
+                                <option value="laguna">Frente a Laguna / Amenities VIP (+18%)</option>
+                                <option value="interno">Lote / Unidad Interna (+5%)</option>
+                                <option value="perimetral">Perimetral / Desfavorable (-12%)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 mt-4">
+                            <button type="button" class="btn btn-gold btn-lg w-100 py-3 fw-bold" onclick="calcularTasacion()">
+                                <i class="bi bi-cpu-fill me-2"></i> Calcular Valoración Express de Mercado
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-body p-4 p-md-5 d-none text-center" id="tasadorLoadingBody">
+                    <div class="py-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                            <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25 rounded-pill px-3 py-2 fw-semibold" id="tasadorProgressBadge">
+                                <i class="bi bi-cpu me-1"></i> Procesando comparables en vivo
+                            </span>
+                            <span class="fw-bold text-dark fs-5" id="tasadorPercentText">0%</span>
+                        </div>
+                        
+                        <div class="progress mb-3" style="height: 16px; border-radius: 20px; background-color: #e2e8f0;">
+                            <div id="tasadorProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%; border-radius: 20px; transition: width 0.3s ease;"></div>
+                        </div>
+
+                        <h4 class="fw-bold mt-3 text-dark">Calculando Tasación Express</h4>
+                        <p class="text-muted small mb-0" id="tasadorLoadingSub">Conectando con proxies dinámicos en MercadoLibre, Zonaprop y Argenprop...</p>
+                    </div>
+                </div>
+
+                <div class="modal-body p-4 d-none text-center" id="tasadorResultBody">
+                    <i class="bi bi-graph-up-arrow text-warning display-4 mb-3 d-block"></i>
+                    <h5 class="fw-bold">Estimación Preliminar de Mercado</h5>
+                    <p class="text-muted">Resultado del cálculo con comparables de la zona:</p>
+                    <div class="bg-light p-3 rounded-3 mb-4">
+                        <span class="fs-3 fw-bold text-success" id="rangoTexto">USD 90.000 - USD 105.000</span>
+                        <div class="small text-muted mt-1" id="m2DetalleInfo">Metros Cómputo: 52 m²</div>
+                    </div>
+                    <p class="small text-muted mb-4">Para obtener el <strong>Informe Técnico Completo en PDF</strong> y recibir asesoramiento de venta:</p>
+                    <button class="btn btn-brand w-100 py-3 fw-bold" onclick="convertirTasacionEnLead()">
+                        <i class="bi bi-whatsapp me-2"></i> Solicitar Asesoramiento con Agente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL AUTH / VALIDACIÓN EN 2 ETAPAS -->
+    <div class="modal fade" id="authModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-0 bg-success text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-whatsapp me-2"></i>Validación de WhatsApp</h5>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- ETAPA 1: INGRESO DE DATOS Y SOLICITUD DE CÓDIGO -->
+                    <div id="authStep1">
+                        <p class="text-muted small mb-3">Para ingresar al portal y verificar tu identidad, ingresá tu Nombre y WhatsApp. Te enviaremos un código de seguridad de 4 dígitos:</p>
+                        <form id="authFormStep1">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Nombre y Apellido</label>
+                                <input type="text" class="form-control" id="leadNombre" placeholder="Ej: Juan Pérez" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Número de WhatsApp</label>
+                                <input type="tel" class="form-control" id="leadTelefono" placeholder="Ej: +54 9 11 1234 5678" required>
+                            </div>
+
+                            <button type="button" class="btn btn-success w-100 py-3 fw-bold rounded-pill shadow-sm" onclick="solicitarCodigoWhatsApp()">
+                                <i class="bi bi-send-fill me-2"></i>Iniciar Validación por WhatsApp
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- ETAPA 2: INGRESO DE CÓDIGO DE SEGURIDAD -->
+                    <div id="authStep2" class="d-none text-center">
+                        <div class="mb-3 text-success">
+                            <i class="bi bi-shield-lock-fill display-4"></i>
+                        </div>
+                        <h5 class="fw-bold text-dark mb-2">Ingresá el Código Recibido</h5>
+                        <p class="text-muted small mb-4">
+                            Enviamos un mensaje de WhatsApp a <strong id="lblWAEnviado"></strong> con tu código de 4 dígitos:
+                        </p>
+                        <div class="mb-4 mx-auto" style="max-width: 220px;">
+                            <input type="text" class="form-control text-center fs-3 fw-bold tracking-widest" id="leadCodigo" maxlength="4" placeholder="••••" required>
+                        </div>
+                        <button type="button" class="btn btn-success w-100 py-3 fw-bold rounded-pill mb-2 shadow-sm" onclick="verificarCodigoWhatsApp()">
+                            <i class="bi bi-check-circle-fill me-2"></i>Confirmar y Acceder al Portal
+                        </button>
+                        <button type="button" class="btn btn-link text-muted btn-sm text-decoration-none" onclick="volverAStep1()">
+                            <i class="bi bi-arrow-left me-1"></i>Cambiar número de teléfono
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DISCLAIMER LEGAL AL ENTRAR AL PORTAL -->
+    <div class="modal fade" id="disclaimerModal" data-bs-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-0 bg-dark text-white rounded-top-4 py-3">
+                    <h5 class="modal-title fw-bold text-warning">
+                        <i class="bi bi-shield-check me-2"></i>Términos y Condiciones del Servicio
+                    </h5>
+                </div>
+                <div class="modal-body p-4 text-secondary">
+                    <p class="mb-3 fs-6">
+                        Al presionar <strong>"Aceptar / Visita"</strong>, encomiendo formalmente a <strong>{{ agency.nombre }} / Corredor Matriculado{% if agency.matricula %}, {{ agency.matricula }}{% endif %}</strong>, la prestación del servicio profesional de búsqueda, selección y gestión de inmuebles adaptados a mis criterios.
+                    </p>
+                    <p class="mb-0 fs-6">
+                        Declaro conocer que el servicio de búsqueda general en la plataforma es gratuito, y que la eventual comisión u honorario profesional por intermediación se regirá por la ley aplicable y el acuerdo de partes al momento de concretarse la reserva o firma de la operación.
+                    </p>
+                </div>
+                <div class="modal-footer border-0 bg-light rounded-bottom-4 py-3">
+                    <button type="button" class="btn btn-warning btn-lg w-100 fw-bold py-3 text-dark rounded-3" onclick="aceptarDisclaimerModal()">
+                        <i class="bi bi-check-circle-fill me-2"></i>Aceptar / Continuar al Portal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPropId = null;
+        let lastTasacionData = null;
+
+        function openAuthModal() {
+            new bootstrap.Modal(document.getElementById('authModal')).show();
+        }
+
+        function openTasadorModal() {
+            document.getElementById('tasadorFormBody').classList.remove('d-none');
+            document.getElementById('tasadorResultBody').classList.add('d-none');
+            new bootstrap.Modal(document.getElementById('tasadorModal')).show();
+        }
+
+        let loadingModalInstance = null;
+        let loadingTimeout = null;
+
+        function showLoading(title, subtitle) {
+            console.log(`[Portal Frontend] showLoading called: "${title}" - "${subtitle}"`);
+            document.getElementById('loadingTitle').innerText = title || "Cargando...";
+            document.getElementById('loadingSubtitle').innerText = subtitle || "Procesando solicitud...";
+            const modalEl = document.getElementById('loadingModal');
+            if (!loadingModalInstance) {
+                loadingModalInstance = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+            }
+            loadingModalInstance.show();
+
+            // Safety timeout: Auto-dismiss modal after 12 seconds under any circumstance
+            if (loadingTimeout) clearTimeout(loadingTimeout);
+            loadingTimeout = setTimeout(() => {
+                console.warn("[Portal Frontend] Safety timeout reached (12s max). Force-closing loading modal.");
+                hideLoading();
+            }, 12000);
+        }
+
+        function hideLoading() {
+            console.log("[Portal Frontend] hideLoading called.");
+            if (loadingTimeout) {
+                clearTimeout(loadingTimeout);
+                loadingTimeout = null;
+            }
+            const modalEl = document.getElementById('loadingModal');
+            if (modalEl) {
+                modalEl.classList.remove('show');
+                modalEl.style.display = 'none';
+            }
+            if (loadingModalInstance) {
+                try { loadingModalInstance.hide(); } catch(e){}
+            }
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('padding-right');
+            document.body.style.removeProperty('overflow');
+        }
+
+        document.getElementById('tasadorModal').addEventListener('show.bs.modal', function () {
+            document.getElementById('tasadorFormBody').classList.remove('d-none');
+            document.getElementById('tasadorLoadingBody').classList.add('d-none');
+            document.getElementById('tasadorResultBody').classList.add('d-none');
+        });
+
+        let progressInterval = null;
+        let currentPct = 0;
+
+        function updateTasadorProgress(targetPct, textMsg) {
+            currentPct = targetPct;
+            const bar = document.getElementById('tasadorProgressBar');
+            const txt = document.getElementById('tasadorPercentText');
+            if (bar) bar.style.width = `${currentPct}%`;
+            if (txt) txt.innerText = `${currentPct}%`;
+            if (textMsg) {
+                const sub = document.getElementById('tasadorLoadingSub');
+                if (sub) sub.innerText = textMsg;
+            }
+        }
+
+        function startTasadorProgressAnimation(zonaInput) {
+            updateTasadorProgress(10, `Conectando con proxies dinámicos para '${zonaInput}'...`);
+            let step = 0;
+            if (progressInterval) clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                step++;
+                if (step === 1) updateTasadorProgress(35, `Analizando stock y comparables en '${zonaInput}'...`);
+                else if (step === 2) updateTasadorProgress(65, `Calculando valor m² homogeneizado y coeficientes...`);
+                else if (step === 3) updateTasadorProgress(85, `Determinando rango sugerido de valoración de mercado...`);
+                else if (step >= 4) {
+                    if (currentPct < 95) updateTasadorProgress(currentPct + 1, null);
+                }
+            }, 350);
+        }
+
+        function stopTasadorProgressAnimation() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            updateTasadorProgress(100, "Tasación finalizada exitosamente.");
+        }
+
+        function calcularTasacion() {
+            const zonaInput = document.getElementById('tasBarrio').value || 'Palermo';
+            const data = {
+                zona: zonaInput,
+                tipo_propiedad: document.getElementById('tasTipoProp').value,
+                tipo_operacion: document.getElementById('tasOperacion').value,
+                metodo_metros: document.getElementById('tasMetodoMetros').value,
+                metros: document.getElementById('tasM2Totales').value,
+                metros_cubiertos: document.getElementById('tasM2Cubiertos').value,
+                ambientes: document.getElementById('tasAmbientes').value,
+                estado_conservacion: document.getElementById('tasEstado').value,
+                country_ubicacion: document.getElementById('tasCountry').value
+            };
+
+            // Switch to inline loading spinner inside tasadorModal
+            document.getElementById('tasadorFormBody').classList.add('d-none');
+            document.getElementById('tasadorResultBody').classList.add('d-none');
+            document.getElementById('tasadorLoadingBody').classList.remove('d-none');
+            
+            startTasadorProgressAnimation(zonaInput);
+
+            fetch('/portal/api/tasar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(res => {
+                stopTasadorProgressAnimation();
+                setTimeout(() => {
+                    document.getElementById('tasadorLoadingBody').classList.add('d-none');
+                    if(res.success) {
+                        lastTasacionData = `${res.zona} - ${res.tipo_propiedad} (${res.ambientes} amb, ${res.metros_calculados} m²): ${res.moneda} ${res.rango_min.toLocaleString()} a ${res.rango_max.toLocaleString()}`;
+                        document.getElementById('rangoTexto').innerText = `${res.moneda} ${res.rango_min.toLocaleString()} - ${res.rango_max.toLocaleString()}`;
+                        document.getElementById('m2DetalleInfo').innerText = `Metros Cómputo: ${res.metros_calculados} m² | Método: ${res.metodo_metros}`;
+                        document.getElementById('tasadorResultBody').classList.remove('d-none');
+                    } else {
+                        document.getElementById('tasadorFormBody').classList.remove('d-none');
+                        alert('No se pudieron obtener suficientes datos para la tasación.');
+                    }
+                }, 250);
+            })
+            .catch(err => {
+                stopTasadorProgressAnimation();
+                document.getElementById('tasadorLoadingBody').classList.add('d-none');
+                document.getElementById('tasadorFormBody').classList.remove('d-none');
+                alert('Error al calcular la tasación.');
+            });
+        }
+
+        function convertirTasacionEnLead() {
+            const modalTas = bootstrap.Modal.getInstance(document.getElementById('tasadorModal'));
+            if(modalTas) modalTas.hide();
+            
+            // Construir desglose detallado de la tasación
+            const tipo = document.getElementById('tasTipoProp').value;
+            const zona = document.getElementById('tasZona').value;
+            const m2T = document.getElementById('tasM2Total').value;
+            const m2C = document.getElementById('tasM2Cub').value;
+            const amb = document.getElementById('tasAmb').value;
+            const valEl = document.getElementById('valEstimadaText');
+            const valText = valEl ? valEl.innerText : 'S/D';
+
+            lastTasacionData = `Zona: ${zona} | Tipo: ${tipo} | Ambientes: ${amb} | m² Totales: ${m2T} | m² Cubiertos: ${m2C} | Valuación preliminar estimada: ${valText}`;
+            currentPropId = null;
+
+            if (isVerifiedUser()) {
+                enviarSolicitudLeadDirecto();
+            } else {
+                openAuthModal();
+            }
+        }
+
+        function solicitarVisita(propId, propTitulo) {
+            currentPropId = propId;
+            if (isVerifiedUser()) {
+                enviarSolicitudLeadDirecto();
+            } else {
+                openAuthModal();
+            }
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "")  + expires + "; path=/; SameSite=Lax";
+        }
+
+        function isVerifiedUser() {
+            const name = getCookie('portal_user_name') || localStorage.getItem('portal_user_name');
+            const phone = getCookie('portal_user_phone') || localStorage.getItem('portal_user_phone');
+            return !!(name && phone);
+        }
+
+        function enviarSolicitudLeadDirecto(btnElement) {
+            const nombre = getCookie('portal_user_name') || localStorage.getItem('portal_user_name');
+            const telefono = getCookie('portal_user_phone') || localStorage.getItem('portal_user_phone');
+            const origText = btnElement ? btnElement.innerHTML : null;
+            if (btnElement) {
+                btnElement.disabled = true;
+                btnElement.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Verificando disponibilidad en tiempo real...';
+            }
+
+            fetch('/portal/api/solicitar_lead', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    nombre: nombre,
+                    telefono: telefono,
+                    tipo_lead: currentPropId ? 'visita' : 'venta',
+                    propiedad_id: currentPropId,
+                    tasacion_data: lastTasacionData
+                })
+            })
+            .then(async res => {
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    alert(data.error || 'Esta propiedad ya no se encuentra disponible en el portal original.');
+                } else {
+                    alert(data.message || '¡Solicitud recibida con éxito! Un agente se comunicará a la brevedad.');
+                    checkAndShowDisclaimerOncePerDay();
+                }
+            })
+            .catch(err => {
+                alert('Error al verificar la disponibilidad de la propiedad.');
+            })
+            .finally(() => {
+                if (btnElement) {
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = origText;
+                }
+            });
+        }
+
+        function openAuthModal() {
+            document.getElementById('authStep1').classList.remove('d-none');
+            document.getElementById('authStep2').classList.add('d-none');
+            const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('authModal'), {
+                backdrop: 'static',
+                keyboard: false
+            });
+            m.show();
+        }
+
+        function solicitarCodigoWhatsApp() {
+            const nombre = document.getElementById('leadNombre').value.trim();
+            const telefono = document.getElementById('leadTelefono').value.trim();
+
+            if(!nombre || !telefono) {
+                alert('Por favor ingresá tu Nombre y tu número de WhatsApp.');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando código...';
+
+            fetch('/portal/api/enviar_codigo_wa', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ nombre: nombre, telefono: telefono })
+            })
+            .then(res => res.json())
+            .then(res => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send-fill me-2"></i>Iniciar Validación por WhatsApp';
+
+                if (res.success) {
+                    document.getElementById('lblWAEnviado').innerText = telefono;
+                    document.getElementById('authStep1').classList.add('d-none');
+                    document.getElementById('authStep2').classList.remove('d-none');
+                    document.getElementById('leadCodigo').value = '';
+                    document.getElementById('leadCodigo').focus();
+                } else {
+                    alert(res.error || 'Error al enviar el código de verificación.');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send-fill me-2"></i>Iniciar Validación por WhatsApp';
+                alert('No se pudo conectar con el servidor.');
+            });
+        }
+
+        function verificarCodigoWhatsApp() {
+            const nombre = document.getElementById('leadNombre').value.trim();
+            const telefono = document.getElementById('leadTelefono').value.trim();
+            const codigo = document.getElementById('leadCodigo').value.trim();
+
+            if (!codigo) {
+                alert('Por favor ingresá el código de 4 dígitos recibido.');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
+
+            fetch('/portal/api/verificar_codigo_wa', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ telefono: telefono, codigo: codigo })
+            })
+            .then(res => res.json())
+            .then(res => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Confirmar y Acceder al Portal';
+
+                if (res.success) {
+                    // Guardar cookies y localStorage por 1 día
+                    setCookie('portal_user_name', nombre, 1);
+                    setCookie('portal_user_phone', telefono, 1);
+                    localStorage.setItem('portal_user_name', nombre);
+                    localStorage.setItem('portal_user_phone', telefono);
+
+                    const modalAuth = bootstrap.Modal.getInstance(document.getElementById('authModal'));
+                    if (modalAuth) modalAuth.hide();
+
+                    actualizarBadgeUsuario(nombre);
+                    checkAndShowDisclaimerOncePerDay();
+
+                    if (currentPropId || lastTasacionData) {
+                        enviarSolicitudLeadDirecto();
+                    }
+                } else {
+                    alert(res.error || 'Código incorrecto. Verificá tu mensaje e intentá nuevamente.');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Confirmar y Acceder al Portal';
+                alert('Error al verificar el código.');
+            });
+        }
+
+        function volverAStep1() {
+            document.getElementById('authStep2').classList.add('d-none');
+            document.getElementById('authStep1').classList.remove('d-none');
+        }
+
+        function actualizarBadgeUsuario(nombre) {
+            const badge = document.getElementById('wa-auth-badge');
+            if (badge) {
+                badge.innerHTML = `<span class="badge bg-success py-2 px-3"><i class="bi bi-check-circle-fill me-1"></i> Validado: ${nombre}</span>`;
+            }
+        }
+
+        function checkAndShowDisclaimerOncePerDay() {
+            const lastAccepted = localStorage.getItem('portal_disclaimer_accepted_date');
+            const today = new Date().toISOString().split('T')[0];
+
+            if (lastAccepted !== today) {
+                setTimeout(() => {
+                    const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('disclaimerModal'));
+                    m.show();
+                }, 300);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const userName = getCookie('portal_user_name') || localStorage.getItem('portal_user_name');
+            const userPhone = getCookie('portal_user_phone') || localStorage.getItem('portal_user_phone');
+
+            if (!userName || !userPhone) {
+                // Obligar validación de WhatsApp: modal no descartable
+                setTimeout(() => {
+                    const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('authModal'), {
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    m.show();
+                }, 300);
+            } else {
+                actualizarBadgeUsuario(userName);
+                checkAndShowDisclaimerOncePerDay();
+            }
+        });
+
+        function aceptarDisclaimerModal() {
+            const today = new Date().toISOString().split('T')[0];
+            localStorage.setItem('portal_disclaimer_accepted_date', today);
+            const m = bootstrap.Modal.getInstance(document.getElementById('disclaimerModal'));
+            if (m) m.hide();
+        }
+
+        let currentPageNum = 1;
+
+        function limpiarFiltros() {
+            document.getElementById('sidebarForm').reset();
+            document.querySelectorAll('.amenity-chk').forEach(c => c.checked = false);
+            ejecutarBusqueda(1);
+        }
+
+        function renderPaginationControls(currentPage, totalPages) {
+            const pagDiv = document.getElementById('paginationContainer');
+            if (!pagDiv) return;
+            if (totalPages <= 1) {
+                pagDiv.innerHTML = '';
+                return;
+            }
+            let html = '<nav><ul class="pagination justify-content-center flex-wrap gap-1 mb-0">';
+            
+            // Prev
+            if (currentPage > 1) {
+                html += `<li class="page-item"><button class="page-link rounded-3 px-3 fw-semibold text-dark shadow-sm" onclick="ejecutarBusqueda(${currentPage - 1})"><i class="bi bi-chevron-left"></i> Anterior</button></li>`;
+            }
+            
+            // Pages
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    html += `<li class="page-item active"><span class="page-link rounded-3 px-3 fw-bold bg-warning border-warning text-dark shadow-sm">${i}</span></li>`;
+                } else if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    html += `<li class="page-item"><button class="page-link rounded-3 px-3 fw-semibold text-dark shadow-sm" onclick="ejecutarBusqueda(${i})">${i}</button></li>`;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += `<li class="page-item disabled"><span class="page-link rounded-3 border-0 bg-transparent text-muted">...</span></li>`;
+                }
+            }
+            
+            // Next
+            if (currentPage < totalPages) {
+                html += `<li class="page-item"><button class="page-link rounded-3 px-3 fw-semibold text-dark shadow-sm" onclick="ejecutarBusqueda(${currentPage + 1})">Siguiente <i class="bi bi-chevron-right"></i></button></li>`;
+            }
+            
+            html += '</ul></nav>';
+            pagDiv.innerHTML = html;
+        }
+
+        let searchProgressInterval = null;
+
+        function updateSearchProgress(targetPct, textMsg) {
+            const bar = document.getElementById('searchProgressBar');
+            const txt = document.getElementById('searchPercentText');
+            if (bar) bar.style.width = `${targetPct}%`;
+            if (txt) txt.innerText = `${targetPct}%`;
+            if (textMsg) {
+                const sub = document.getElementById('searchProgressSub');
+                if (sub) sub.innerText = textMsg;
+            }
+        }
+
+        function startSearchProgressAnimation(barrioInput) {
+            updateSearchProgress(10, `Conectando con proxies dinámicos para '${barrioInput || 'CABA'}'...`);
+            let step = 0;
+            if (searchProgressInterval) clearInterval(searchProgressInterval);
+            searchProgressInterval = setInterval(() => {
+                step++;
+                if (step === 1) updateSearchProgress(35, `Escrapeando catálogo y comparables en '${barrioInput || 'la zona'}'...`);
+                else if (step === 2) updateSearchProgress(70, `Saneando títulos, características y descripciones...`);
+                else if (step === 3) updateSearchProgress(90, `ATENCIÓN: Esto puede demorar hasta 30 segundos`);
+            }, 350);
+        }
+
+        function stopSearchProgressAnimation() {
+            if (searchProgressInterval) {
+                clearInterval(searchProgressInterval);
+                searchProgressInterval = null;
+            }
+            updateSearchProgress(100, "Búsqueda completada exitosamente.");
+        }
+
+        function ejecutarBusqueda(page = 1) {
+            currentPageNum = page;
+            const operacion = document.getElementById('filterOperacion').value;
+            const tipo = document.getElementById('filterTipoProp').value;
+            const barrio = document.getElementById('filterBarrio').value;
+            const ambientes = document.getElementById('filterAmbientes').value;
+            const dormitorios = document.getElementById('filterDormitorios').value;
+            const minPrecio = document.getElementById('filterMinPrecio').value;
+            const maxPrecio = document.getElementById('filterMaxPrecio').value;
+            const minM2 = document.getElementById('filterMinM2').value;
+            const ordenar = document.getElementById('filterOrdenar').value;
+
+            const selectedAmenities = [];
+            document.querySelectorAll('.amenity-chk:checked').forEach(c => selectedAmenities.push(c.value));
+
+            let url = `/portal/api/buscar?tipo_operacion=${operacion}&tipo_propiedad=${encodeURIComponent(tipo)}&barrio=${encodeURIComponent(barrio)}&ambientes=${ambientes}&dormitorios=${dormitorios}&min_precio=${minPrecio}&max_precio=${maxPrecio}&min_m2=${minM2}&ordenar=${ordenar}&page=${page}&amenities=${encodeURIComponent(selectedAmenities.join(','))}`;
+
+            const grid = document.getElementById('propertiesGrid');
+            grid.innerHTML = `
+                <div class="col-12 text-center py-5">
+                    <div class="py-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2 px-1 mx-auto" style="max-width: 450px;">
+                            <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25 rounded-pill px-3 py-2 fw-semibold">
+                                <i class="bi bi-search me-1"></i> Buscando en portales en vivo
+                            </span>
+                            <span class="fw-bold text-dark fs-5" id="searchPercentText">0%</span>
+                        </div>
+                        
+                        <div class="progress mx-auto mb-3" style="max-width: 450px; height: 16px; border-radius: 20px; background-color: #e2e8f0;">
+                            <div id="searchProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%; border-radius: 20px; transition: width 0.3s ease;"></div>
+                        </div>
+
+                        <h5 class="fw-bold mt-3 text-dark">Buscando Inmuebles en Tiempo Real</h5>
+                        <p class="text-muted small mb-0" id="searchProgressSub">Conectando con proxies dinámicos en MercadoLibre, Zonaprop y Argenprop...</p>
+                    </div>
+                </div>
+            `;
+
+            startSearchProgressAnimation(barrio);
+
+            fetch(url)
+            .then(res => res.json())
+            .then(res => {
+                stopSearchProgressAnimation();
+                setTimeout(() => {
+                    grid.innerHTML = '';
+                    
+                    const totalCount = res.total_count || (res.propiedades ? res.propiedades.length : 0);
+                    const limit = res.limit || 12;
+                    const startIdx = totalCount > 0 ? ((page - 1) * limit + 1) : 0;
+                    const endIdx = Math.min(totalCount, page * limit);
+
+                    document.getElementById('resultsCountHeader').innerText = `Catálogo Disponible (Mostrando ${startIdx}-${endIdx} de ${totalCount} propiedades)`;
+
+                    if(!res.propiedades || res.propiedades.length === 0) {
+                        grid.innerHTML = '<div class="col-12 text-center py-5 text-muted"><h5>No se encontraron propiedades con los filtros seleccionados.</h5></div>';
+                        renderPaginationControls(1, 1);
+                        return;
+                    }
+
+                    res.propiedades.forEach(p => {
+                        const foto = (p.lista_fotos && p.lista_fotos.length > 0) ? p.lista_fotos[0] : (p.foto_url || '/static/img/no-photo.png');
+                        grid.innerHTML += `
+                            <div class="col-md-4">
+                                <div class="card property-card h-100">
+                                    <div class="position-relative">
+                                        <a href="/portal/propiedad/${p.id}">
+                                            <img src="${foto}" class="card-img-top" style="height: 200px; object-fit: cover;" onerror="this.onerror=null;this.src='/static/img/no-photo.png';">
+                                        </a>
+                                        <span class="position-absolute top-0 end-0 m-3 badge ${(p.heat_badge && p.heat_badge.class) ? p.heat_badge.class : 'bg-primary text-white'} heat-badge">
+                                            ${(p.heat_badge && p.heat_badge.label) ? p.heat_badge.label : 'Demanda Normal'} (${p.heat_score || 60} pts)
+                                        </span>
+                                    </div>
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="fw-bold text-success mb-0">${p.moneda} ${(p.precio || 0).toLocaleString()}</h5>
+                                            <span class="badge bg-light text-dark border">${p.barrio || 'CABA'}</span>
+                                        </div>
+                                        <h6 class="card-title fw-semibold text-truncate mb-2">
+                                            <a href="/portal/propiedad/${p.id}" class="text-decoration-none text-dark">${p.titulo}</a>
+                                        </h6>
+                                        <div class="text-muted small mb-3">
+                                            <i class="bi bi-door-open me-1"></i> ${p.ambientes || 1} amb | 
+                                            <i class="bi bi-arrows-fullscreen me-1"></i> ${p.m2_cubiertos || p.m2_total || 0} m²
+                                        </div>
+                                        <div class="bg-light p-2 rounded mb-3 small">
+                                            <strong class="text-secondary"><i class="bi bi-shield-exclamation me-1"></i> Diagnóstico:</strong>
+                                            <ul class="mb-0 ps-3 text-muted">
+                                                ${(p.red_flags || []).slice(0,2).map(f => `<li>${f}</li>`).join('')}
+                                            </ul>
+                                        </div>
+                                        <div class="mt-auto d-flex gap-2">
+                                            <a href="/portal/propiedad/${p.id}" class="btn btn-outline-secondary w-50 rounded-pill btn-sm py-2">
+                                                <i class="bi bi-eye me-1"></i> Ficha
+                                            </a>
+                                            <button class="btn btn-brand w-50 rounded-pill btn-sm py-2" onclick="solicitarVisita('${p.id}')">
+                                                <i class="bi bi-calendar-event me-1"></i> Visita
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    renderPaginationControls(page, res.total_pages || 1);
+                }, 200);
+                if (page > 1) {
+                    const el = document.getElementById('resultsCountHeader');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            })
+            .catch(err => {
+                stopSearchProgressAnimation();
+                const grid = document.getElementById('propertiesGrid');
+                if (grid) grid.innerHTML = '<div class="col-12 text-center py-5 text-muted"><h5>No se pudo completar la búsqueda. Por favor reintentá en unos momentos.</h5></div>';
+            });
+        }
+    </script>
+</body>
+</html>

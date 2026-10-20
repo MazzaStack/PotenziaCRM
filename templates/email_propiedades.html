@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selección de Propiedades</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f6f8; font-family: 'Segoe UI', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f4f6f8; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <!-- Contenedor Principal -->
+                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                    <!-- Cabecera -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #0d6efd, #0a58ca); padding: 30px 40px; text-align: left;">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td>
+                                        <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Propiedades Seleccionadas</h1>
+                                        <p style="margin: 5px 0 0 0; color: #e0ebff; font-size: 14px;">Propuestas para tu búsqueda en <strong>{{ zona }}</strong></p>
+                                    </td>
+                                    <td align="right" style="vertical-align: middle;">
+                                        {% if logo_url %}
+                                        <img src="{{ logo_url }}" alt="Logo" style="max-height: 45px; max-width: 150px; object-fit: contain;">
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Introducción -->
+                    <tr>
+                        <td style="padding: 30px 40px 10px 40px;">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #eef5ff; border-radius: 8px;">
+                                <tr>
+                                    <td style="padding: 15px 20px; font-size: 14px; color: #3b5998; line-height: 1.5;">
+                                        Estimado cliente, a continuación le acerco una selección técnica de inmuebles disponibles que se ajustan a sus requerimientos en la zona de {{ zona }}.
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Listado de Propiedades -->
+                    <tr>
+                        <td style="padding: 20px 40px;">
+                            {% for p in props %}
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 40px; border-bottom: 1px solid #eef0f2; padding-bottom: 30px;">
+                                <!-- Título propiedad -->
+                                <tr>
+                                    <td>
+                                        <h3 style="margin: 0 0 15px 0; color: #1e293b; font-size: 18px; font-weight: 700; line-height: 1.4;">{{ p.titulo }}</h3>
+                                    </td>
+                                </tr>
+
+                                <!-- Galería de fotos (hasta 6) -->
+                                {% set fotos = p.fotos if p.fotos else ([p.foto] if p.foto else []) %}
+                                {% if fotos %}
+                                <tr>
+                                    <td style="padding-bottom: 20px;">
+                                        <!-- Foto Principal -->
+                                        <img src="{{ fotos[0] }}" alt="Portada" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; display: block; margin-bottom: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                                        
+                                        <!-- Miniaturas (exactamente 4 miniaturas en bloque 2x2) -->
+                                        {% if fotos|length > 1 %}
+                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 6px;">
+                                            <tr>
+                                                <td style="width: 49%; padding-right: 1%; padding-bottom: 8px;">
+                                                    {% if fotos|length > 1 %}
+                                                    <img src="{{ fotos[1] }}" alt="Foto 2" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px; display: block;">
+                                                    {% endif %}
+                                                </td>
+                                                <td style="width: 49%; padding-left: 1%; padding-bottom: 8px;">
+                                                    {% if fotos|length > 2 %}
+                                                    <img src="{{ fotos[2] }}" alt="Foto 3" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px; display: block;">
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="width: 49%; padding-right: 1%; padding-bottom: 8px;">
+                                                    {% if fotos|length > 3 %}
+                                                    <img src="{{ fotos[3] }}" alt="Foto 4" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px; display: block;">
+                                                    {% endif %}
+                                                </td>
+                                                <td style="width: 49%; padding-left: 1%; padding-bottom: 8px;">
+                                                    {% if fotos|length > 4 %}
+                                                    <img src="{{ fotos[4] }}" alt="Foto 5" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px; display: block;">
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+
+                                <!-- Precio y Características -->
+                                <tr>
+                                    <td style="padding-bottom: 15px;">
+                                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                            <tr>
+                                                <td style="font-size: 22px; font-weight: 800; color: #0d6efd; padding-bottom: 10px;">
+                                                    {{ p.moneda if p.moneda else 'USD' }} {{ "{:,.0f}".format(p.precio) }}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding-bottom: 15px; font-size: 13px; color: #475569; line-height: 1.6;">
+                                                    <!-- Lista de características en formato bullets -->
+                                                    <ul style="margin: 0; padding: 0 0 0 18px; color: #475569;">
+                                                        {% if p.tipo_propiedad %}<li style="margin-bottom: 3px;"><strong>{{ p.tipo_propiedad }}</strong></li>{% endif %}
+                                                        {% if p.m2_total or p.m2 %}<li style="margin-bottom: 3px;">{{ p.m2_total or p.m2 }} m² Totales</li>{% endif %}
+                                                        {% if p.m2_cubiertos %}<li style="margin-bottom: 3px;">{{ p.m2_cubiertos }} m² Cubierta</li>{% endif %}
+                                                        {% if p.ambientes %}<li style="margin-bottom: 3px;">{{ p.ambientes }} ambientes</li>{% endif %}
+                                                        {% if p.dormitorios %}<li style="margin-bottom: 3px;">{{ p.dormitorios }} dormitorios</li>{% endif %}
+                                                        {% if p.banos %}<li style="margin-bottom: 3px;">{{ p.banos }} baños</li>{% endif %}
+                                                        {% if p.toilettes %}<li style="margin-bottom: 3px;">{{ p.toilettes }} toilettes</li>{% endif %}
+                                                        {% if p.cocheras %}<li style="margin-bottom: 3px;">{{ p.cocheras }} cocheras</li>{% endif %}
+                                                        {% if p.antiguedad is not none %}<li style="margin-bottom: 3px;">{{ p.antiguedad }} años</li>{% endif %}
+                                                        {% if p.disposicion %}<li style="margin-bottom: 3px;">{{ p.disposicion }}</li>{% endif %}
+                                                        {% if p.orientacion %}<li style="margin-bottom: 3px;">{{ p.orientacion }} (Orientación)</li>{% endif %}
+                                                        {% if p.estado_conservacion %}<li style="margin-bottom: 3px;">{{ p.estado_conservacion }}</li>{% endif %}
+                                                        {% if p.barrio %}<li style="margin-bottom: 3px;">Ubicación: {{ p.barrio }}</li>{% endif %}
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Descripción (Acotada) -->
+                                {% if p.descripcion_acotada %}
+                                <tr>
+                                    <td>
+                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fafbfe; border-left: 4px solid #cbd5e1; border-radius: 0 8px 8px 0;">
+                                            <tr>
+                                                <td style="padding: 15px 20px; font-size: 13.5px; color: #475569; line-height: 1.6; font-style: italic;">
+                                                    {{ p.descripcion_acotada }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                            {% endfor %}
+                        </td>
+                    </tr>
+
+                    <!-- Pie de Firma del Agente -->
+                    <tr>
+                        <td style="background-color: #f8fafc; padding: 30px 40px; border-top: 1px solid #e2e8f0; text-align: left;">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0; font-size: 15px; font-weight: 700; color: #1e293b;">{{ agente_nombre }}</p>
+                                        <p style="margin: 3px 0 0 0; font-size: 13px; color: #64748b;">Asesor Inmobiliario</p>
+                                        {% if agente_inmobiliaria %}
+                                        <p style="margin: 3px 0 0 0; font-size: 13px; color: #64748b;">{{ agente_inmobiliaria }}</p>
+                                        {% endif %}
+                                    </td>
+                                    <td align="right" style="vertical-align: middle;">
+                                        {% if agente_telefono %}
+                                        <p style="margin: 0; font-size: 13px; color: #475569; font-weight: 600;">📞 {{ agente_telefono }}</p>
+                                        {% endif %}
+                                        {% if agente_email %}
+                                        <p style="margin: 3px 0 0 0; font-size: 13px; color: #475569;">✉️ {{ agente_email }}</p>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Footer legal/baja -->
+                <table border="0" cellpadding="0" cellspacing="0" width="600">
+                    <tr>
+                        <td style="padding: 20px; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.4;">
+                            Este es un mensaje privado enviado por tu asesor de confianza. Las ubicaciones e imágenes son ilustrativas.
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

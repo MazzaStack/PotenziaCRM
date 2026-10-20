@@ -1,0 +1,973 @@
+{% extends 'base.html' %}
+
+{% block title %}Buscador de Propiedades{% endblock %}
+{% block header %}Buscador de Propiedades{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Columna de Filtros -->
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-filter-square me-2"></i>Filtros de Búsqueda</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('buscador_compradores') }}" method="POST" class="crm-loading-form" data-loading-title="🔍 Buscando propiedades de compradores...">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Zona / Barrio</label>
+                        <input type="text" name="zona" class="form-control" value="{{ zona or '' }}"
+                            placeholder="Ej: Parque Patricios, Boedo, Caballito (separa con comas)..." required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Palabra Clave</label>
+                        <input type="text" name="keyword" class="form-control" value="{{ keyword or '' }}"
+                            placeholder="Ej: Refaccionar, Luminoso...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tipo de Propiedad</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="tipo" value="departamento" id="tipo_dep" {% if not tipo or 'departamento' in tipo %}checked{% endif %}>
+                            <label class="form-check-label" for="tipo_dep">Departamento</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="tipo" value="casa" id="tipo_casa" {% if tipo and 'casa' in tipo %}checked{% endif %}>
+                            <label class="form-check-label" for="tipo_casa">Casa</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="tipo" value="ph" id="tipo_ph" {% if tipo and 'ph' in tipo %}checked{% endif %}>
+                            <label class="form-check-label" for="tipo_ph">PH</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="tipo" value="terreno" id="tipo_terreno" {% if tipo and ('terreno' in tipo or 'lote' in tipo) %}checked{% endif %}>
+                            <label class="form-check-label" for="tipo_terreno">Lote / Terreno</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="tipo" value="local" id="tipo_local" {% if tipo and 'local' in tipo %}checked{% endif %}>
+                            <label class="form-check-label" for="tipo_local">Local / Comercial</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ambientes</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for a in [1,2,3,4,5] %}
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="ambientes" value="{{ a }}" id="amb_{{ a }}" {% if ambientes and a in ambientes %}checked{% endif %}>
+                                <label class="form-check-label" for="amb_{{ a }}">{{ a }}{% if a == 5 %}+{% endif %}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Dormitorios (Mínimo)</label>
+                        <select name="dormitorios" class="form-select">
+                            <option value="">Cualquiera</option>
+                            <option value="1" {% if dormitorios == 1 %}selected{% endif %}>1+</option>
+                            <option value="2" {% if dormitorios == 2 %}selected{% endif %}>2+</option>
+                            <option value="3" {% if dormitorios == 3 %}selected{% endif %}>3+</option>
+                            <option value="4" {% if dormitorios == 4 %}selected{% endif %}>4+</option>
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Precio Mín (USD)</label>
+                            <input type="number" name="min_precio" class="form-control" value="{{ min_precio if min_precio is not none else '' }}" placeholder="Ej: 50000">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Precio Máx (USD)</label>
+                            <input type="number" name="max_precio" class="form-control" value="{{ max_precio if max_precio is not none else '' }}" placeholder="Ej: 150000">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Superficie Mín (m²)</label>
+                            <input type="number" name="min_m2" class="form-control" value="{{ min_m2 if min_m2 is not none else '' }}" placeholder="Ej: 30">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Superficie Máx (m²)</label>
+                            <input type="number" name="max_m2" class="form-control" value="{{ max_m2 if max_m2 is not none else '' }}" placeholder="Ej: 200">
+                        </div>
+                    </div>
+
+                    <!-- Filtros por Portal (Búsqueda Nativa en URL) -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="form-label fw-bold mb-0">Filtros Principales</label>
+                            <span class="badge bg-primary-subtle text-primary border" style="font-size: 0.68rem;"><i class="bi bi-link-45deg me-1"></i>Directo Portales</span>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="extras" value="cochera" id="ex_cochera" {% if selected_extras and 'cochera' in selected_extras %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold" for="ex_cochera"><i class="bi bi-car-front text-primary me-1"></i>Cochera</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="extras" value="patio" id="ex_patio" {% if selected_extras and 'patio' in selected_extras %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold" for="ex_patio"><i class="bi bi-tree text-success me-1"></i>Patio / Jardín</label>
+                        </div>
+                    </div>
+
+                    <!-- Filtros Adicionales (Filtrado Exigente en Texto / Descripción) -->
+                    <div class="mb-3 p-2.5 bg-light rounded-3 border">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="form-label fw-bold mb-0 text-secondary" style="font-size: 0.85rem;">Filtros Adicionales</label>
+                            <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 0.62rem;"><i class="bi bi-filter me-1"></i>Texto / Exigente</span>
+                        </div>
+                        <small class="text-muted d-block mb-2" style="font-size: 0.72rem; line-height: 1.2;">Filtra exigente en la descripción del aviso original</small>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="extras" value="balcon" id="ex_balcon" {% if selected_extras and 'balcon' in selected_extras %}checked{% endif %}>
+                            <label class="form-check-label small" for="ex_balcon"><i class="bi bi-window me-1"></i>Balcón</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="extras" value="terraza" id="ex_terraza" {% if selected_extras and 'terraza' in selected_extras %}checked{% endif %}>
+                            <label class="form-check-label small" for="ex_terraza"><i class="bi bi-sun me-1"></i>Terraza</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="extras" value="parrilla" id="ex_parrilla" {% if selected_extras and 'parrilla' in selected_extras %}checked{% endif %}>
+                            <label class="form-check-label small" for="ex_parrilla"><i class="bi bi-fire me-1"></i>Parrilla / Quincho</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="extras" value="pileta" id="ex_pileta" {% if selected_extras and 'pileta' in selected_extras %}checked{% endif %}>
+                            <label class="form-check-label small" for="ex_pileta"><i class="bi bi-water me-1"></i>Pileta / Piscina</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm mt-2 mb-2">
+                        <i class="bi bi-search me-1"></i> Buscar Propiedades
+                    </button>
+                    <button type="button" class="btn btn-outline-success w-100 fw-bold py-2 shadow-sm mb-2" data-bs-toggle="modal" data-bs-target="#modalGuardarBusqueda" onclick="prepararModalGuardar()">
+                        <i class="bi bi-bookmark-plus me-1"></i> Guardar Búsqueda
+                    </button>
+                    {% if results %}
+                    <button type="button"
+                        class="btn btn-outline-primary w-100 fw-bold py-2 shadow-sm btn-mas-propiedades"
+                        onclick="cargarMasVentas()">
+                        <i class="bi bi-plus-circle me-1"></i> Más Propiedades
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="col-md-9">
+        {% if results %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-houses me-2 text-primary"></i>Resultados Encontrados ({{
+                results|length }})</h5>
+            <div class="d-flex align-items-center">
+                {% set provider = get_config('ia_provider_primario', 'desactivada') %}
+                <button type="button" class="btn btn-outline-{% if provider == 'gemini' %}primary{% elif provider == 'groq' %}warning{% else %}secondary{% endif %} fw-bold shadow-sm toggle-ia-btn me-2" onclick="toggleIAProvider(this)">
+                    <i class="bi bi-robot me-1"></i> IA: <span class="provider-name">{{ provider | upper }}</span>
+                </button>
+                <button type="button" class="btn btn-warning text-dark fw-bold shadow-sm me-2" onclick="abrirModalCrearPortalTemp()">
+                    <i class="bi bi-globe-americas me-1"></i> Crear Portal Temporal Live
+                </button>
+                <button form="reportForm" type="submit" class="btn btn-success fw-bold shadow-sm me-2" onclick="mostrarCheckingOverlay()">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Generar Reporte Seleccionados
+                </button>
+                <button type="button" class="btn btn-primary fw-bold shadow-sm" onclick="abrirModalEnviarSeleccionados()">
+                    <i class="bi bi-envelope-paper me-1"></i> Enviar Seleccionados a Cliente
+                </button>
+            </div>
+        </div>
+
+        <!-- Overlay de Comprobación Multi-Proxy -->
+        <div id="checkingAvailabilityOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none justify-content-center align-items-center" style="background: rgba(0,0,0,0.65); z-index: 9999;">
+            <div class="card p-4 rounded-4 shadow-lg text-center border-0 bg-white" style="max-width: 420px;">
+                <div class="spinner-border text-primary mx-auto mb-3" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="visually-hidden">Comprobando...</span>
+                </div>
+                <h5 class="fw-bold mb-2">Comprobando disponibilidad...</h5>
+                <p class="text-muted small mb-0">Verificando en tiempo real con el portal original que las propiedades seleccionadas continúen activas en el mercado.</p>
+            </div>
+        </div>
+
+        {% if desglose_zonas %}
+        <div class="mb-3 d-flex flex-wrap gap-2 align-items-center bg-white p-2.5 rounded-3 shadow-sm border">
+            <small class="text-muted fw-bold me-1"><i class="bi bi-geo-alt me-1 text-primary"></i>Desglose por Zona:</small>
+            {% for dz in desglose_zonas %}
+                <span class="badge {% if dz.fresco %}bg-success{% elif dz.nuevo %}bg-info text-dark{% else %}bg-primary{% endif %} p-2 px-3 rounded-pill fs-7">
+                    <i class="bi bi-geo-alt-fill me-1"></i>{{ dz.zona }}: <strong>{{ dz.count }}</strong>
+                    {% if dz.fresco %}(Al día){% elif dz.nuevo %}(Nuevo captado){% else %}(Actualizado hoy){% endif %}
+                </span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Filtros Rápidos de Inteligencia de Mercado (DOM & Rebajas) -->
+        <div class="mb-3 d-flex flex-wrap gap-2 align-items-center bg-white p-2.5 rounded-3 shadow-sm border">
+            <small class="text-muted fw-bold me-1"><i class="bi bi-funnel-fill text-primary me-1"></i>Filtro Rápido:</small>
+            <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold filter-dom-btn" onclick="filtrarTarjetasDOM('nuevo', this)">
+                <i class="bi bi-stars me-1"></i> Nuevos Ingresos (&le;15d)
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold filter-dom-btn" onclick="filtrarTarjetasDOM('rebaja', this)">
+                <i class="bi bi-graph-down-arrow me-1"></i> Propiedades Rebajadas
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 fw-bold filter-dom-btn" onclick="filtrarTarjetasDOM('negociable', this)">
+                <i class="bi bi-tag-fill me-1"></i> +90 días en Mercado
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3 filter-dom-btn active" onclick="filtrarTarjetasDOM('todos', this)">
+                Ver Todas (<span id="totalVisibleCount">{{ results|length }}</span>)
+            </button>
+        </div>
+
+        <div id="map" class="rounded shadow-sm mb-4" style="height: 300px; border: 2px solid #fff;"></div>
+
+        <form id="reportForm" action="{{ url_for('generar_reporte_comprador') }}" method="POST" target="_blank">
+            <div class="row g-3" id="propertiesContainer">
+                {% for r in results %}
+                {% set mb = evaluar_oportunidad_mercado(r) %}
+                <div class="col-md-6 prop-card-item" data-badge-type="{{ mb.badge_tipo }}">
+                    <div class="card h-100 property-card border-0 shadow-sm overflow-hidden">
+                        <div class="position-relative">
+                            <img src="{{ r.foto }}" class="card-img-top" style="height: 200px; object-fit: cover;"
+                                onerror="this.src='/static/img/no-photo.png'">
+                            
+                            <!-- Badge de Inteligencia de Mercado (Vista Asesor) -->
+                            <div class="position-absolute top-0 start-0 m-2" style="z-index: 4;">
+                                {% if mb.badge_tipo == 'rebaja' %}
+                                <span class="badge bg-danger shadow-sm px-2.5 py-1.5 rounded-pill text-white fw-bold d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-graph-down-arrow"></i> {{ mb.badge_texto_agente }}
+                                </span>
+                                {% elif mb.badge_tipo == 'nuevo' %}
+                                <span class="badge bg-success shadow-sm px-2.5 py-1.5 rounded-pill text-white fw-bold d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-stars"></i> {{ mb.badge_texto_agente }}
+                                </span>
+                                {% elif mb.badge_tipo == 'negociable' %}
+                                <span class="badge bg-warning text-dark shadow-sm px-2.5 py-1.5 rounded-pill fw-bold d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-tag-fill"></i> {{ mb.badge_texto_agente }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-dark bg-opacity-75 shadow-sm px-2.5 py-1.5 rounded-pill text-white small d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-calendar3"></i> {{ mb.dias_en_mercado }}d en mercado
+                                </span>
+                                {% endif %}
+                                {% if r.ya_enviada %}
+                                <span class="badge bg-secondary shadow-sm px-2.5 py-1.5 rounded-pill text-white small d-inline-flex align-items-center gap-1" title="Ya enviada previamente al cliente">
+                                    <i class="bi bi-check2-all"></i> Enviada
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <div class="position-absolute top-0 end-0 p-2">
+                                <div class="form-check form-switch bg-white rounded-pill px-3 py-1 shadow-sm">
+                                    <input class="form-check-input" type="checkbox" name="selected_data"
+                                        value='{{ r|tojson }}' id="prop-{{ loop.index }}">
+                                    <label class="form-check-label small fw-bold"
+                                        for="prop-{{ loop.index }}">Incluir</label>
+                                </div>
+                            </div>
+                            <span class="badge position-absolute bottom-0 start-0 m-2 portal-{{ r.portal }}">{{ r.portal|capitalize }}</span>
+                            {% if r.fecha_captacion %}
+                            <span class="badge position-absolute bottom-0 end-0 m-2 bg-dark bg-opacity-75 text-white shadow-sm" title="Fecha en que ingresó al sistema">
+                                <i class="bi bi-calendar-check me-1"></i>Captada: {{ r.fecha_captacion[:10] }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-1">
+                                <h6 class="card-title fw-bold text-truncate mb-0" style="max-width: 70%;">{{ r.titulo }}
+                                </h6>
+                                <span class="text-primary fw-bold">
+                                    {% if r.precio is not none and r.precio|float > 0 %}
+                                        {{ r.moneda or 'USD' }} {{ "{:,.0f}".format(r.precio|float) }}
+                                    {% else %}
+                                        {{ r.precio or 'Consultar' }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <p class="small text-muted mb-2"><i class="bi bi-geo-alt"></i> {{ r.direccion or r.barrio or
+                                zona }}</p>
+
+                            <div class="d-flex gap-3 mb-2 small text-muted flex-wrap">
+                                <span><i class="bi bi-door-open"></i> {{ r.ambientes or '?' }} Amb.</span>
+                                <span><i class="bi bi-aspect-ratio"></i> {{ r.m2|int if r.m2 else '?' }} m²</span>
+                                {% if r.cocheras and r.cocheras|int > 0 %}
+                                    <span class="text-success fw-bold"><i class="bi bi-car-front-fill me-1"></i>{{ r.cocheras }} Coch.</span>
+                                {% elif r.dormitorios and r.dormitorios|int > 0 %}
+                                    <span><i class="bi bi-layout-sidebar me-1"></i>{{ r.dormitorios }} Dorm.</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-flex gap-2 mt-3">
+                                <a href="{{ r.url }}" target="_blank"
+                                    class="btn btn-sm btn-outline-secondary flex-fill">
+                                    <i class="bi bi-link-45deg"></i> Ver Original
+                                </a>
+                                <button type="button" class="btn btn-sm btn-light" title="Ver en mapa">
+                                    <i class="bi bi-geo-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Hidden inputs for report context -->
+            <input type="hidden" name="cliente_zona" value="{{ zona }}">
+            <input type="hidden" name="cliente_tipo" value="{{ tipo }}">
+            <input type="hidden" name="map_coords" id="map_coords_input" value="[]">
+        </form>
+
+        <div class="text-center my-4">
+            <button type="button" class="btn btn-outline-primary rounded-pill px-4 btn-mas-propiedades" onclick="window.cargarMasVentas()">
+                <i class="bi bi-plus-circle me-1"></i> Cargar Más Propiedades (Siguiente página)
+            </button>
+        </div>
+
+        {% elif request.method == 'POST' %}
+        <div class="text-center py-5">
+            <i class="bi bi-search d-block fs-1 text-muted mb-3"></i>
+            <h3>No se encontraron propiedades</h3>
+            <p class="text-muted">Intentá suavizar los filtros o ampliar la zona de búsqueda.</p>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <div class="p-5 bg-light rounded-4 border-2 border-dashed">
+                <i class="bi bi-house-heart d-block fs-1 text-primary mb-3"></i>
+                <h2>Encontrá la casa ideal para tu cliente</h2>
+                <p class="text-muted">Cargá los requerimientos a la izquierda para empezar el rastreo en tiempo real.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Map Scripts -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    window.mostrarCheckingOverlay = function() {
+        const overlay = document.getElementById('checkingAvailabilityOverlay');
+        if (overlay) {
+            overlay.classList.remove('d-none');
+            overlay.classList.add('d-flex');
+            // Auto hide after 12 seconds in case target=_blank tab opens
+            setTimeout(() => {
+                overlay.classList.remove('d-flex');
+                overlay.classList.add('d-none');
+            }, 12000);
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const mapEl = document.getElementById('map');
+        if (!mapEl) return;
+
+        const map = L.map('map').setView([-34.6037, -58.3816], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        window.propertiesList = {{ results| tojson | safe if results else '[]' }};
+        const bounds = [];
+        const geocodeCache = {};
+        const addressCount = {};
+
+        const ZONE_CENTROIDS = {
+            'olivos': [-34.5110, -58.4920],
+            'vicente lopez': [-34.5290, -58.4780],
+            'florida': [-34.5360, -58.4980],
+            'la lucila': [-34.4980, -58.4910],
+            'martinez': [-34.4930, -58.5120],
+            'san isidro': [-34.4710, -58.5280],
+            'acassuso': [-34.4820, -58.5080],
+            'beccar': [-34.4560, -58.5360],
+            'victoria': [-34.4450, -58.5520],
+            'san fernando': [-34.4420, -58.5610],
+            'tigre': [-34.4250, -58.5790],
+            'nordelta': [-34.4050, -58.6540],
+            'general pacheco': [-34.4580, -58.6410],
+            'benavidez': [-34.3980, -58.6890],
+            'escobar': [-34.3486, -58.7908],
+            'garin': [-34.4250, -58.7350],
+            'pilar': [-34.4580, -58.9140],
+            'san martin': [-34.5770, -58.5380],
+            'villa ballester': [-34.5490, -58.5550],
+            'palermo': [-34.5880, -58.4120],
+            'recoleta': [-34.5890, -58.3930],
+            'barrio norte': [-34.5910, -58.3980],
+            'belgrano': [-34.5620, -58.4560],
+            'puerto madero': [-34.6100, -58.3620],
+            'nunez': [-34.5450, -58.4650],
+            'nuñez': [-34.5450, -58.4650],
+            'colegiales': [-34.5780, -58.4480],
+            'caballito': [-34.6180, -58.4410],
+            'almagro': [-34.6090, -58.4210],
+            'villa crespo': [-34.5980, -58.4410],
+            'chacarita': [-34.5880, -58.4550],
+            'villa urquiza': [-34.5730, -58.4870],
+            'villa devoto': [-34.6010, -58.5120],
+            'villa del parque': [-34.6070, -58.4910],
+            'coghlan': [-34.5640, -58.4730],
+            'saavedra': [-34.5480, -58.4900],
+            'san telmo': [-34.6210, -58.3710],
+            'flores': [-34.6290, -58.4630],
+            'floresta': [-34.6310, -58.4810],
+            'barracas': [-34.6410, -58.3810],
+            'moron': [-34.6530, -58.6180],
+            'castelar': [-34.6510, -58.6400],
+            'ramos mejia': [-34.6420, -58.5650],
+            'avellaneda': [-34.6620, -58.3650],
+            'quilmes': [-34.7210, -58.2560],
+            'la plata': [-34.9210, -57.9540]
+        };
+
+        function calcDistanceKm(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function findMatchingCentroid(text) {
+            if (!text) return null;
+            const clean = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            for (const [zoneKey, coords] of Object.entries(ZONE_CENTROIDS)) {
+                if (clean.includes(zoneKey)) {
+                    return coords;
+                }
+            }
+            return null;
+        }
+
+        // Random jitter to avoid marker stacking
+        function addJitter(lat, lon, idx) {
+            const jitter = 0.0025; // ~250m spread
+            const angle = (idx * 137.508) * Math.PI / 180; // golden angle
+            const r = jitter * Math.sqrt((idx % 15) + 1) * 0.4;
+            return [
+                parseFloat(lat) + r * Math.cos(angle),
+                parseFloat(lon) + r * Math.sin(angle)
+            ];
+        }
+
+        async function geocodeAddress(address) {
+            if (geocodeCache[address]) return geocodeCache[address];
+            try {
+                const query = encodeURIComponent(address);
+                const resp = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + query);
+                const data = await resp.json();
+                if (data && data.length > 0) {
+                    geocodeCache[address] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                    return geocodeCache[address];
+                }
+            } catch (e) { console.error("Geocode error:", e); }
+            return null;
+        }
+
+        window.addMarkerToMap = async function(p, idx) {
+            const streetAddr = p.direccion && p.direccion.trim().length > 3 ? p.direccion.trim() : null;
+            const contextLoc = (p.barrio && p.barrio.trim().length > 2 && p.barrio.toLowerCase() !== (p.direccion || '').toLowerCase()) 
+                                ? p.barrio.trim() 
+                                : ("{{ zona }}" || "");
+            
+            const expectedCentroid = findMatchingCentroid(contextLoc) || findMatchingCentroid("{{ zona }}") || findMatchingCentroid(p.titulo) || findMatchingCentroid(p.direccion);
+
+            let geocodeQuery = "";
+            if (streetAddr) {
+                if (contextLoc && !streetAddr.toLowerCase().includes(contextLoc.toLowerCase())) {
+                    geocodeQuery = streetAddr + ", " + contextLoc + ", Buenos Aires, Argentina";
+                } else {
+                    geocodeQuery = streetAddr + ", Buenos Aires, Argentina";
+                }
+            } else {
+                geocodeQuery = (contextLoc || "Buenos Aires") + ", Buenos Aires, Argentina";
+            }
+            let coords = null;
+
+            if (p.lat && p.lng && parseFloat(p.lat) !== 0 && parseFloat(p.lng) !== 0) {
+                const lat = parseFloat(p.lat);
+                const lng = parseFloat(p.lng);
+                if (lat >= -56 && lat <= -21 && lng >= -74 && lng <= -53) {
+                    if (expectedCentroid) {
+                        const dist = calcDistanceKm(lat, lng, expectedCentroid[0], expectedCentroid[1]);
+                        if (dist <= 8.0) {
+                            coords = [lat, lng];
+                        }
+                    } else {
+                        coords = [lat, lng];
+                    }
+                }
+            }
+
+            if (!coords) {
+                const geoRes = await geocodeAddress(geocodeQuery);
+                if (!geocodeCache[geocodeQuery]) {
+                    await new Promise(r => setTimeout(r, 600));
+                }
+                if (geoRes) {
+                    const [glat, glng] = geoRes;
+                    if (glat >= -56 && glat <= -21 && glng >= -74 && glng <= -53) {
+                        if (expectedCentroid) {
+                            const dist = calcDistanceKm(glat, glng, expectedCentroid[0], expectedCentroid[1]);
+                            if (dist <= 7.0) {
+                                coords = [glat, glng];
+                            }
+                        } else {
+                            coords = [glat, glng];
+                        }
+                    }
+                }
+            }
+
+            // Fallback to zone centroid with jitter if street geocode was out-of-bounds or failed
+            if (!coords && expectedCentroid) {
+                coords = addJitter(expectedCentroid[0], expectedCentroid[1], idx);
+            }
+
+            if (!coords) return;
+
+            if (!addressCount[geocodeQuery]) addressCount[geocodeQuery] = 0;
+            addressCount[geocodeQuery]++;
+
+            let markerCoords = coords;
+            if (addressCount[geocodeQuery] > 1 && !expectedCentroid) {
+                markerCoords = addJitter(coords[0], coords[1], addressCount[geocodeQuery]);
+            }
+
+            // Guard against null precio to avoid JS TypeError
+            const priceLabel = p.precio != null
+                ? (p.moneda || '') + ' ' + Number(p.precio).toLocaleString()
+                : 'Consultar';
+            L.marker(markerCoords).addTo(map)
+                .bindPopup('<b>' + priceLabel + '</b><br><small>' + (p.titulo || '') + '</small><br><a href="' + (p.url || '#') + '" target="_blank">Ver propiedad</a>');
+            bounds.push(markerCoords);
+
+            if (bounds.length === 1) {
+                map.setView(markerCoords, 14);
+            } else if (bounds.length > 1) {
+                map.fitBounds(bounds, { padding: [40, 40] });
+            }
+
+            const coordsInput = document.getElementById('map_coords_input');
+            if (coordsInput) {
+                coordsInput.value = JSON.stringify(bounds);
+            }
+        };
+
+        window.cargarMasVentas = function () {
+            const buttons = document.querySelectorAll('.btn-mas-propiedades');
+            if (buttons.length === 0) return;
+
+            buttons.forEach(b => {
+                b.disabled = true;
+                b.dataset.originalText = b.innerHTML;
+                b.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Buscando más...';
+            });
+
+            const form = document.querySelector('form.crm-loading-form');
+            const formData = new FormData(form);
+            
+            if (!window.currentBuscadorPage) {
+                window.currentBuscadorPage = parseInt("{{ current_page or 1 }}");
+            }
+            window.currentBuscadorPage++;
+            formData.set('page', window.currentBuscadorPage);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(async html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const newCards = doc.querySelectorAll('#reportForm .row.g-3 > .col-md-6');
+                const resultsGrid = document.querySelector('#reportForm .row.g-3');
+                
+                if (newCards.length > 0 && resultsGrid) {
+                    const existingUrls = new Set(Array.from(document.querySelectorAll('#reportForm a[href]')).map(a => a.href.split('?')[0].split('#')[0].trim().toLowerCase()));
+                    const oldLength = window.propertiesList ? window.propertiesList.length : 0;
+                    let addedCount = 0;
+                    
+                    newCards.forEach((card) => {
+                        const linkEl = card.querySelector('a[href]');
+                        const rawHref = linkEl ? linkEl.href.split('?')[0].split('#')[0].trim().toLowerCase() : '';
+                        if (rawHref && existingUrls.has(rawHref)) {
+                            return; // Skip duplicate
+                        }
+                        if (rawHref) existingUrls.add(rawHref);
+
+                        const switchInput = card.querySelector('input[type="checkbox"]');
+                        const switchLabel = card.querySelector('label');
+                        if (switchInput && switchLabel) {
+                            const newId = `prop-${oldLength + addedCount + 1}`;
+                            switchInput.id = newId;
+                            switchLabel.htmlFor = newId;
+                        }
+                        resultsGrid.appendChild(card);
+                        addedCount++;
+                    });
+
+                    const newPropsMatch = html.match(/window\.propertiesList = (\[[\s\S]*?\]);/);
+                    if (newPropsMatch) {
+                        try {
+                            const newProps = JSON.parse(newPropsMatch[1]);
+                            if (newProps && newProps.length > 0) {
+                                if (!window.propertiesList) window.propertiesList = [];
+                                
+                                for (let i = 0; i < newProps.length; i++) {
+                                    const p = newProps[i];
+                                    const pUrl = (p.url || '').split('?')[0].split('#')[0].trim().toLowerCase();
+                                    const alreadyInList = window.propertiesList.some(existing => (existing.url || '').split('?')[0].split('#')[0].trim().toLowerCase() === pUrl);
+                                    if (!alreadyInList) {
+                                        window.propertiesList.push(p);
+                                        await window.addMarkerToMap(p, window.propertiesList.length - 1);
+                                    }
+                                }
+                            }
+                        } catch(e) { console.error("Error updating map properties:", e); }
+                    }
+
+                    if (addedCount > 0) {
+                        const totalCards = document.querySelectorAll('#reportForm .row.g-3 > .col-md-6').length;
+                        const headerTitle = document.querySelector('h5.fw-bold');
+                        if (headerTitle) {
+                            headerTitle.innerHTML = `<i class="bi bi-houses me-2 text-primary"></i>Resultados Encontrados (${totalCards})`;
+                        }
+                    } else {
+                        alert("No se encontraron propiedades adicionales en las siguientes páginas para estos filtros.");
+                    }
+                } else {
+                    alert("No se encontraron más propiedades en las siguientes páginas.");
+                }
+                
+                buttons.forEach(b => {
+                    b.innerHTML = b.dataset.originalText;
+                    b.disabled = false;
+                });
+            })
+            .catch(err => {
+                console.error("Error loading more properties:", err);
+                buttons.forEach(b => {
+                    b.innerHTML = b.dataset.originalText;
+                    b.disabled = false;
+                });
+            });
+        };
+
+        async function processProperties() {
+            for (let i = 0; i < Math.min(window.propertiesList.length, 100); i++) {
+                await window.addMarkerToMap(window.propertiesList[i], i);
+            }
+        }
+
+        if (window.propertiesList.length > 0) {
+            processProperties();
+        }
+    });
+</script>
+
+<style>
+    .property-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-radius: 12px;
+    }
+
+    .property-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .border-dashed {
+        border-style: dashed !important;
+    }
+
+    .portal-zonaprop {
+        background-color: #e31e24 !important;
+        color: white !important;
+    }
+
+    .portal-mercadolibre {
+        background-color: #fff159 !important;
+        color: #333 !important;
+    }
+
+    .portal-argenprop {
+        background-color: #7c3aed !important;
+        color: white !important;
+    }
+</style>
+
+<!-- Modal Guardar Búsqueda -->
+<div class="modal fade" id="modalGuardarBusqueda" tabindex="-1" aria-labelledby="modalGuardarBusquedaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content text-start">
+            <form id="formGuardarBusqueda" action="{{ url_for('captacion_outreach.nueva_busqueda_cliente') }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalGuardarBusquedaLabel"><i class="bi bi-bookmark-plus text-success me-2"></i>Guardar Búsqueda para Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre descriptivo de la búsqueda</label>
+                        <input type="text" name="nombre" id="save_nombre" class="form-control" placeholder="Ej: Palermo Depto 3 Ambientes para Juan" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cliente</label>
+                        <select name="cliente_id" class="form-select" required>
+                            <option value="">Seleccioná un cliente...</option>
+                            {% for c in contactos %}
+                            <option value="{{ c.id }}">{{ c.nombre }} {{ c.apellido }} ({{ c.email or 'sin email' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Modo de Búsqueda</label>
+                        <select name="modo_busqueda" class="form-select" required>
+                            <option value="completa">Completa (Muestra todo lo disponible)</option>
+                            <option value="nuevas">Nuevas (Solo lo nuevo publicado desde hoy en adelante)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3 p-3 bg-light rounded-3 border">
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" name="es_publica" id="save_es_publica" value="1">
+                            <label class="form-check-label fw-bold text-dark" for="save_es_publica">
+                                <i class="bi bi-people-fill text-primary me-1"></i> Búsqueda Pública (Compartir con la oficina)
+                            </label>
+                        </div>
+                        <div class="form-text text-muted small">Al activarlo, todos los agentes de tu oficina podrán ver los requerimientos de esta búsqueda para ayudarte a encontrar la propiedad correcta.</div>
+                    </div>
+                    
+                    <!-- Hidden inputs to clone filter values -->
+                    <input type="hidden" name="tipo_operacion" value="venta">
+                    <input type="hidden" name="zona" id="save_zona">
+                    <input type="hidden" name="tipo_propiedad" id="save_tipo">
+                    <input type="hidden" name="ambientes" id="save_ambientes">
+                    <input type="hidden" name="dormitorios" id="save_dormitorios">
+                    <input type="hidden" name="min_precio" id="save_min_precio">
+                    <input type="hidden" name="max_precio" id="save_max_precio">
+                    <input type="hidden" name="min_m2" id="save_min_m2">
+                    <input type="hidden" name="max_m2" id="save_max_m2">
+                    <input type="hidden" name="keyword" id="save_keyword">
+                    <input type="hidden" name="extras" id="save_extras">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Guardar Búsqueda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function prepararModalGuardar() {
+    const filterForm = document.querySelector('form.crm-loading-form');
+    
+    document.getElementById('save_zona').value = filterForm.querySelector('[name="zona"]').value;
+    
+    // Get checked values for tipo
+    const checkedTypes = Array.from(filterForm.querySelectorAll('[name="tipo"]:checked')).map(cb => cb.value);
+    document.getElementById('save_tipo').value = JSON.stringify(checkedTypes);
+    
+    // Get checked values for ambientes
+    const checkedAmbientes = Array.from(filterForm.querySelectorAll('[name="ambientes"]:checked')).map(cb => cb.value);
+    document.getElementById('save_ambientes').value = JSON.stringify(checkedAmbientes);
+    
+    document.getElementById('save_dormitorios').value = filterForm.querySelector('[name="dormitorios"]').value;
+    document.getElementById('save_min_precio').value = filterForm.querySelector('[name="min_precio"]').value;
+    document.getElementById('save_max_precio').value = filterForm.querySelector('[name="max_precio"]').value;
+    document.getElementById('save_min_m2').value = filterForm.querySelector('[name="min_m2"]').value;
+    document.getElementById('save_max_m2').value = filterForm.querySelector('[name="max_m2"]').value;
+    document.getElementById('save_keyword').value = filterForm.querySelector('[name="keyword"]').value;
+    
+    const checkedExtras = Array.from(filterForm.querySelectorAll('[name="extras"]:checked')).map(cb => cb.value);
+    document.getElementById('save_extras').value = JSON.stringify(checkedExtras);
+    
+    const zonaVal = filterForm.querySelector('[name="zona"]').value || 'Búsqueda';
+    const tipoText = checkedTypes.length > 0 ? checkedTypes.join('/') : 'Propiedades';
+    const ambText = checkedAmbientes.length > 0 ? ` - ${checkedAmbientes.join(',')} amb` : '';
+    document.getElementById('save_nombre').value = `${zonaVal} - ${tipoText}${ambText}`;
+}
+</script>
+
+<!-- Modal Enviar Seleccionados -->
+<div class="modal fade" id="modalEnviarSeleccionados" tabindex="-1" aria-labelledby="modalEnviarSeleccionadosLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formEnviarSeleccionados" action="{{ url_for('captacion_outreach.enviar_seleccionados_cliente') }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEnviarSeleccionadosLabel"><i class="bi bi-envelope-paper text-primary me-2"></i>Enviar Propiedades Seleccionadas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Seleccionar Cliente</label>
+                        <select name="cliente_id" class="form-select" required>
+                            <option value="">Selecciona un cliente...</option>
+                            {% for c in contactos %}
+                            <option value="{{ c.id }}">{{ c.nombre }} {{ c.apellido }} ({{ c.email or 'sin email' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="hidden_selected_container"></div>
+                    <p class="text-muted small">Se enviará un reporte por correo en formato profesional HTML a través de la cola de envíos escalonada.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i> Enviar por Correo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalEnviarSeleccionados() {
+    const checkedBoxes = document.querySelectorAll('input[name="selected_data"]:checked');
+    if (checkedBoxes.length === 0) {
+        alert("Por favor, selecciona al menos una propiedad tildando el interruptor 'Incluir'.");
+        return;
+    }
+    
+    // Clear container
+    const container = document.getElementById('hidden_selected_container');
+    container.innerHTML = '';
+    
+    // Clone checked values
+    checkedBoxes.forEach(cb => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'selected_data';
+        input.value = cb.value;
+        container.appendChild(input);
+    });
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('modalEnviarSeleccionados'));
+    modal.show();
+}
+</script>
+
+<!-- Modal Crear Portal Temporal Live -->
+<div class="modal fade" id="modalCrearPortalTemp" tabindex="-1" aria-labelledby="modalCrearPortalTempLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formCrearPortalTemp" action="{{ url_for('captacion_outreach.crear_portal_temporal_route') }}" method="POST" onsubmit="mostrarCheckingOverlay('Creando Portal Temporal Live en Alta Calidad (15 Días)...')">
+                <input type="hidden" name="modalidad" value="venta">
+                <input type="hidden" name="zona" value="{{ zona or '' }}">
+                <input type="hidden" name="tipo" value="{{ tipo or 'departamento' }}">
+                <div class="modal-header bg-warning bg-opacity-10">
+                    <h5 class="modal-title fw-bold text-dark" id="modalCrearPortalTempLabel">
+                        <i class="bi bi-globe-americas text-warning me-2"></i>Crear Portal Temporal Live
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small d-flex align-items-center mb-3">
+                        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                        <div>El portal tendrá vigencia por <strong>15 días</strong>, fotos en <strong>alta calidad (HD)</strong> y acceso público sin login para tu cliente.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Título / Nombre de la Selección</label>
+                        <input type="text" name="titulo_portal" id="portal_temp_titulo" class="form-control" placeholder="Ej: Selección Martínez / San Isidro para Juan" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Asignar Cliente (Opcional)</label>
+                        <select name="cliente_id" class="form-select">
+                            <option value="">Sin cliente específico (Selección abierta)</option>
+                            {% for c in contactos %}
+                            <option value="{{ c.id }}">{{ c.nombre }} {{ c.apellido }} ({{ c.email or 'sin email' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="p-2 bg-light rounded text-center small text-muted mb-2">
+                        <strong id="portal_temp_count" class="text-primary">0</strong> propiedades seleccionadas para este portal.
+                    </div>
+                    <div id="hidden_portal_temp_container"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning text-dark fw-bold shadow-sm">
+                        <i class="bi bi-check2-circle me-1"></i> Generar Portal Live
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function filtrarTarjetasDOM(tipo, btn) {
+    // Actualizar botones activos
+    document.querySelectorAll('.filter-dom-btn').forEach(b => {
+        b.classList.remove('active', 'btn-secondary');
+        if (b.classList.contains('btn-outline-success') || b.classList.contains('btn-outline-danger') || b.classList.contains('btn-outline-warning')) {
+            // keep outline
+        }
+    });
+    if (btn) {
+        btn.classList.add('active');
+        if (tipo === 'todos') {
+            btn.classList.add('btn-secondary');
+        }
+    }
+
+    const cards = document.querySelectorAll('.prop-card-item');
+    let visibleCount = 0;
+    cards.forEach(card => {
+        const bType = card.getAttribute('data-badge-type');
+        if (tipo === 'todos' || bType === tipo) {
+            card.style.display = '';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    const countEl = document.getElementById('totalVisibleCount');
+    if (countEl) {
+        countEl.innerText = visibleCount;
+    }
+}
+
+function abrirModalCrearPortalTemp() {
+    const checkedBoxes = document.querySelectorAll('input[name="selected_data"]:checked');
+    if (checkedBoxes.length === 0) {
+        alert("Por favor, selecciona al menos una propiedad tildando el interruptor 'Incluir' para armar el portal temporal.");
+        return;
+    }
+    
+    // Clear container
+    const container = document.getElementById('hidden_portal_temp_container');
+    container.innerHTML = '';
+    
+    // Clone checked values
+    checkedBoxes.forEach(cb => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'selected_data';
+        input.value = cb.value;
+        container.appendChild(input);
+    });
+
+    document.getElementById('portal_temp_count').innerText = checkedBoxes.length;
+    
+    // Default title
+    const zonaVal = "{{ zona or '' }}";
+    document.getElementById('portal_temp_titulo').value = zonaVal ? `Selección Exclusiva ${zonaVal}` : `Selección de Propiedades Destacadas`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalCrearPortalTemp'));
+    modal.show();
+}
+</script>
+{% endblock %}

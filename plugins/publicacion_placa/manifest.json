@@ -1,0 +1,8 @@
+{
+  "id": "publicacion_placa",
+  "name": "Publicación a Placa (PAP)",
+  "version": "1.0.0",
+  "description": "Generador en tiempo real de placas de marketing para redes sociales e historias a partir de propiedades.",
+  "author": "CRM System",
+  "enabled": true
+}

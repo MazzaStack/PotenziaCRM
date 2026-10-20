@@ -1,0 +1,7 @@
+{
+    "id": "modelado_3d",
+    "nombre": "Modelado 3D de Propiedades",
+    "version": "1.0.0",
+    "description": "Visualizador e integrador de modelos 3D Gaussian Splatting para propiedades inmobiliarias vinculados a la app de captura.",
+    "enabled": true
+}

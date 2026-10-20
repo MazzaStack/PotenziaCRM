@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Planificador de Mensajes{% endblock %}
+{% block header %}Planificador de Seguimiento (10 Semanas){% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3">
+                        <i class="bi bi-calendar3-event text-primary fs-3"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-1">Estrategia de Nutrición de Clientes</h4>
+                        <p class="text-muted mb-0">Configura mensajes específicos para cada semana. Si una semana no
+                            tiene el mensaje habilitado, usaremos <b>IA (Gemini)</b> para generar uno dinámico.</p>
+                    </div>
+                </div>
+
+                <form action="{{ url_for('planificador') }}" method="POST">
+                    <div class="vstack gap-4">
+                        {% for semana in semanas %}
+                        <div class="p-3 border rounded-4 bg-light bg-opacity-50">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">
+                                    <span class="badge bg-primary me-2">Semana {{ semana.semana }}</span>
+                                    {% if semana.semana == 1 %}
+                                    <small class="text-muted">(Primer Contacto)</small>
+                                    {% endif %}
+                                </h5>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox"
+                                        name="habilitado_semana_{{ semana.semana }}" id="hab_{{ semana.semana }}" {% if
+                                        semana.habilitado %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold" for="hab_{{ semana.semana }}">Usar Mensaje
+                                        Fijo</label>
+                                </div>
+                            </div>
+
+                            <div class="position-relative">
+                                <textarea name="mensaje_semana_{{ semana.semana }}"
+                                    class="form-control border-0 shadow-sm" rows="3"
+                                    placeholder="Escribe el mensaje para la semana {{ semana.semana }}..."
+                                    style="resize: none; border-radius: 12px; padding: 1rem;">{{ semana.mensaje }}</textarea>
+                                <div class="position-absolute bottom-0 end-0 m-2">
+                                    <small class="text-muted opacity-50"><i class="bi bi-magic"></i> Dejar vacío para
+                                        IA</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mt-5 d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg shadow-sm">
+                            <i class="bi bi-check2-circle me-2"></i> Guardar Plan de 10 Semanas
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

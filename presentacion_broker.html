@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Potenzia CRM — Propuesta Estratégica para Brokers y Titulares</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0b0f19; color: #f1f5f9; overflow: hidden; }
+    .slide { display: none; opacity: 0; transition: opacity 0.35s ease-in-out, transform 0.35s ease-out; transform: translateY(10px); }
+    .slide.active { display: flex; opacity: 1; transform: translateY(0); }
+    .glass-card { background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5); }
+    .gradient-gold { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between select-none font-sans">
+  <header class="w-full px-8 py-3.5 flex items-center justify-between z-20 border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-display font-black text-white text-lg shadow-lg shadow-sky-500/25">P</div>
+      <div>
+        <h1 class="font-display font-bold text-base text-white tracking-wide">POTENZIA <span class="text-sky-400 font-medium text-xs">BROKER OS</span></h1>
+        <p class="text-[11px] text-slate-400">Control Centralizado con Ejecución Distribuida</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="slideCounter" class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-800/80 text-sky-300 border border-slate-700">1 / 10</span>
+      <button onclick="toggleFullScreen()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition" title="Pantalla Completa (F11)"><i data-lucide="maximize" class="w-4 h-4"></i></button>
+    </div>
+  </header>
+
+  <main class="flex-1 relative w-full h-full overflow-hidden p-4 sm:p-8 flex items-center justify-center">
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 1: PORTADA -->
+    <!-- ================================================================= -->
+    <div class="slide active flex-col items-center justify-center text-center max-w-4xl mx-auto h-full" data-title="Portada">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold uppercase tracking-wider mb-6">
+        <i data-lucide="trending-up" class="w-4 h-4"></i> Exclusivo para Titulares y Brokers Inmobiliarios
+      </div>
+      <h2 class="font-display text-4xl sm:text-6xl font-black tracking-tight leading-tight mb-5">
+        Cómo Sumar Ventas, <span class="gradient-gold">Captaciones Exclusivas</span> y Multiplicar tus Ingresos Cada Mes
+      </h2>
+      <p class="text-base sm:text-lg text-slate-300 max-w-3xl mx-auto leading-relaxed mb-8">
+        Multiplicamos la prospección activa y pasiva de tu oficina y cerramos más compradores evitando que te salteen en los portales. El control total del negocio en manos de tu inmobiliaria.
+      </p>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 w-full max-w-4xl mb-8">
+        <div class="glass-card p-3.5 rounded-2xl text-center">
+          <div class="text-2xl sm:text-3xl font-display font-black text-sky-400 mb-0.5">+40%</div>
+          <div class="text-[11px] text-slate-400 font-medium">Captación Activa y Pasiva de Propiedades</div>
+        </div>
+        <div class="glass-card p-3.5 rounded-2xl text-center">
+          <div class="text-2xl sm:text-3xl font-display font-black text-emerald-400 mb-0.5">5 Seg</div>
+          <div class="text-[11px] text-slate-400 font-medium">Respuesta WhatsApp (IA 24/7)</div>
+        </div>
+        <div class="glass-card p-3.5 rounded-2xl text-center">
+          <div class="text-2xl sm:text-3xl font-display font-black text-purple-400 mb-0.5">100%</div>
+          <div class="text-[11px] text-slate-400 font-medium">Precalificación de Clientes WhatsApp (IA 24/7)</div>
+        </div>
+        <div class="glass-card p-3.5 rounded-2xl text-center">
+          <div class="text-2xl sm:text-3xl font-display font-black text-amber-400 mb-0.5">+600%</div>
+          <div class="text-[11px] text-slate-400 font-medium">Retorno Directo de la Inversión (ROI)</div>
+        </div>
+      </div>
+      <button onclick="nextSlide()" class="inline-flex items-center gap-3 px-8 py-3.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-sky-500/25 transition transform hover:-translate-y-0.5 text-sm">
+        <span>Ver Cómo Funciona la Máquina de Honorarios</span>
+        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 2: DIAGNÓSTICO DE FUGAS -->
+    <!-- ================================================================= -->
+    <div class="slide flex-col justify-center max-w-5xl mx-auto h-full" data-title="Diagnóstico">
+      <div class="mb-5">
+        <span class="text-xs font-bold text-rose-400 uppercase tracking-widest">La Realidad del Sector</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-white mt-1">
+          Las 4 Fugas Invisibles donde Tu Inmobiliaria Pierde Comisiones
+        </h2>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border-l-4 border-rose-500">
+          <div class="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-2.5"><i data-lucide="clock" class="w-4 h-4"></i></div>
+          <h3 class="font-display font-bold text-sm sm:text-base text-white mb-1">1. Respuesta Tardía de Leads</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">El 60% de los interesados en portales escriben después de las 20:00 o fines de semana. Si se responde al día siguiente a las 10:00, <strong class="text-rose-300">ya coordinaron visita con otra inmobiliaria.</strong></p>
+        </div>
+        <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-500">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2.5"><i data-lucide="megaphone" class="w-4 h-4"></i></div>
+          <h3 class="font-display font-bold text-sm sm:text-base text-white mb-1">2. Captación Pasiva Inexistente</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">Esperar que nuevas propiedades lleguen solas a la oficina es perder cuota de mercado. Los grandes competidores tienen <strong class="text-amber-300">campañas pasivas de publicidad sin costo</strong> para generar oportunidades antes de que se publiquen con otra red.</p>
+        </div>
+        <div class="glass-card p-4 rounded-2xl border-l-4 border-sky-500">
+          <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-2.5"><i data-lucide="calendar-check" class="w-4 h-4"></i></div>
+          <h3 class="font-display font-bold text-sm sm:text-base text-white mb-1">3. Falta de Captación Activa</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">Esperar a que tus agentes se acuerden de fechas especiales y hablen con sus clientes es una pérdida de captaciones constante. Los líderes aplican <strong class="text-sky-300">automatizaciones que mantienen a tus agentes enfocados en la captación y venta</strong> multiplicando sus posibilidades.</p>
+        </div>
+        <div class="glass-card p-4 rounded-2xl border-l-4 border-purple-500">
+          <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-2.5"><i data-lucide="shield-alert" class="w-4 h-4"></i></div>
+          <h3 class="font-display font-bold text-sm sm:text-base text-white mb-1">4. Pérdida de Compradores (Puenteo)</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">Mandar 5 links sueltos por WhatsApp hace que el comprador se distraiga con avisos de competidores y muchas veces <strong class="text-purple-300">llama directo al aviso salteando al agente y la inmobiliaria</strong> que lo venía asesorando. Falta una experiencia VIP controlada a prueba de compradores ansiosos.</p>
+        </div>
+      </div>
+      <div class="mt-4 p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0"></i>
+          <span class="text-xs text-slate-200"><strong>Costo de la inacción:</strong> Perder 1 sola venta al trimestre son entre <strong>$3.000 y $6.000 USD</strong> en comisiones directas.</span>
+        </div>
+        <button onclick="nextSlide()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 font-semibold text-xs rounded-lg transition shrink-0">Ver Estrategia →</button>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 3: CAPTACIÓN ACTIVA VS PASIVA -->
+    <!-- ================================================================= -->
+    <div class="slide flex-col justify-center max-w-5xl mx-auto h-full" data-title="Captación">
+      <div class="mb-5">
+        <span class="text-xs font-bold text-sky-400 uppercase tracking-widest">Estrategia de Generación de Inventario</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-white mt-1">
+          Captación Activa vs. Captación Pasiva con Potenzia CRM
+        </h2>
+        <p class="text-xs text-slate-300 mt-1">Dos motores complementarios que multiplican el volumen de propiedades de la oficina:</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <!-- Captación Activa -->
+        <div class="glass-card p-5 rounded-2xl border-t-4 border-sky-500 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2.5 mb-3">
+              <div class="p-2 rounded-lg bg-sky-500/10 text-sky-400"><i data-lucide="radar" class="w-5 h-5"></i></div>
+              <div>
+                <h3 class="font-display font-bold text-base text-white">Captación Activa</h3>
+                <span class="text-[11px] text-sky-400 font-semibold">Prospección Dirigida e Inmediata</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-300 mb-3.5">Acciones deliberadas donde la tecnología sale a buscar la oportunidad antes de que llegue a la competencia:</p>
+            <ul class="space-y-2.5 text-xs text-slate-300">
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5"></i>
+                <span><strong>Radar de Portales:</strong> Detección diaria de nuevos ingresos y propiedades desactualizadas en ZonaProp, Argenprop y MercadoLibre.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5"></i>
+                <span><strong>Disparadores Relacionales:</strong> Fechas clave (aniversarios de compra, cumpleaños, días profesionales) para forzar contacto 1 a 1 oportuno.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5"></i>
+                <span><strong>Motor de Ideas con IA:</strong> Sugerencias tácticas diarias para que el agente ejecute llamadas y visitas directas con un objetivo claro.</span>
+              </li>
+            </ul>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-sky-300 font-medium flex items-center gap-1.5">
+            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> Convierte el tiempo muerto del agente en captaciones reales.
+          </div>
+        </div>
+
+        <!-- Captación Pasiva -->
+        <div class="glass-card p-5 rounded-2xl border-t-4 border-purple-500 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2.5 mb-3">
+              <div class="p-2 rounded-lg bg-purple-500/10 text-purple-400"><i data-lucide="share-2" class="w-5 h-5"></i></div>
+              <div>
+                <h3 class="font-display font-bold text-base text-white">Captación Pasiva</h3>
+                <span class="text-[11px] text-purple-400 font-semibold">Atracción, Omnipresencia y Marca Personal</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-300 mb-3.5">Estrategias de visibilidad continua diseñadas para que el propietario recuerde al agente y lo contacte por iniciativa propia:</p>
+            <ul class="space-y-2.5 text-xs text-slate-300">
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5"></i>
+                <span><strong>Distribución en Cascada (Efecto Red):</strong> Publicación centralizada desde la oficina que impacta simultáneamente en WhatsApp e IG de TODOS los agentes.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5"></i>
+                <span><strong>Nutrición Automatizada:</strong> Historias y placas autogeneradas sin demandar tiempo de diseño ni redacción al equipo.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5"></i>
+                <span><strong>Triage 24/7 con Mi ClaudIA:</strong> Respuestas inmediatas y precalificación en WhatsApp para no perder oportunidades entrantes fuera de horario.</span>
+              </li>
+            </ul>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-purple-300 font-medium flex items-center gap-1.5">
+            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> Multiplica el alcance orgánico de tu inmobiliaria sin costo publicitario.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 4: PILAR 1 - BLINDAJE OPERATIVO ANTI-PUENTEO -->
+    <!-- ================================================================= -->
+    <div class="slide flex-col justify-center max-w-5xl mx-auto h-full" data-title="Blindaje">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <span class="text-xs font-bold text-amber-400 uppercase tracking-widest">Pilar #1 de Valor Estratégico</span>
+          <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-white mt-1">
+            Blindaje Operativo y Protección de Honorarios
+          </h2>
+        </div>
+        <div class="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
+          Cero Puenteo
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+        <div class="md:col-span-7 space-y-4">
+          <div class="glass-card p-4 rounded-xl border border-slate-800">
+            <span class="text-[11px] text-rose-400 font-bold uppercase tracking-wider">El Problema que Resuelve</span>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+              El riesgo constante de que un cliente comprador saltee al agente al solicitar fichas técnicas, o que al recibir enlaces de portales públicos llame directo al colega o vendedor.
+            </p>
+          </div>
+
+          <div class="glass-card p-4 rounded-xl border border-slate-800">
+            <span class="text-[11px] text-emerald-400 font-bold uppercase tracking-wider">Solución del CRM: Portales Temporales Live & Multi Fichas (PAF)</span>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
+              Creación de micro-portales interactivos con marca propia y fotos en alta resolución. <strong>Ocultan los datos de contacto directo de la parte vendedora o de inmobiliarias colegas</strong>.
+            </p>
+            <div class="grid grid-cols-2 gap-2.5 mt-3 text-xs">
+              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span class="text-sky-400 font-bold block">1 Solo Link Limpio</span>
+                <span class="text-slate-400 text-[11px]">En vez de 6 links sueltos y desprolijos.</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span class="text-emerald-400 font-bold block">Vigencia de 15 Días</span>
+                <span class="text-slate-400 text-[11px]">Sensación de exclusividad y urgencia.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="md:col-span-5 glass-card p-6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-amber-500/20 text-center">
+          <div class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-3.5 mx-auto ring-8 ring-amber-500/5">
+            <i data-lucide="lock" class="w-7 h-7"></i>
+          </div>
+          <h3 class="font-display font-bold text-lg text-white mb-2">Experiencia VIP Controlada</h3>
+          <p class="text-xs text-slate-300 leading-relaxed mb-4">
+            El comprador navega un entorno diseñado exclusivamente para él, con los colores y logo de tu inmobiliaria. No hay publicidad cruzada, ni números de otros martilleros.
+          </p>
+          <div class="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs text-amber-300 font-semibold">
+            Tus comisiones quedan 100% blindadas en cada consulta.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 5: PILAR 2 - INTELIGENCIA DE NEGOCIO & MATCHMAKING -->
+    <!-- ================================================================= -->
+    <div class="slide flex-col justify-center max-w-5xl mx-auto h-full" data-title="Matchmaking">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Pilar #2 de Valor Estratégico</span>
+          <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-white mt-1">
+            Inteligencia de Negocio y Cierre Interno (Matchmaking)
+          </h2>
+        </div>
+        <div class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+          Cierre Interno
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <!-- Matchmaking de Oficina -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2.5 mb-3">
+              <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400"><i data-lucide="git-merge" class="w-5 h-5"></i></div>
+              <div>
+                <h3 class="font-display font-bold text-base text-white">Panel Compartido de Compradores</h3>
+                <span class="text-[11px] text-emerald-400 font-semibold">Cruce automático de demanda</span>
+              </div>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 mb-3">
+              <strong class="text-rose-400">Problema:</strong> Propiedades que tardan meses en venderse teniendo compradores dentro de la misma oficina sin que los agentes lo sepan.
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              El CRM cruza automáticamente los requerimientos de compradores cargados con los nuevos ingresos detectados en portales y el inventario propio de la sucursal.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-emerald-300 font-medium">
+            Acelera la rotación de cartera duplicando cierres compartidos entre colegas.
+          </div>
+        </div>
+
+        <!-- ACM con IA -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2.5 mb-3">
+              <div class="p-2 rounded-lg bg-sky-500/10 text-sky-400"><i data-lucide="calculator" class="w-5 h-5"></i></div>
+              <div>
+                <h3 class="font-display font-bold text-base text-white">Tasador ACM con Inteligencia Artificial</h3>
+                <span class="text-[11px] text-sky-400 font-semibold">Captaciones en precio desde el día 1</span>
+              </div>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 mb-3">
+              <strong class="text-rose-400">Problema:</strong> Tasaciones discutidas, captaciones sobrevaluadas que se estancan y propietarios que regatean honorarios.
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Tasaciones comparativas automáticas respaldadas por comparables reales de mercado. El cliente las valora aún más por estar avaladas por algoritmos no manipulables.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-sky-300 font-medium">
+            Permite captaciones en precios más competitivos. Evita el estancamiento de propiedades sobretasadas.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 6: PILAR 3 Y 4 - MARKETING SIN FRICCIÓN & LOTEOS -->
+    <!-- ================================================================= -->
+    <div class="slide flex-col justify-center max-w-5xl mx-auto h-full" data-title="Marketing & Lotes">
+      <div class="mb-5">
+        <span class="text-xs font-bold text-purple-400 uppercase tracking-widest">Pilares #3 y #4 de Valor Estratégico</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-white mt-1">
+          Marketing sin Fricción Técnica y Especialización en Loteos
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <!-- Marketing sin Fricción -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2.5 mb-3">
+              <div class="p-2 rounded-lg bg-purple-500/10 text-purple-400"><i data-lucide="layout-template" class="w-5 h-5"></i></div>
+              <div>
+                <h3 class="font-display font-bold text-base text-white">Publicador a Placas (PAP) Instantáneo</h3>
+                <span class="text-[11px] text-purple-400 font-semibold">Cero esfuerzo de diseño</span>
+              </div>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 mb-3">
+              <strong class="text-rose-400">Problema:</strong> Baja adopción digital de asesores tradicionales e inconsistencia de imagen de marca en redes.
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Generador instantáneo de placas a partir de enlaces web. El agente no necesita diseñar ni redactar: la oficina empuja contenido directo a sus estados de WhatsApp (el medio con mayor tasa de apertura de Argentina).
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-purple-300 font-medium">
+            Presencia visual impecable y homogénea para toda la fuerza comercial.
+          </div>
+        </div>
+
+        <!-- Especialización en Desarrollos / Lotes -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2.5 mb-3">
+              <div class="p-2 rounded-lg bg-amber-500/10 text-amber-400"><i data-lucide="map" class="w-5 h-5"></i></div>
+              <div>
+                <h3 class="font-display font-bold text-base text-white">Visor Interactivo de Lotes & Fracciones</h3>
+                <span class="text-[11px] text-amber-400 font-semibold">Gestión ágil de desarrollos</span>
+              </div>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 mb-3">
+              <strong class="text-rose-400">Problema:</strong> Manejo ineficiente de listas de precios y planos en PDF desactualizados en barrios cerrados o loteos masivos (Escobar, Pilar, Beccar).
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Visor interactivo con estado de disponibilidad, medidas, valores y detalles de financiación, exportable al instante con la imagen institucional de la oficina.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-amber-300 font-medium">
+            Facilita cotizaciones al instante en desarrollos y fracciones suburbanas.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 7: EL DIFERENCIAL PARA EL BROKER (CONTROL CENTRALIZADO) -->
+    <!-- ================================================================= -->
+    <div class="slide flex-col justify-center max-w-5xl mx-auto h-full" data-title="Control Broker">
+      <div class="mb-5">
+        <span class="text-xs font-bold text-sky-400 uppercase tracking-widest">El Ángulo Comercial para el Titular</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-white mt-1">
+          Control Centralizado con Ejecución Distribuida
+        </h2>
+        <p class="text-xs text-slate-300 mt-1">El valor no son herramientas aisladas: es alinear a todo el equipo bajo una sola directriz:</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl">
+          <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-3"><i data-lucide="sliders" class="w-4 h-4"></i></div>
+          <h4 class="font-bold text-white text-sm mb-1.5">La Administración Define</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">La oficina fija la estrategia, los precios mínimos, la identidad visual y las campañas comerciales desde el panel central.</p>
+        </div>
+        <div class="glass-card p-4 rounded-2xl">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3"><i data-lucide="users" class="w-4 h-4"></i></div>
+          <h4 class="font-bold text-white text-sm mb-1.5">El CRM Aprovecha el Efecto Red</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">Multiplica el alcance comercial utilizando el capital relacional de toda la nómina de agentes de forma automática y coordinada.</p>
+        </div>
+        <div class="glass-card p-4 rounded-2xl">
+          <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-3"><i data-lucide="activity" class="w-4 h-4"></i></div>
+          <h4 class="font-bold text-white text-sm mb-1.5">Analítica de Oficina en Vivo</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">Métricas claras de qué agente prospecta, quién atiende rápido y el avance global del pipeline sin perseguir a nadie.</p>
+        </div>
+      </div>
+
+      <div class="mt-5 p-5 glass-card rounded-2xl bg-gradient-to-r from-slate-900 via-sky-950/40 to-slate-900 border border-sky-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h4 class="font-bold text-white text-base">Blindaje de Base de Datos y Aislamiento</h4>
+          <p class="text-xs text-slate-300">Si un agente se retira de la inmobiliaria, los contactos, tasaciones e historiales permanecen en el servidor de la oficina.</p>
+        </div>
+        <span class="text-xs text-emerald-400 font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 whitespace-nowrap">
+          Activo Propio del Broker
+        </span>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 8: PORTAL DE CLIENTES (MANEJO DE ANSIEDAD & CONTROL TOTAL) -->
+    <!-- ================================================================= -->
+    <div class="slide flex-col justify-center max-w-5xl mx-auto h-full" data-title="Portal Clientes">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-xs font-bold text-sky-400 uppercase tracking-widest">Experiencia del Comprador & Retención</span>
+          <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-white mt-1">
+            Portal de Clientes: El Sistema de Manejo de la Ansiedad
+          </h2>
+        </div>
+        <div class="px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-bold whitespace-nowrap">
+          Fidelización Activa
+        </div>
+      </div>
+
+      <!-- Diagrama de Flujo Paso a Paso -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div class="glass-card p-3.5 rounded-2xl border-t-2 border-sky-500">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold flex items-center justify-center">1</span>
+            <h4 class="font-bold text-white text-xs sm:text-sm">Validación WhatsApp (Token)</h4>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">El comprador ingresa su nombre y celular. El sistema valida su identidad al instante con un <strong>código OTP vía WhatsApp</strong>, asegurando datos 100% reales.</p>
+        </div>
+
+        <div class="glass-card p-3.5 rounded-2xl border-t-2 border-emerald-500">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center">2</span>
+            <h4 class="font-bold text-white text-xs sm:text-sm">Contrato de Búsqueda Digital</h4>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">Acepta digitalmente el <strong>acuerdo de búsqueda y asesoramiento</strong>. Formaliza el compromiso con tu inmobiliaria desde el primer minuto.</p>
+        </div>
+
+        <div class="glass-card p-3.5 rounded-2xl border-t-2 border-purple-500">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center">3</span>
+            <h4 class="font-bold text-white text-xs sm:text-sm">El "Zonaprop" de tu Inmobiliaria</h4>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">Accede a un buscador con <strong>todo el inventario de ZonaProp, Argenprop y MercadoLibre</strong> bajo el logo y colores de tu oficina.</p>
+        </div>
+      </div>
+
+      <!-- Bloque Central: El Botón de Descompresión de Ansiedad -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+        <div class="md:col-span-7 glass-card p-4 sm:p-5 rounded-2xl border border-slate-800">
+          <h4 class="font-bold text-white text-sm sm:text-base flex items-center gap-2 mb-2">
+            <i data-lucide="eye" class="w-4 h-4 text-sky-400"></i>
+            <span>Visualización Completa sin Fuga de Contacto</span>
+          </h4>
+          <p class="text-xs text-slate-300 leading-relaxed mb-3">
+            El comprador ve fotos en máxima resolución, mapa de ubicación, características y descripción detallada de cualquier inmueble del mercado. <strong>No ve números de teléfono de colegas ni de dueños</strong>: está dentro del ecosistema cerrado de tu oficina.
+          </p>
+          <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
+            <div class="text-[11px] text-slate-400">
+              <strong class="text-emerald-400">Cero necesidad de salir a portales públicos:</strong><br>
+              Encuentra todo en tu portal, con tu marca y bajo tu control.
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold text-[10px] border border-emerald-500/20 whitespace-nowrap">
+              Anti-Salteo 100%
+            </span>
+          </div>
+        </div>
+
+        <div class="md:col-span-5 glass-card p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-purple-500/30 text-center flex flex-col justify-between h-full">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mx-auto mb-2.5">
+              <i data-lucide="calendar-plus" class="w-5 h-5"></i>
+            </div>
+            <h4 class="font-display font-bold text-sm text-white mb-1.5">El Efecto Psicológico</h4>
+            <p class="text-xs text-slate-300 leading-relaxed mb-3">
+              El botón clave <strong>"Solicitar Visita Ahora"</strong> permite que el comprador <span class="text-purple-300 font-semibold">libere su ansiedad</span> al sentir que ya inició la gestión de visita inmediatamente.
+            </p>
+          </div>
+          <div class="w-full py-2 bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold rounded-xl text-xs shadow-lg shadow-sky-500/20 flex items-center justify-center gap-1.5">
+            <i data-lucide="bell-ring" class="w-3.5 h-3.5"></i>
+            <span>Visita Solicitada → Alerta al Asesor</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 9: CALCULADORA DE RETORNO DE INVERSIÓN (ROI EN VIVO) -->
+    <!-- ================================================================= -->
+    <div class="slide flex-col justify-center max-w-5xl mx-auto h-full" data-title="Simulador ROI">
+      <div class="text-center mb-5">
+        <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Matemática Pura de Negocio</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-white mt-1">Simulador de Retorno de Inversión</h2>
+        <p class="text-xs text-slate-300 mt-0.5">Mové los números reales de tu oficina para calcular los honorarios extras:</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center glass-card p-5 sm:p-7 rounded-3xl border border-slate-800">
+        <div class="md:col-span-6 space-y-4">
+          <!-- Selector de Plan para el ROI -->
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1.5">Comparar con Inversión de:</label>
+            <div class="grid grid-cols-2 gap-2 p-1 bg-slate-900/90 rounded-xl border border-slate-800">
+              <button type="button" id="btnPlanTeam" onclick="setROIPlan('team')" class="py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-sky-500 text-slate-950 shadow-md">
+                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                <span>Team Líder ($75/mes)</span>
+              </button>
+              <button type="button" id="btnPlanPro" onclick="setROIPlan('pro')" class="py-1.5 px-2.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+                <i data-lucide="server" class="w-3.5 h-3.5"></i>
+                <span>Profesional VPS ($300/mes)</span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs sm:text-sm font-semibold mb-1.5">
+              <span class="text-slate-300">Valor Promedio de Propiedad:</span>
+              <span class="text-sky-400 font-mono font-bold" id="labelTicket">$150,000 USD</span>
+            </div>
+            <input type="range" id="inputTicket" min="40000" max="300000" step="10000" value="150000" class="w-full accent-sky-400 cursor-pointer" oninput="calculateROI()">
+          </div>
+          <div>
+            <div class="flex justify-between text-xs sm:text-sm font-semibold mb-1.5">
+              <span class="text-slate-300">Comisión de la Oficina:</span>
+              <span class="text-sky-400 font-mono font-bold" id="labelComision">3.5%</span>
+            </div>
+            <input type="range" id="inputComision" min="2" max="6" step="0.5" value="3.5" class="w-full accent-sky-400 cursor-pointer" oninput="calculateROI()">
+          </div>
+          <div>
+            <div class="flex justify-between text-xs sm:text-sm font-semibold mb-1.5">
+              <span class="text-slate-300">Operaciones Adicionales al Año:</span>
+              <span class="text-emerald-400 font-mono font-bold" id="labelVentas">2 ventas / año</span>
+            </div>
+            <input type="range" id="inputVentas" min="1" max="10" step="1" value="2" class="w-full accent-emerald-400 cursor-pointer" oninput="calculateROI()">
+            <span class="text-[11px] text-slate-400">Apenas 1 venta extra cada 6 meses gracias a la captación activa y respuesta 24/7.</span>
+          </div>
+        </div>
+
+        <div class="md:col-span-6 flex flex-col items-center justify-center p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/30 text-center">
+          <span class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-1.5">Honorarios Nuevos Generados</span>
+          <div class="text-3xl sm:text-4xl font-display font-black text-emerald-400 font-mono mb-1" id="resGanancia">+$10,500 USD</div>
+          <div class="text-[11px] text-slate-400 mb-4">por año directo a la ganancia neta de tu inmobiliaria</div>
+          <div class="w-full pt-3 border-t border-slate-800/80 flex justify-between items-center text-xs">
+            <div class="text-left">
+              <div class="text-slate-400" id="labelCostoPlan">Costo Plan Team Líder Anual:</div>
+              <div class="font-bold text-slate-200 font-mono" id="valCostoPlan">$900 USD / año</div>
+            </div>
+            <div class="text-right">
+              <div class="text-slate-400">Retorno Neto (ROI):</div>
+              <div class="font-bold text-emerald-400 text-sm font-mono" id="resROI">+1,067%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLIDE 10: PLANES Y CIERRE -->
+    <!-- ================================================================= -->
+    <div class="slide flex-col justify-center max-w-5xl mx-auto h-full" data-title="Planes & Cierre">
+      <div class="text-center mb-5">
+        <span class="text-xs font-bold text-sky-400 uppercase tracking-widest">Inversión Transparente</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-white mt-0.5">Planes Diseñados para Escalar Tu Oficina</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full">
+        <!-- PLAN TEAM LIDER -->
+        <div class="glass-card p-5 rounded-3xl border-2 border-sky-500/60 relative flex flex-col justify-between shadow-2xl shadow-sky-500/10">
+          <div class="absolute -top-3 right-6 px-3 py-0.5 rounded-full bg-sky-500 text-slate-950 font-bold text-[10px] tracking-wider uppercase">Más Elegido</div>
+          <div>
+            <h3 class="font-display font-bold text-lg text-white">Plan "Team Líder"</h3>
+            <p class="text-[11px] text-slate-400 mb-3">Para líderes de equipo y sucursales en crecimiento.</p>
+            <div class="flex items-baseline gap-2 mb-4">
+              <span class="font-display text-3xl sm:text-4xl font-black text-white font-mono">$75</span>
+              <span class="text-slate-400 text-xs font-medium">USD / mes</span>
+            </div>
+            <ul class="space-y-2 text-xs text-slate-300 mb-4">
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i><span><strong>Hasta 5 agentes</strong> incluidos.</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i><span><strong>Publicaciones a Placas (PAP)</strong> profesionales.</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i><span><strong>Convertidor de Links (PAF)</strong> rápido.</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i><span><strong>Portales Temporales Live</strong> (Multi Fichas interactivas).</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i><span><strong>Tasador Express ACM con IA</strong> (comparables reales).</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i><span><strong>Historias en IG y WhatsApp</strong> de tus agentes.</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i><span><strong>Base de datos de portales</strong> integrada.</span></li>
+            </ul>
+          </div>
+          <div class="p-2.5 bg-sky-500/10 border border-sky-500/20 rounded-xl text-center font-bold text-sky-300 text-xs">Puesta en marcha inmediata en 24 horas</div>
+        </div>
+
+        <!-- PLAN INMOBILIARIA PROFESIONAL -->
+        <div class="glass-card p-5 rounded-3xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <h3 class="font-display font-bold text-lg text-white">Plan Inmobiliaria Profesional</h3>
+              <span class="px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-bold">Dedicado VIP</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Para inmobiliarias consolidadas y agencias completas.</p>
+            <div class="flex items-baseline gap-2 mb-4">
+              <span class="font-display text-3xl sm:text-4xl font-black text-white font-mono">$300</span>
+              <span class="text-slate-400 text-xs font-medium">USD / mes</span>
+            </div>
+            <ul class="space-y-2 text-xs text-slate-300 mb-4">
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i><span><strong>Todo lo del Plan "Team Líder"</strong> incluido.</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i><span><strong>Hasta 25 agentes</strong> en la plataforma.</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i><span><strong>Servidor VPS</strong> dedicado a tu oficina.</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i><span><strong>Aislamiento total de datos</strong> (máxima seguridad).</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i><span><strong>Dominio Propio</strong> (<code class="text-purple-300">crm.tuinmobiliaria.com.ar</code>).</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i><span><strong>Portal de Clientes Activo</strong> (con tu logo).</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i><span><strong>Asistente IA Mi ClaudIA</strong> en WhatsApp 24/7.</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i><span><strong>Historias en IG y WhatsApp</strong> de tus agentes.</span></li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i><span><strong>Soporte Prioritario VIP</strong> directo.</span></li>
+            </ul>
+          </div>
+          <div class="p-2.5 bg-purple-500/10 border border-purple-500/20 rounded-xl text-center font-bold text-purple-300 text-xs">Infraestructura Privada Llave en Mano</div>
+        </div>
+      </div>
+      <div class="mt-4 text-center text-[11px] text-slate-400">Onboarding guiado para todo el equipo • Sin contratos de permanencia forzosa</div>
+    </div>
+  </main>
+
+  <footer class="w-full px-8 py-3.5 flex items-center justify-between border-t border-slate-800/80 bg-slate-950/60 backdrop-blur-md z-20">
+    <div class="flex items-center gap-2">
+      <button onclick="prevSlide()" class="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 transition"><i data-lucide="chevron-left" class="w-4 h-4"></i><span>Anterior</span></button>
+      <button onclick="nextSlide()" class="px-5 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold flex items-center gap-2 transition shadow-md shadow-sky-500/20"><span>Siguiente</span><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+    </div>
+    <div class="flex items-center gap-2" id="slideDots"></div>
+    <div class="text-xs text-slate-400 hidden sm:block">Teclado: <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">←</kbd> <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">→</kbd> o barra espaciadora</div>
+  </footer>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const counterEl = document.getElementById('slideCounter');
+    const dotsContainer = document.getElementById('slideDots');
+
+    slides.forEach((slide, idx) => {
+      const dot = document.createElement('button');
+      dot.className = `w-2.5 h-2.5 rounded-full transition-all duration-300 ${idx === 0 ? 'bg-sky-400 w-8' : 'bg-slate-700 hover:bg-slate-500'}`;
+      dot.title = slide.getAttribute('data-title') || `Slide ${idx + 1}`;
+      dot.onclick = () => goToSlide(idx);
+      dotsContainer.appendChild(dot);
+    });
+
+    function updatePresentation() {
+      slides.forEach((slide, idx) => {
+        if (idx === currentSlide) slide.classList.add('active');
+        else slide.classList.remove('active');
+      });
+      counterEl.innerText = `${currentSlide + 1} / ${totalSlides}`;
+      const dots = dotsContainer.querySelectorAll('button');
+      dots.forEach((dot, idx) => {
+        if (idx === currentSlide) dot.className = 'w-8 h-2.5 rounded-full bg-sky-400 transition-all duration-300';
+        else dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-700 hover:bg-slate-500 transition-all duration-300';
+      });
+      lucide.createIcons();
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updatePresentation();
+      }
+    }
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updatePresentation();
+      }
+    }
+    function goToSlide(idx) {
+      if (idx >= 0 && idx < totalSlides) {
+        currentSlide = idx;
+        updatePresentation();
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') nextSlide();
+      else if (e.key === 'ArrowLeft') prevSlide();
+    });
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      else if (document.exitFullscreen) document.exitFullscreen();
+    }
+
+    let selectedPlan = 'team'; // 'team' ($75/mo = $900/yr) o 'pro' ($300/mo = $3600/yr)
+
+    function setROIPlan(plan) {
+      selectedPlan = plan;
+      const btnTeam = document.getElementById('btnPlanTeam');
+      const btnPro = document.getElementById('btnPlanPro');
+
+      if (plan === 'team') {
+        btnTeam.className = 'py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-sky-500 text-slate-950 shadow-md';
+        btnTeam.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i><span>Team Líder ($75/mes)</span>';
+        btnPro.className = 'py-1.5 px-2.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
+        btnPro.innerHTML = '<i data-lucide="server" class="w-3.5 h-3.5"></i><span>Profesional VPS ($300/mes)</span>';
+        document.getElementById('labelCostoPlan').innerText = 'Costo Plan Team Líder Anual:';
+        document.getElementById('valCostoPlan').innerText = '$900 USD / año';
+      } else {
+        btnPro.className = 'py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-purple-500 text-white shadow-md shadow-purple-500/30';
+        btnPro.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i><span>Profesional VPS ($300/mes)</span>';
+        btnTeam.className = 'py-1.5 px-2.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
+        btnTeam.innerHTML = '<i data-lucide="users" class="w-3.5 h-3.5"></i><span>Team Líder ($75/mes)</span>';
+        document.getElementById('labelCostoPlan').innerText = 'Costo Inmobiliaria Profesional VPS:';
+        document.getElementById('valCostoPlan').innerText = '$3,600 USD / año';
+      }
+      lucide.createIcons();
+      calculateROI();
+    }
+
+    function calculateROI() {
+      const ticket = parseFloat(document.getElementById('inputTicket').value);
+      const comisionPorc = parseFloat(document.getElementById('inputComision').value);
+      const ventasExtra = parseInt(document.getElementById('inputVentas').value);
+
+      document.getElementById('labelTicket').innerText = '$' + ticket.toLocaleString('en-US') + ' USD';
+      document.getElementById('labelComision').innerText = comisionPorc.toFixed(1) + '%';
+      document.getElementById('labelVentas').innerText = ventasExtra + (ventasExtra === 1 ? ' venta / año' : ' ventas / año');
+
+      const comisionPorVenta = ticket * (comisionPorc / 100);
+      const gananciaAnual = comisionPorVenta * ventasExtra;
+      const costoSoftware = selectedPlan === 'team' ? (75 * 12) : (300 * 12); // $900 o $3600 USD
+
+      const roiPorc = Math.round(((gananciaAnual - costoSoftware) / costoSoftware) * 100);
+
+      document.getElementById('resGanancia').innerText = '+$' + Math.round(gananciaAnual).toLocaleString('en-US') + ' USD';
+      document.getElementById('resROI').innerText = (roiPorc >= 0 ? '+' : '') + roiPorc.toLocaleString('en-US') + '%';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      calculateROI();
+    });
+  </script>
+</body>
+</html>

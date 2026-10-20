@@ -1,0 +1,2280 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuración{% endblock %}
+{% block header %}Ajustes del Sistema{% endblock %}
+
+{% block content %}
+<form action="{{ url_for('configuracion') }}" method="POST" enctype="multipart/form-data">
+    <!-- Switch de Automatización -->
+    {% if user_can('accion', 'ver_config_plantillas') %}
+    <div class="card mb-4 border-warning bg-warning bg-opacity-10">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1 text-dark"><i class="bi bi-robot me-2"></i> Automatización 100% Activa</h5>
+                <p class="mb-0 text-muted small">Al estar activo, se enviará un email automáticamente al detectar una
+                    nueva propiedad.</p>
+            </div>
+            <div class="form-check form-switch h4 mb-0">
+                <input type="hidden" name="automatizacion_email_activa" value="0">
+                <input class="form-check-input" type="checkbox" name="automatizacion_email_activa" value="1"
+                    id="autoSwitch" {% if config.automatizacion_email_activa=='1' %}checked{% endif %}>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if current_user.usuario == 'GermanMazza' %}
+    <!-- ═══════════════════ MONITOR Y CONTROL DE PROCESOS / WORKER (SOLO SUPERADMIN) ═══════════════════ -->
+    <div class="card mb-4 border-0 shadow-sm" style="background: #1a1d2e; color: #e2e8f0; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08);">
+        <div class="card-header d-flex justify-content-between align-items-center py-3" style="background: linear-gradient(135deg, #1e2235 0%, #292d42 100%); border-bottom: 1px solid rgba(255,255,255,0.08); border-top-left-radius: 16px; border-top-right-radius: 16px;">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-cpu text-warning fs-5"></i>
+                <h5 class="mb-0 fw-bold text-white">Monitor de Procesos y Worker en Segundo Plano</h5>
+                <span class="badge bg-warning bg-opacity-25 text-warning ms-2 font-monospace">Solo SuperAdmin</span>
+            </div>
+            <span id="workerStatusBadge" class="badge bg-secondary px-3 py-2 fs-6">Consultando...</span>
+        </div>
+        <div class="card-body p-4">
+            <div class="row align-items-center">
+                <div class="col-lg-7 mb-3 mb-lg-0">
+                    <p class="text-muted small mb-3">
+                        El Worker de WhatsApp e Historias procesa en segundo plano las tareas de publicación y envíos con medidas de seguridad anti-bot.
+                        Cuenta con un sistema de <strong>Latido (Heartbeat)</strong>: si el servidor se apaga, el worker se auto-destruye automáticamente para no dejar tareas huérfanas.
+                    </p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="p-2 px-3 rounded" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
+                            <span class="text-muted small d-block">Identificador (PID Worker):</span>
+                            <strong id="workerPidText" class="text-info font-monospace fs-6">--</strong>
+                        </div>
+                        <div class="p-2 px-3 rounded" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
+                            <span class="text-muted small d-block">Último Latido Servidor:</span>
+                            <strong id="workerHeartbeatText" class="text-success font-monospace fs-6">--</strong>
+                        </div>
+                        <div class="p-2 px-3 rounded" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
+                            <span class="text-muted small d-block">Modo Watchdog:</span>
+                            <strong id="workerWatchdogText" class="text-white font-monospace fs-6">Automático</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="d-flex flex-column gap-2">
+                        <button type="button" id="btnRestartWorker" class="btn btn-outline-info fw-bold py-2 d-flex align-items-center justify-content-center gap-2" onclick="controlWorkerAction('restart')">
+                            <i class="bi bi-arrow-clockwise fs-5"></i> Reiniciar Worker Limpio
+                        </button>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="btnStopWorker" class="btn btn-outline-danger fw-bold py-2 flex-grow-1 d-flex align-items-center justify-content-center gap-2" onclick="controlWorkerAction('stop')">
+                                <i class="bi bi-stop-circle fs-5"></i> Detener Worker
+                            </button>
+                            <button type="button" id="btnStartWorker" class="btn btn-outline-success fw-bold py-2 flex-grow-1 d-flex align-items-center justify-content-center gap-2" onclick="controlWorkerAction('start')">
+                                <i class="bi bi-play-circle fs-5"></i> Iniciar Worker
+                            </button>
+                        </div>
+                        <button type="button" id="btnPurgeZombies" class="btn btn-outline-warning fw-bold py-2 d-flex align-items-center justify-content-center gap-2" onclick="purgeCrmZombiesAction()">
+                            <i class="bi bi-trash3 fs-5"></i> 🧹 Purgar Procesos Zombis del CRM
+                        </button>
+                        <small class="text-muted text-center" style="font-size: 0.75rem;">
+                            🛡️ Limpieza quirúrgica: Respeta y no toca procesos de Claudia, ngrok ni otras apps.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- ═══════════════════ MOTOR DE SCRAPING (ACCESO EXCLUSIVO: BROKERS Y ADMINS) ═══════════════════ -->
+    {% if current_user.rol in ('admin', 'broker') or current_user.usuario == 'GermanMazza' %}
+    <div class="card mb-4 border-0 shadow-sm" style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(13,110,253,0.25);">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-hdd-network fs-5"></i>
+                <h5 class="mb-0 fw-bold">Conexión con Motor de Scraping</h5>
+                <span class="badge bg-white bg-opacity-25 text-white ms-2 font-monospace">Solo Admins y Brokers</span>
+            </div>
+            <span id="scraperStatusBadge" class="badge bg-white text-primary fw-bold px-3 py-2 shadow-sm">
+                {% if scraper_cfg.api_token or scraper_cfg.api_key %}
+                    <i class="bi bi-shield-check text-success me-1"></i> Conectado
+                {% else %}
+                    <i class="bi bi-shield-x text-secondary me-1"></i> Sin Conexión
+                {% endif %}
+            </span>
+        </div>
+        <div class="card-body p-4">
+            <p class="text-muted small mb-3">
+                <strong>Servicio Autónomo de Scraping:</strong> El CRM opera desacoplado del motor de extracción.
+                Para activar la búsqueda en portales e inspección en vivo de fichas, ingresá el <strong>usuario y contraseña</strong> asignados en tu servidor de scraping. Las cuentas cuentan con períodos renovables de 30 días.
+            </p>
+
+            <div class="row g-3 align-items-end mb-3">
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold text-dark">URL del Servidor de Scraping:</label>
+                    <input type="text" class="form-control form-control-sm font-monospace" id="inputScraperUrl" value="{{ scraper_cfg.url or 'http://173.249.38.187:5001' }}" placeholder="http://173.249.38.187:5001">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold text-dark">Usuario del Scraper:</label>
+                    <input type="text" class="form-control form-control-sm font-monospace" id="inputScraperUser" value="{{ scraper_cfg.usuario or '' }}" placeholder="ej: crm_broker">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-dark">Contraseña del Scraper:</label>
+                    <input type="password" class="form-control form-control-sm font-monospace" id="inputScraperPassword" placeholder="••••••••">
+                </div>
+            </div>
+
+            <!-- Estado de Licencia de 30 Días -->
+            <div id="scraperLicenseBox" class="p-3 rounded-3 mb-3 {% if scraper_cfg.api_token or scraper_cfg.api_key %}bg-light border{% else %}d-none{% endif %}">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <span class="text-muted small d-block">Estado de Licencia del Scraper:</span>
+                        <strong id="scraperLicText" class="text-dark">
+                            {% if scraper_cfg.dias_restantes is defined and scraper_cfg.dias_restantes > 0 %}
+                                <i class="bi bi-clock-history text-success me-1"></i> Período Activo: <strong>{{ scraper_cfg.dias_restantes }} días restantes</strong> (Vence: {{ scraper_cfg.fecha_expiracion[:10] if scraper_cfg.fecha_expiracion else 'Próximamente' }})
+                            {% elif scraper_cfg.api_token %}
+                                <i class="bi bi-check-circle-fill text-success me-1"></i> Conexión Activa
+                            {% else %}
+                                No configurada
+                            {% endif %}
+                        </strong>
+                    </div>
+                    {% if scraper_cfg.api_token or scraper_cfg.api_key %}
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="desconectarScraper()">
+                        <i class="bi bi-x-circle me-1"></i> Desconectar Cuenta
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center justify-content-between pt-3 border-top">
+                <div id="scraperTestFeedback" class="small text-muted">
+                    <i class="bi bi-info-circle me-1"></i> Ingresá tus credenciales y presioná <strong>"Conectar al Scraper"</strong>.
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold" id="btnTestScraperHealth" onclick="probarConexionScraper()">
+                        <i class="bi bi-broadcast me-1"></i> Verificar Estado
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary fw-bold px-3 shadow-sm" id="btnConnectScraper" onclick="conectarScraperConCredenciales()">
+                        <i class="bi bi-key-fill me-1"></i> Conectar al Scraper
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════ 1. WHATSAPP DEL PORTAL DE CLIENTES (SOLO SUPERADMIN) ═══════════════════ -->
+    {% if current_user.usuario == 'GermanMazza' %}
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-whatsapp me-2"></i> WhatsApp del Portal de Clientes (SuperAdministrador)</h5>
+            <span id="waPortalStatusBadge" class="badge bg-white text-dark fw-bold px-3 py-2">Verificando...</span>
+        </div>
+        <div class="card-body p-4">
+            <p class="text-muted mb-3">
+                Vincular aquí la cuenta oficial de <strong>WhatsApp del Portal de Clientes</strong>. Esta cuenta se utiliza exclusivamente para validar el ingreso de clientes al portal y enviar avisos automáticos a los agentes sobre solicitudes de visita.
+            </p>
+
+            <div class="row align-items-center">
+                <div class="col-md-5 mb-3 mb-md-0">
+                    <div id="waPortalQrBox" class="border rounded-4 p-4 text-center bg-light d-flex flex-column align-items-center justify-content-center" style="min-height: 260px;">
+                        <div id="waPortalQrSpinner" class="spinner-border text-success my-4 d-none" role="status"></div>
+                        <img id="waPortalQrImg" src="" class="img-fluid rounded shadow-sm d-none mb-3" style="max-width: 220px;">
+                        <div id="waPortalQrText" class="small text-muted">Hacé clic en <strong>"Vincular / Escanear QR"</strong> para iniciar la conexión del Portal.</div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="d-grid gap-3">
+                        <button type="button" id="btnConectarWaPortal" class="btn btn-success btn-lg fw-bold shadow-sm" onclick="conectarWaPortal()">
+                            <i class="bi bi-qr-code-scan me-2"></i> Vincular / Escanear QR (Portal Clientes)
+                        </button>
+                        <button type="button" id="btnDesconectarWaPortal" class="btn btn-outline-danger fw-semibold" onclick="desconectarWaPortal()">
+                            <i class="bi bi-box-arrow-right me-2"></i> Desconectar WhatsApp Portal
+                        </button>
+                    </div>
+                    <div class="mt-4 p-3 bg-light rounded border text-muted small">
+                        <i class="bi bi-info-circle me-1 text-primary"></i> <strong>Instrucciones:</strong> Abrí WhatsApp en el celular secundario del portal ➔ <em>Dispositivos vinculados ➔ Vincular un dispositivo</em> y escaneá el QR generado.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════ 2. WHATSAPP PUBLICADOR DE HISTORIAS (PERSONAL DE CADA AGENTE) ═══════════════════ -->
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-header text-white d-flex justify-content-between align-items-center py-3" style="background: linear-gradient(135deg, #25D366, #128C7E);">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2"></i> WhatsApp — Publicador de Historias (Personal)</h5>
+            <span id="waHistoriasStatusBadge" class="badge bg-white text-dark fw-bold px-3 py-2">Verificando...</span>
+        </div>
+        <div class="card-body p-4">
+            <p class="text-muted mb-3">
+                Vincular aquí tu cuenta <strong>personal de WhatsApp</strong>. Esta conexión permite publicar automáticamente en tus Estados de WhatsApp las fichas e historias inmobiliarias que programes.
+            </p>
+
+            <div class="row align-items-center">
+                <div class="col-md-5 mb-3 mb-md-0">
+                    <div id="waHistoriasQrBox" class="border rounded-4 p-4 text-center bg-light d-flex flex-column align-items-center justify-content-center" style="min-height: 260px;">
+                        <div id="waHistoriasQrSpinner" class="spinner-border text-success my-4 d-none" role="status"></div>
+                        <img id="waHistoriasQrImg" src="" class="img-fluid rounded shadow-sm d-none mb-3" style="max-width: 220px;">
+                        <div id="waHistoriasQrText" class="small text-muted">Hacé clic en <strong>"Vincular / Escanear QR"</strong> para iniciar tu conexión personal.</div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="d-grid gap-3">
+                        <button type="button" id="btnConectarWaHistorias" class="btn btn-success btn-lg fw-bold shadow-sm" onclick="conectarWaHistorias()">
+                            <i class="bi bi-qr-code-scan me-2"></i> Vincular / Escanear QR (Mi WhatsApp)
+                        </button>
+                        <button type="button" id="btnDesconectarWaHistorias" class="btn btn-outline-danger fw-semibold" onclick="desconectarWaHistorias()">
+                            <i class="bi bi-box-arrow-right me-2"></i> Desconectar Mi WhatsApp (Historias)
+                        </button>
+                    </div>
+                    <div class="mt-4 p-3 bg-light rounded border text-muted small">
+                        <i class="bi bi-info-circle me-1 text-primary"></i> <strong>Instrucciones:</strong> Abrí WhatsApp en tu teléfono personal ➔ <em>Dispositivos vinculados ➔ Vincular un dispositivo</em> y escaneá el QR para habilitar la publicación de historias.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Perfil del Agente -->
+        {% if user_can('accion', 'ver_config_perfil') %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Perfil del Agente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Completo</label>
+                        <input type="text" name="agente_nombre" class="form-control" value="{{ config.agente_nombre }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Teléfono (con código de país)</label>
+                        <input type="text" name="agente_telefono" class="form-control"
+                            value="{{ config.agente_telefono }}">
+                        <small class="text-muted">Ej: +54 9 11 1234 5678</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Profesional</label>
+                        <input type="email" name="agente_email" class="form-control" value="{{ config.agente_email }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre de Inmobiliaria</label>
+                        <input type="text" name="agente_inmobiliaria" class="form-control"
+                            value="{{ config.agente_inmobiliaria }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if current_user.rol in ('admin', 'broker') or current_user.usuario == 'GermanMazza' %}
+        <!-- ═══════════════════ PANEL DE CONTROL MORNING BRIEFING (SOLO ADMINS / BROKERS) ═══════════════════ -->
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+                <div class="card-header text-white d-flex justify-content-between align-items-center py-3" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-robot fs-5 text-success"></i>
+                        <h5 class="mb-0 fw-bold">Asistente IA — Panel de Control & Morning Briefing (8:30 AM)</h5>
+                        <span class="badge bg-success bg-opacity-25 text-success ms-2 font-monospace">Groq (openai/gpt-oss-20b)</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-light" onclick="cargarAgentesMorningBriefing()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Actualizar Lista
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-muted small mb-3">
+                        Configuración y supervisión del <strong>Morning Briefing</strong> diario para cada agente de la oficina. 
+                        Los mensajes se envían de forma <strong>escalonada</strong> a partir de las <strong>8:30 AM</strong> usando la sesión de WhatsApp del Portal de Clientes, garantizando que cada agente reciba exclusivamente su propia información.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="tablaMorningBriefingAgentes">
+                            <thead class="table-light">
+                                <tr class="text-secondary small">
+                                    <th>Agente / Usuario</th>
+                                    <th>Rol</th>
+                                    <th class="text-center">Contactos Activos</th>
+                                    <th style="min-width: 200px;">Teléfono WhatsApp (Destino)</th>
+                                    <th class="text-center">Briefing Diario</th>
+                                    <th>Último Envío</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyMorningBriefingAgentes">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                        Cargando agentes y configuraciones...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 p-3 bg-light rounded-3 border d-flex align-items-center justify-content-between small text-muted">
+                        <div>
+                            <i class="bi bi-shield-check text-success me-1"></i> <strong>Aislamiento Estricto:</strong> Si un agente no tiene teléfono cargado o está pausado, el sistema lo omite automáticamente sin generar fallbacks cruzados.
+                        </div>
+                        <div id="morningBriefingGlobalFeedback" class="fw-semibold"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Configuración de Email (SMTP) -->
+        {% if user_can('accion', 'ver_config_smtp') %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Servidor de Email (SMTP)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Host SMTP</label>
+                        <input type="text" name="smtp_host" class="form-control" value="{{ config.smtp_host }}">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Puerto</label>
+                            <input type="text" name="smtp_port" class="form-control" value="{{ config.smtp_port }}">
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Usuario / Email</label>
+                            <input type="text" name="smtp_user" class="form-control" value="{{ config.smtp_user }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña / Token de App</label>
+                        <input type="password" name="smtp_password" class="form-control"
+                            value="{{ config.smtp_password }}">
+                        <small class="text-muted">Si usas Gmail, necesitás una Contraseña de Aplicación.</small>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Probar Envío de Email</label>
+                        <div class="input-group">
+                            <input type="email" id="test_email_dest" class="form-control form-control-sm"
+                                placeholder="Email de destino">
+                            <button type="button" id="btnTestEmail" class="btn btn-outline-secondary btn-sm">Probar</button>
+                        </div>
+                        <div id="testResult" class="mt-2 small"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Identidad de Marca Blanca y Colores (Branding) -->
+        {% if user_can('accion', 'ver_config_logo') %}
+        <div class="col-md-12 mb-4">
+            <div class="card h-100 border-primary shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-palette me-2"></i>Identidad de Marca Blanca y Personalización</h5>
+                    <span class="badge bg-white text-primary font-monospace">White-Label</span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nombre Comercial de la Inmobiliaria</label>
+                            <input type="text" name="nombre_inmobiliaria" class="form-control" 
+                                   value="{{ config.nombre_inmobiliaria or config.agente_inmobiliaria or '' }}" 
+                                   placeholder="Ej: Inmobiliaria Belgrano & Asociados">
+                            <small class="text-muted">Se mostrará en la barra superior, login, reportes y placas.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Slogan o Subtítulo</label>
+                            <input type="text" name="slogan_inmobiliaria" class="form-control" 
+                                   value="{{ config.slogan_inmobiliaria or '' }}" 
+                                   placeholder="Ej: Asesoramiento Inmobiliario Integral">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Color Primario (Botones y Acentos)</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="color" name="theme_primary_color" class="form-control form-control-color" 
+                                       value="{{ config.theme_primary_color or '#0d6efd' }}" title="Elegí el color primario">
+                                <span class="font-monospace small text-muted">{{ config.theme_primary_color or '#0d6efd' }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Color Barra Lateral (Sidebar)</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="color" name="theme_secondary_color" class="form-control form-control-color" 
+                                       value="{{ config.theme_secondary_color or '#1a1a2e' }}" title="Elegí el color de la barra lateral">
+                                <span class="font-monospace small text-muted">{{ config.theme_secondary_color or '#1a1a2e' }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Matrícula / Colegio Profesional</label>
+                            <input type="text" name="matricula_colegio" class="form-control" 
+                                   value="{{ config.matricula_colegio or '' }}" 
+                                   placeholder="Ej: CUCICBA Mat. 1234 / CPMCLZ Mat. 567">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Logo de la Inmobiliaria (Subir Archivo)</label>
+                            <input type="file" name="company_logo_file" class="form-control" accept="image/*">
+                            <small class="text-muted">Formatos: PNG, JPG, JPEG, SVG. Fondo transparente recomendado.</small>
+                        </div>
+                        <div class="col-md-6 text-center">
+                            {% set current_custom_logo = agency.custom_logo_url %}
+                            {% if current_custom_logo %}
+                            <div class="p-2 bg-light rounded border d-inline-block mt-2 shadow-sm">
+                                <span class="d-block small text-muted mb-1 fw-bold">Logo Personalizado Actual:</span>
+                                <img src="{{ current_custom_logo }}" alt="Logo Actual" style="max-height: 55px; max-width: 190px; object-fit: contain;">
+                                <div class="mt-2">
+                                    <input type="hidden" name="action_clear_logo" id="clearLogoInput" value="0">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="document.getElementById('clearLogoInput').value='1';">
+                                        <i class="bi bi-trash me-1"></i>Eliminar Logo
+                                    </button>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-muted small p-3 border rounded bg-light mt-2">
+                                <i class="bi bi-info-circle me-1 text-primary"></i> <em>Sin logo personalizado cargado (utilizando <strong>Potenzia CRM</strong> por defecto).</em>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <!-- Configuración de IA (Gemini + Groq) -->
+        {% if user_can('accion', 'ver_config_ia') %}
+        <div class="col-12 mb-4">
+            <div class="card border-info shadow-sm">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-robot me-2"></i>Configuración de Inteligencia Artificial</h5>
+                    <span class="badge bg-white text-info fw-bold">Gemini + Groq</span>
+                </div>
+                <div class="card-body">
+                    <!-- Provider selector -->
+                    <div class="alert alert-light border mb-4 py-3">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <span class="fw-bold"><i class="bi bi-toggles me-1"></i>Proveedor Principal de IA:</span>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="ia_provider_primario" id="ia_gemini"
+                                    value="gemini" {% if config.ia_provider_primario != 'groq' %}checked{% endif %}>
+                                <label class="form-check-label fw-bold text-primary" for="ia_gemini">
+                                    🔵 Google Gemini <small class="text-muted fw-normal">(recomendado si tenés buen API key)</small>
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="ia_provider_primario" id="ia_groq"
+                                    value="groq" {% if config.ia_provider_primario == 'groq' %}checked{% endif %}>
+                                <label class="form-check-label fw-bold text-success" for="ia_groq">
+                                    🟢 Groq <small class="text-muted fw-normal">(muy rápido, útil si Gemini falla)</small>
+                                </label>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            El sistema intentará el proveedor principal primero. Si falla (timeout, sobrecarga), usa automáticamente el otro como <strong>fallback</strong>.
+                        </small>
+                    </div>
+
+                    <div class="row g-4">
+                        <!-- Gemini -->
+                        <div class="col-md-6">
+                            <div class="card h-100 border-primary border-opacity-25">
+                                <div class="card-header bg-primary bg-opacity-10">
+                                    <h6 class="mb-0 text-primary"><i class="bi bi-google me-1"></i> Google Gemini</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">API Key de Gemini</label>
+                                        <input type="password" name="gemini_api_key" class="form-control font-monospace"
+                                            value="{{ config.gemini_api_key }}" placeholder="AIza...">
+                                        <small class="text-muted">
+                                            Gratis en <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a>.
+                                            Modelo: <code>gemini-flash-latest</code>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Groq -->
+                        <div class="col-md-6">
+                            <div class="card h-100 border-success border-opacity-25">
+                                <div class="card-header bg-success bg-opacity-10">
+                                    <h6 class="mb-0 text-success"><i class="bi bi-lightning-charge me-1"></i> Groq <span class="badge bg-success ms-1" style="font-size:0.65rem;">Ultra-rápido</span></h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">API Key de Groq</label>
+                                        <input type="password" name="groq_api_key" class="form-control font-monospace"
+                                            value="{{ config.groq_api_key }}" placeholder="gsk_...">
+                                        <small class="text-muted">
+                                            Gratis en <a href="https://console.groq.com/" target="_blank">console.groq.com</a>.
+                                        </small>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label fw-bold">Modelo de Groq</label>
+                                        <select name="groq_model" class="form-select form-select-sm">
+                                            <option value="openai/gpt-oss-20b" {% if (config.groq_model or 'openai/gpt-oss-20b') == 'openai/gpt-oss-20b' or config.groq_model == 'llama-3.1-8b-instant' %}selected{% endif %}>
+                                                openai/gpt-oss-20b (Recomendado, ultra rápido)
+                                            </option>
+                                            <option value="openai/gpt-oss-120b" {% if config.groq_model == 'openai/gpt-oss-120b' or config.groq_model == 'llama-3.3-70b-versatile' or config.groq_model == 'mixtral-8x7b-32768' %}selected{% endif %}>
+                                                openai/gpt-oss-120b (Máxima precisión)
+                                            </option>
+                                            <option value="qwen/qwen3.6-27b" {% if config.groq_model == 'qwen/qwen3.6-27b' %}selected{% endif %}>
+                                                qwen/qwen3.6-27b (Alta capacidad)
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-secondary py-2 small mt-3 mb-0">
+                        <i class="bi bi-shield-check me-1 text-success"></i>
+                        <strong>Lógica de fallback:</strong> Si el proveedor principal falla (timeout, sobrecarga, rate limit), el sistema usa automáticamente el otro. Si ambos fallan, el reporte usa la descripción original sin reescribir.
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Configuración de Ajustes de Tasador por Estado de Conservación -->
+        {% if user_can('accion', 'ver_config_perfil') or user_can('menu_item', 'tasador') or current_user.is_authenticated %}
+        <div class="col-12 mb-4">
+            <div class="card border-warning shadow-sm">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-tools me-2"></i>Tasador Express: Ajuste por Estado de Conservación</h5>
+                    <div class="form-check form-switch mb-0">
+                        <input type="hidden" name="tasador_estado_activo" value="0">
+                        <input class="form-check-input" type="checkbox" name="tasador_estado_activo" id="tasador_estado_activo"
+                            value="1" {% if config.tasador_estado_activo == '1' %}checked{% endif %}>
+                        <label class="form-check-label small fw-bold" for="tasador_estado_activo">Habilitar Ajuste</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-4">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Permite seleccionar el estado de la propiedad en el tasador para estimar el precio ajustado del m². Definí abajo los porcentajes de impacto para cada estado.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-md-2 col-6">
+                            <label class="form-label fw-bold small text-success">A Estrenar / Nuevo</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">+</span>
+                                <input type="number" name="tasador_ajuste_estrenar" class="form-control" 
+                                    value="{{ config.tasador_ajuste_estrenar or '15' }}" placeholder="15">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label class="form-label fw-bold small text-success">Muy Bueno / Reciclado</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">+</span>
+                                <input type="number" name="tasador_ajuste_muybueno" class="form-control" 
+                                    value="{{ config.tasador_ajuste_muybueno or '10' }}" placeholder="10">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label fw-bold small text-muted">Bueno / Estándar</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">±</span>
+                                <input type="number" name="tasador_ajuste_bueno" class="form-control" 
+                                    value="{{ config.tasador_ajuste_bueno or '0' }}" readonly>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="text-muted d-block mt-1 x-small">Base del mercado</small>
+                        </div>
+                        <div class="col-md-2.5 col-6">
+                            <label class="form-label fw-bold small text-danger">A Refaccionar / Regular</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">-</span>
+                                <input type="number" name="tasador_ajuste_refaccionar" class="form-control" 
+                                    value="{{ config.tasador_ajuste_refaccionar or '15' }}" placeholder="15">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-2.5 col-6">
+                            <label class="form-label fw-bold small text-danger">Malo / Crítico</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">-</span>
+                                <input type="number" name="tasador_ajuste_malo" class="form-control" 
+                                    value="{{ config.tasador_ajuste_malo or '35' }}" placeholder="35">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-3">
+                    <h6 class="fw-bold text-success mb-3"><i class="bi bi-tree-fill me-2"></i>Countries / Barrios Cerrados</h6>
+                    <p class="text-muted small mb-3">Ajustes porcentuales para propiedades según su ubicación dentro del country.</p>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-success">Salida a Laguna</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">+</span>
+                                <input type="number" name="tasador_country_laguna" class="form-control"
+                                    value="{{ config.tasador_country_laguna or '10' }}" placeholder="10">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-danger">Perimetral</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">-</span>
+                                <input type="number" name="tasador_country_perimetral" class="form-control"
+                                    value="{{ config.tasador_country_perimetral or '10' }}" placeholder="10">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted">Interno</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">±</span>
+                                <input type="number" class="form-control" value="0" readonly>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">Base del country</small>
+                        </div>
+                    </div>
+                    <hr class="my-3">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-primary"><i class="bi bi-graph-down-arrow"></i> Desviación / Ajuste de la Base de Mercado</label>
+                            <div class="input-group input-group-sm" style="max-width: 250px;">
+                                <input type="number" name="tasador_ajuste_base" class="form-control" 
+                                    value="{{ config.tasador_ajuste_base or '0' }}" placeholder="0">
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">Permite bajar o subir el rango base sugerido de la tasación (ej: -5% para bajar la tasación inicial al cliente un 5%).</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Configuración de Instagram (API Privada / instagrapi) -->
+        {% if user_can('accion', 'ver_config_instagram') %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 border-danger shadow-sm bg-white text-dark">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-instagram me-2"></i>Vinculación de Instagram</h5>
+                    <span id="igStatusBadge" class="badge rounded-pill bg-light text-danger">Cargando...</span>
+                </div>
+                <div class="card-body">
+                    <!-- Status Container -->
+                    <div id="igStatusContainer" class="alert d-none mb-3 py-2 px-3 small"></div>
+
+                    <!-- Step 1: Login Form (Username / Password) -->
+                    <div id="igLoginForm" class="d-none">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">Usuario de Instagram</label>
+                            <input type="text" id="ig_username" class="form-control" placeholder="mi_inmobiliaria">
+                            <small class="text-muted">Ingresa tu usuario sin @.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">Contraseña</label>
+                            <input type="password" id="ig_password" class="form-control" placeholder="••••••••">
+                            <small class="text-muted">Tus credenciales se usan una vez para generar tu sesión y quedan seguras.</small>
+                        </div>
+                        <div class="d-grid">
+                            <button type="button" id="btnConnectIG" class="btn btn-danger shadow-sm" onclick="connectInstagram()">
+                                <i class="bi bi-link-45deg me-2"></i>Vincular Instagram
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Checkpoint Code Input (SMS/Email/2FA Challenge) -->
+                    <div id="igCheckpointForm" class="d-none">
+                        <div class="alert alert-warning py-2 small mb-3">
+                            <i class="bi bi-shield-lock-fill me-2"></i>
+                            Instagram requiere verificación. Ingresá el código enviado a tu celular/email o tu código 2FA.
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark" id="lblCheckpointCode">Código de Verificación</label>
+                            <input type="text" id="ig_verification_code" class="form-control font-monospace text-center" placeholder="123456" style="letter-spacing: 4px; font-size: 1.25rem;">
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-8">
+                                <button type="button" id="btnConfirmIGCode" class="btn btn-success w-100 shadow-sm" onclick="confirmInstagramCode()">
+                                    <i class="bi bi-check-circle-fill me-2"></i>Confirmar Código
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button type="button" class="btn btn-outline-secondary w-100" onclick="disconnectInstagram(true)">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Connected State -->
+                    <div id="igConnectedForm" class="d-none text-center py-3">
+                        <div class="mb-3" style="font-size: 3rem; color: #198754;">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                        <h6 class="fw-bold mb-1">¡Cuenta Vinculada Exitosamente!</h6>
+                        <p class="text-muted small mb-4" id="igConnectedUserText">Conectado como @...</p>
+                        <div class="d-grid col-8 mx-auto">
+                            <button type="button" class="btn btn-outline-danger btn-sm shadow-sm" onclick="disconnectInstagram(false)">
+                                <i class="bi bi-link-45deg me-2"></i>Desvincular Cuenta
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Result info area -->
+                    <div id="igResultArea" class="mt-3 small"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Conexión Meta AI Chatbot Connector -->
+    {% if user_can('accion', 'ver_config_meta_ai') %}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card border-primary shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Conexión: Meta AI Chatbot Connector</h5>
+                    <span class="badge bg-light text-primary fw-bold">Webhook API Activo</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold"><i class="bi bi-toggle-on me-1"></i> Estado de Conexión</label>
+                            <select name="meta_ai_crm_enabled" class="form-select">
+                                <option value="1" {% if config.meta_ai_crm_enabled != '0' %}selected{% endif %}>🟢 Habilitada</option>
+                                <option value="0" {% if config.meta_ai_crm_enabled == '0' %}selected{% endif %}>🔴 Deshabilitada</option>
+                            </select>
+                            <small class="text-muted">Controla si se procesan y guardan los leads recibidos.</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold"><i class="bi bi-globe me-1"></i> URL del Webhook</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control font-monospace" id="webhookUrl" readonly value="">
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyWebhookUrl()"><i class="bi bi-clipboard"></i></button>
+                            </div>
+                            <small class="text-muted">Configurá esta URL en tu Chatbot Connector.</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold"><i class="bi bi-key-fill me-1"></i> API Access Token (Opcional)</label>
+                            <input type="text" name="meta_ai_webhook_token" class="form-control font-monospace" value="{{ config.meta_ai_webhook_token }}" placeholder="Ej: ferrari_secure_token_123">
+                            <small class="text-muted">Cabecera <code>Authorization: Bearer [TOKEN]</code>.</small>
+                        </div>
+                    </div>
+
+                    <div class="bg-light p-3 rounded border mt-2 small">
+                        <h6 class="fw-bold mb-2"><i class="bi bi-info-circle text-primary"></i> Estructura del JSON que debe enviar tu Chatbot:</h6>
+                        <pre class="bg-dark text-white p-2 rounded mb-0" style="font-size: 0.8rem;">{
+  "nombre": "Juan Perez",
+  "telefono": "5491123456789",
+  "mensaje_original": "Hola, estoy buscando un departamento de 3 ambientes en Palermo...",
+  "intencion": "Busca comprar un departamento 3 ambientes en Palermo. Presupuesto: 150k USD.",
+  "usuario_asignado": "GermanMazza"
+}</pre>
+                        <div class="mt-2 text-muted">
+                            <strong>* Teléfono es obligatorio</strong> para evitar duplicados. Si se incluye <code>usuario_asignado</code>, el contacto se guardará directamente en la base de datos de ese agente.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════ TOKKO BROKER (ADMIN-ONLY API SETTINGS) ═══════════════════ -->
+    {% if user_can('accion', 'ver_config_tokko') %}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm" style="border: 2px solid #C8102E;">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background:linear-gradient(135deg,#1a1a2e,#16213e); color:white;">
+                    <h5 class="mb-0">
+                        <i class="bi bi-building-fill-check me-2" style="color:#C8102E;"></i>
+                        Tokko Broker — Cartera de la Inmobiliaria (Administrador)
+                    </h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <span id="syncStatusBadge" class="badge bg-secondary">—</span>
+                        <small class="text-white-50">Sync: 10:00 AM · 15:00 PM</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold">🔑 API Key de Tokko Broker</label>
+                            <div class="input-group">
+                                <input type="password" name="tokko_api_key" class="form-control font-monospace"
+                                       id="tokkoApiKeyInput"
+                                       value="{{ config.tokko_api_key or '' }}"
+                                       placeholder="Tu API Key de Tokko">
+                                <button type="button" class="btn btn-outline-secondary"
+                                        onclick="toggleTokkoKey()">
+                                    <i class="bi bi-eye" id="eyeIcon"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">
+                                Conseguila en Tokko Broker → <strong>Mi Empresa → Permisos → API Key</strong>
+                            </small>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-secondary w-100" onclick="verificarTokko()">
+                                <i class="bi bi-shield-check me-1"></i> Verificar Conexión
+                            </button>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="button" class="btn w-100 fw-bold" id="btnSyncTokko"
+                                    style="background:#C8102E; color:white; border-radius:10px;"
+                                    onclick="syncTokkoNow()">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Sincronizar Ahora
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tokkoVerifyResult" class="mt-2"></div>
+
+                    <!-- Stats de última sync -->
+                    <div class="mt-3 p-3 rounded" style="background:#f8f9fa; border:1px solid #dee2e6;">
+                        <div class="row text-center g-2">
+                            <div class="col-4">
+                                <div class="fw-bold" id="tokkoTotal" style="font-size:1.3rem; color:#1a1a2e;">—</div>
+                                <div class="text-muted small">Propiedades activas</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold" id="tokkoLastSync" style="font-size:1rem; color:#6c757d;">—</div>
+                                <div class="text-muted small">Última sincronización</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold" style="font-size:1rem; color:#27ae60;">10:00 · 15:00</div>
+                                <div class="text-muted small">Horario de sync</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════ TOKKO AGENT LINKAGE (VISIBLE ONLY TO OFFICE AGENTS & SUPERADMIN) ═══════════════════ -->
+    {% if current_user.oficina_id or current_user.usuario == 'GermanMazza' %}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm border-secondary">
+                <div class="card-header bg-white d-flex align-items-center">
+                    <h5 class="mb-0 text-dark">
+                        <i class="bi bi-person-check-fill me-2 text-danger"></i>
+                        Vincular Cuenta de Tokko Broker
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Vinculá tu nombre de productor como figura en Tokko Broker para identificar tus propiedades en la sección <strong>"Mis Operaciones"</strong>.
+                    </p>
+                    {% set productor_vinculado = get_config('tokko_productor_' ~ current_user.id) %}
+                    {% if productor_vinculado %}
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+                        <div>
+                            <span class="badge bg-success py-2 px-3 fw-bold" style="font-size: 0.9rem;">✅ {{ productor_vinculado }}</span>
+                            <span class="text-muted small ms-2">es tu productor actualmente vinculado</span>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('vincularFormConfig').classList.toggle('d-none')">
+                            <i class="bi bi-pencil me-1"></i> Cambiar Vinculación
+                        </button>
+                    </div>
+                    <div class="mt-2 d-none" id="vincularFormConfig">
+                    {% else %}
+                    <div id="vincularFormConfig">
+                    {% endif %}
+                        <div class="position-relative" style="max-width: 500px;">
+                            <input type="text" id="productorInput" class="form-control" autocomplete="off"
+                                   placeholder="Buscá tu nombre de productor (ej: Juan González)..."
+                                   value="{{ productor_vinculado or '' }}">
+                            <div id="autocompleteBox" class="autocomplete-box d-none" style="position: absolute; background: white; border: 1px solid #dee2e6; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+                        <small class="text-muted d-block mt-1">Escribí al menos 2 letras para ver sugerencias de productores de la empresa.</small>
+                        <div id="vincularMsg" class="mt-2 small"></div>
+                        <button type="button" class="btn btn-dark mt-2" style="border-radius:6px; display:none;" id="btnConfirmarVinculo" onclick="confirmarVinculo()">
+                            <i class="bi bi-check2-circle me-1"></i> Confirmar Vinculación
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+
+    <!-- Ruta de Base de Datos -->
+    {% if user_can('accion', 'ver_config_db_dir') %}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card border-primary shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-folder-symlink me-2 text-primary"></i> Directorio de Base de Datos SQLite</h5>
+                    <span class="badge bg-light text-primary border">Activa: {{ db_dir }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">Ruta del Directorio de Datos</label>
+                        <input type="text" name="db_dir" class="form-control font-monospace" value="{{ db_dir }}" placeholder="Ej: C:\CRM_Data" required>
+                        <small class="text-muted">
+                            Ruta absoluta en el servidor donde se guardarán las bases de datos. Si cambias esta ruta, el sistema copiará automáticamente todas las bases de datos actuales y de los agentes a la nueva ubicación al hacer click en Guardar.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Configuración del Sondeo en Vivo del Tasador -->
+    {% if user_can('accion', 'ver_config_sondeo') %}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card border-primary shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-broadcast me-2 text-primary"></i> Configuración del Sondeo en Vivo (Tasador)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Modo de Sondeo de Portales</label>
+                            <select name="live_search_always_both" class="form-select">
+                                <option value="0" {% if config.live_search_always_both != '1' %}selected{% endif %}>Secuencial (Zonaprop primero, MercadoLibre como fallback)</option>
+                                <option value="1" {% if config.live_search_always_both == '1' %}selected{% endif %}>Combinado (Buscar en ambos portales en paralelo siempre)</option>
+                            </select>
+                            <small class="text-muted">El modo Combinado busca en ambos portales en simultáneo de forma paralela y suma todos los resultados.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Límite de Propiedades (Modo Secuencial)</label>
+                            <input type="number" name="live_search_limit" class="form-control" min="1" max="99" value="{{ config.live_search_limit if config.live_search_limit else '5' }}">
+                            <small class="text-muted">Si Zonaprop devuelve menos que este límite (1-99), se activará la búsqueda en MercadoLibre.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Templates de Mensajes -->
+    {% if user_can('accion', 'ver_config_plantillas') %}
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Plantillas de Comunicación</h5>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs mb-3" id="templateTabs">
+                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab"
+                            data-bs-target="#t1">Primer Contacto</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t2">Follow-up (3
+                            días)</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t3">Último
+                            Intento (8 días)</button></li>
+                </ul>
+
+                <div class="tab-content border p-3 rounded bg-light">
+                    <!-- Paso 1 -->
+                    <div class="tab-pane fade show active" id="t1">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Asunto Email</label>
+                            <input type="text" name="template_email_asunto_1" class="form-control mb-2"
+                                value="{{ config.template_email_asunto_1 }}">
+                            <label class="form-label fw-bold">Cuerpo Email</label>
+                            <textarea name="template_email_1" class="form-control mb-3"
+                                rows="6">{{ config.template_email_1 }}</textarea>
+                            <label class="form-label fw-bold">Mensaje WhatsApp</label>
+                            <textarea name="template_whatsapp_1" class="form-control"
+                                rows="3">{{ config.template_whatsapp_1 }}</textarea>
+                        </div>
+                    </div>
+                    <!-- Paso 2 -->
+                    <div class="tab-pane fade" id="t2">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Asunto Email</label>
+                            <input type="text" name="template_email_asunto_2" class="form-control mb-2"
+                                value="{{ config.template_email_asunto_2 }}">
+                            <label class="form-label fw-bold">Cuerpo Email</label>
+                            <textarea name="template_email_2" class="form-control mb-3"
+                                rows="6">{{ config.template_email_2 }}</textarea>
+                            <label class="form-label fw-bold">Mensaje WhatsApp</label>
+                            <textarea name="template_whatsapp_2" class="form-control"
+                                rows="3">{{ config.template_whatsapp_2 }}</textarea>
+                        </div>
+                    </div>
+                    <!-- Paso 3 -->
+                    <div class="tab-pane fade" id="t3">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Asunto Email</label>
+                            <input type="text" name="template_email_asunto_3" class="form-control mb-2"
+                                value="{{ config.template_email_asunto_3 }}">
+                            <label class="form-label fw-bold">Cuerpo Email</label>
+                            <textarea name="template_email_3" class="form-control mb-3"
+                                rows="6">{{ config.template_email_3 }}</textarea>
+                            <label class="form-label fw-bold">Mensaje WhatsApp</label>
+                            <textarea name="template_whatsapp_3" class="form-control"
+                                rows="3">{{ config.template_whatsapp_3 }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-muted small">
+                    <strong>Placeholders disponibles:</strong>
+                    <code>{nombre}</code>, <code>{direccion}</code>, <code>{barrio}</code>,
+                    <code>{portal}</code>, <code>{agente_nombre}</code>, <code>{agente_inmobiliaria}</code>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════ SEGURIDAD, ALERTAS WHATSAPP Y AUDITORÍA (ADMIN) ═══════════════════ -->
+    {% if current_user.usuario == 'GermanMazza' or current_user.rol == 'admin' %}
+    <div class="col-12 mb-4">
+        <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(13, 110, 253, 0.2);">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-shield-lock-fill text-info fs-5"></i>
+                    <h5 class="mb-0 fw-bold">Seguridad del Sistema, Alertas WhatsApp y Auditoría</h5>
+                    <span class="badge bg-info bg-opacity-25 text-info ms-2 font-monospace">Bank-Grade Shield</span>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted small mb-4">
+                    Configurá las notificaciones automáticas ante eventos críticos de seguridad. El envío se ejecuta en segundo plano (asíncrono) sin demorar la navegación de la plataforma.
+                </p>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small"><i class="bi bi-whatsapp text-success me-1"></i> Teléfono(s) Receptor(es) de Alertas:</label>
+                        <input type="text" name="alerta_whatsapp_telefonos" class="form-control font-monospace" 
+                            value="{{ config.alerta_whatsapp_telefonos or '+5491161114414' }}" 
+                            placeholder="+5491161114414 (separar con comas para múltiples números)">
+                        <small class="text-muted">Recibirá los avisos de seguridad y detección de anomalías.</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small"><i class="bi bi-clock-history text-primary me-1"></i> Retención del Historial de Auditoría (Audit Trail):</label>
+                        <select name="audit_retention_days" class="form-select">
+                            <option value="90" {% if (config.audit_retention_days or '90') == '90' %}selected{% endif %}>Conservar últimos 90 días (Recomendado - ~4 MB)</option>
+                            <option value="180" {% if config.audit_retention_days == '180' %}selected{% endif %}>Conservar últimos 180 días (~8 MB)</option>
+                            <option value="365" {% if config.audit_retention_days == '365' %}selected{% endif %}>Conservar 1 año completo (~16 MB)</option>
+                        </select>
+                        <small class="text-muted">El sistema purga automáticamente registros antiguos para mantener la base liviana.</small>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-light rounded-3 border mb-3">
+                    <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-toggles me-2 text-primary"></i>Interruptores de Notificaciones de Seguridad</h6>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <div>
+                            <strong class="d-block text-dark small">Master Switch: Alertas de Seguridad por WhatsApp</strong>
+                            <span class="text-muted x-small" style="font-size: 0.8rem;">Permite apagar o encender globalmente todos los avisos de seguridad en tu celular.</span>
+                        </div>
+                        <div class="form-check form-switch h5 mb-0">
+                            <input type="hidden" name="alerta_whatsapp_activo" value="0">
+                            <input class="form-check-input" type="checkbox" name="alerta_whatsapp_activo" value="1" id="swAlertaWa"
+                                {% if (config.alerta_whatsapp_activo or '1') == '1' %}checked{% endif %}>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <div>
+                            <strong class="d-block text-dark small">Avisar Inicio de Sesión Exitoso de Administradores</strong>
+                            <span class="text-muted x-small" style="font-size: 0.8rem;">Envía un WhatsApp con la IP, hora y dispositivo cada vez que vos o un Admin entra al CRM.</span>
+                        </div>
+                        <div class="form-check form-switch h5 mb-0">
+                            <input type="hidden" name="alerta_admin_login" value="0">
+                            <input class="form-check-input" type="checkbox" name="alerta_admin_login" value="1" id="swAlertaAdmin"
+                                {% if (config.alerta_admin_login or '1') == '1' %}checked{% endif %}>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong class="d-block text-dark small">Avisar 3+ Intentos Fallidos en Cuentas Reales (Anti-Spam)</strong>
+                            <span class="text-muted x-small" style="font-size: 0.8rem;">Solo avisa si alguien intenta vulnerar una cuenta real existente de tu equipo (ignora bots externos).</span>
+                        </div>
+                        <div class="form-check form-switch h5 mb-0">
+                            <input type="hidden" name="alerta_failed_logins" value="0">
+                            <input class="form-check-input" type="checkbox" name="alerta_failed_logins" value="1" id="swAlertaFailed"
+                                {% if (config.alerta_failed_logins or '1') == '1' %}checked{% endif %}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════ DOBLE FACTOR DE AUTENTICACIÓN 2FA (OPT-IN PERSONAL) ═══════════════════ -->
+    <div class="col-12 mb-4">
+        <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08);">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-phone-vibrate text-warning fs-5"></i>
+                    <h5 class="mb-0 fw-bold">Doble Factor de Autenticación (2FA / Google Authenticator)</h5>
+                </div>
+                {% if user_totp and user_totp.totp_enabled %}
+                <span class="badge bg-success px-3 py-2 fw-bold"><i class="bi bi-shield-check me-1"></i> 2FA Activo y Protegido</span>
+                {% else %}
+                <span class="badge bg-secondary px-3 py-2 fw-bold">2FA Desactivado (Opcional)</span>
+                {% endif %}
+            </div>
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-lg-8 mb-3 mb-lg-0">
+                        <p class="text-muted small mb-2">
+                            Protegé tu cuenta requiriendo un código de 6 dígitos desde tu celular (Google Authenticator, Microsoft Authenticator o Authy) al iniciar sesión.
+                        </p>
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-info-circle text-primary me-1"></i> <strong>Nota:</strong> Es 100% opcional y podés activarlo o desactivarlo cuando lo desees.
+                        </p>
+                    </div>
+                    <div class="col-lg-4 text-lg-end">
+                        {% if user_totp and user_totp.totp_enabled %}
+                        <button type="button" class="btn btn-outline-danger fw-semibold" onclick="desactivar2FA()">
+                            <i class="bi bi-shield-x me-1"></i> Desactivar 2FA
+                        </button>
+                        {% else %}
+                        <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" onclick="abrirModalSetup2FA()">
+                            <i class="bi bi-qr-code-scan me-1"></i> Configurar 2FA en mi Celular
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 mb-5">
+        <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm fw-bold">
+            <i class="bi bi-check2-circle me-1"></i> Guardar Toda la Configuración
+        </button>
+    </div>
+    </div>
+</form>
+
+<!-- SOPORTE / VINCULACIÓN ADMINISTRATIVA DE INSTAGRAM POR SESSION ID -->
+{% if current_user.usuario == 'GermanMazza' %}
+<div class="row">
+    <div class="col-12 mb-5">
+        <div class="card border-danger shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-shield-lock-fill me-2"></i> Soporte: Vincular Instagram de Agente por Session ID</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Esta sección es exclusiva para administradores. Permite forzar el login y vinculación de Instagram de cualquier agente del CRM utilizando un <strong>Session ID</strong> activo provisto por él desde su navegador.
+                </p>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-bold">Seleccionar Agente</label>
+                        <select id="adminIgUserSelect" class="form-select">
+                            <option value="">-- Seleccionar Usuario --</option>
+                            {% for u in usuarios %}
+                            <option value="{{ u.id }}">{{ u.nombre_display }} (@{{ u.usuario }}) - {{ u.rol.upper() }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-bold">Usuario de Instagram</label>
+                        <input type="text" id="adminIgUsername" class="form-control" placeholder="tu.inmobiliaria.oficial">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-bold">Contraseña de Instagram</label>
+                        <input type="password" id="adminIgPassword" class="form-control" placeholder="Contraseña de la cuenta">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-bold">Session ID (Cookie)</label>
+                        <input type="text" id="adminIgSessionId" class="form-control" placeholder="sessionid obtenido de Chrome/Edge">
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3 mt-2">
+                    <button type="button" class="btn btn-danger" id="btnAdminIgConnect" onclick="adminConectarIgSessionId()">
+                        <i class="bi bi-link-45deg me-1"></i> Forzar Vinculación
+                    </button>
+                    <span id="adminIgSpinner" class="spinner-border spinner-border-sm text-danger d-none"></span>
+                    <div id="adminIgResult" class="small fw-bold"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+<script>
+    // Test Email
+    const btnTestEmail = document.getElementById('btnTestEmail');
+    if (btnTestEmail) {
+        btnTestEmail.addEventListener('click', function () {
+            const email = document.getElementById('test_email_dest').value;
+            const resultDiv = document.getElementById('testResult');
+
+            if (!email) {
+                resultDiv.innerHTML = '<span class="text-danger">Ingresá un email de destino</span>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split"></i> Enviando...</span>';
+
+            const formData = new FormData();
+            formData.append('test_email_dest', email);
+
+            fetch('/test_email', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        resultDiv.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> ' + data.message + '</span>';
+                    } else {
+                        resultDiv.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + data.message + '</span>';
+                    }
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = '<span class="text-danger">Error de conexión</span>';
+                });
+        });
+    }
+
+    // ── Instagram private API linking logic (instagrapi) ──
+    function loadIGStatus() {
+        fetch('/api/instagram/status')
+            .then(r => r.json())
+            .then(data => {
+                updateIGUI(data.status || 'disconnected', data.username || '', data.challenge_type || '');
+            })
+            .catch(() => {
+                updateIGUI('disconnected');
+            });
+    }
+
+    function updateIGUI(status, user = '', challenge = '') {
+        const badge = document.getElementById('igStatusBadge');
+        const loginForm = document.getElementById('igLoginForm');
+        const checkpointForm = document.getElementById('igCheckpointForm');
+        const connectedForm = document.getElementById('igConnectedForm');
+        const resultArea = document.getElementById('igResultArea');
+
+        if (!badge) return;
+
+        // Reset
+        loginForm.classList.add('d-none');
+        checkpointForm.classList.add('d-none');
+        connectedForm.classList.add('d-none');
+
+        if (status === 'connected') {
+            badge.className = "badge rounded-pill bg-success";
+            badge.textContent = "Conectado";
+            document.getElementById('igConnectedUserText').textContent = `Conectado como @${user}`;
+            connectedForm.classList.remove('d-none');
+        } else if (status === 'checkpoint_required') {
+            badge.className = "badge rounded-pill bg-warning text-dark";
+            badge.textContent = "Verificación Requerida";
+            document.getElementById('lblCheckpointCode').textContent = `Código de Verificación (${challenge})`;
+            checkpointForm.classList.remove('d-none');
+        } else {
+            badge.className = "badge rounded-pill bg-secondary";
+            badge.textContent = "Desconectado";
+            loginForm.classList.remove('d-none');
+        }
+    }
+
+    // Initialize UI via API
+    document.addEventListener('DOMContentLoaded', loadIGStatus);
+
+    window.connectInstagram = function() {
+        const user = document.getElementById('ig_username').value.trim();
+        const pass = document.getElementById('ig_password').value;
+        const result = document.getElementById('igResultArea');
+        const btn = document.getElementById('btnConnectIG');
+
+        if (!user || !pass) {
+            result.innerHTML = '<div class="alert alert-danger py-2">Ingresá usuario y contraseña.</div>';
+            return;
+        }
+
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Vinculando (esperá al menos 15s)...';
+        result.innerHTML = '';
+
+        fetch('/api/instagram/conectar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'connected') {
+                updateIGUI('connected', user);
+                result.innerHTML = '<div class="alert alert-success py-2">¡Instagram conectado con éxito!</div>';
+            } else if (data.status === 'checkpoint_required') {
+                updateIGUI('checkpoint_required', user, data.challenge_type);
+            } else {
+                result.innerHTML = `<div class="alert alert-danger py-2">Error: ${data.error || 'No se pudo conectar'}</div>`;
+                updateIGUI('disconnected');
+            }
+        })
+        .catch(err => {
+            result.innerHTML = '<div class="alert alert-danger py-2">Error de conexión al servidor o timeout. Reintentá.</div>';
+            updateIGUI('disconnected');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
+    };
+
+    window.confirmInstagramCode = function() {
+        const code = document.getElementById('ig_verification_code').value.trim();
+        const result = document.getElementById('igResultArea');
+        const btn = document.getElementById('btnConfirmIGCode');
+
+        if (!code) {
+            result.innerHTML = '<div class="alert alert-danger py-2">Ingresá el código recibido.</div>';
+            return;
+        }
+
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Verificando (esperá al menos 15s)...';
+        result.innerHTML = '';
+
+        fetch('/api/instagram/confirmar_codigo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Forzar reload para que Flask lea el nuevo estado en la DB al renderizar
+                result.innerHTML = '<div class="alert alert-success py-2">¡Instagram conectado con éxito! Recargando...</div>';
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                result.innerHTML = `<div class="alert alert-danger py-2">Error: ${data.error || 'Código inválido'}</div>`;
+            }
+        })
+        .catch(err => {
+            result.innerHTML = '<div class="alert alert-danger py-2">Error de conexión al servidor.</div>';
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
+    };
+
+    window.disconnectInstagram = function(forceReload = false) {
+        if (!forceReload && !confirm('¿Estás seguro que querés desvincular tu cuenta de Instagram?')) return;
+
+        fetch('/api/instagram/desvincular', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            updateIGUI('disconnected');
+            if (forceReload) {
+                location.reload();
+            }
+        });
+    };
+
+    // Dynamic Webhook URL loader
+    document.addEventListener("DOMContentLoaded", function() {
+        const webhookInput = document.getElementById('webhookUrl');
+        if (webhookInput) {
+            webhookInput.value = window.location.origin + '/api/leads/meta';
+        }
+    });
+
+    function copyWebhookUrl() {
+        const copyText = document.getElementById("webhookUrl");
+        if (copyText) {
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value);
+            alert("¡URL del Webhook copiada al portapapeles!");
+        }
+    }
+
+    // ───── TOKKO BROKER CONFIG ─────
+    function toggleTokkoKey() {
+        const inp = document.getElementById('tokkoApiKeyInput');
+        const icon = document.getElementById('eyeIcon');
+        if (inp.type === 'password') {
+            inp.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            inp.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    }
+
+    function verificarTokko() {
+        const key = document.getElementById('tokkoApiKeyInput').value.trim();
+        const res = document.getElementById('tokkoVerifyResult');
+        if (!key) { res.innerHTML = '<div class="alert alert-warning py-2 small">Ingresá la API Key primero.</div>'; return; }
+        res.innerHTML = '<div class="alert alert-info py-2 small"><i class="bi bi-hourglass-split me-1"></i> Verificando conexión con Tokko...</div>';
+        const fd = new FormData();
+        fd.append('tokko_api_key', key);
+        fetch('/tokko/config/verificar', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                const cls = data.ok ? 'success' : 'danger';
+                res.innerHTML = `<div class="alert alert-${cls} py-2 small">${data.message}</div>`;
+            })
+            .catch(() => { res.innerHTML = '<div class="alert alert-danger py-2 small">Error de red.</div>'; });
+    }
+
+    function syncTokkoNow() {
+        const btn = document.getElementById('btnSyncTokko');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sincronizando...';
+        fetch('/tokko/sync/trigger', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('tokkoVerifyResult').innerHTML =
+                    `<div class="alert alert-${data.ok ? 'info' : 'warning'} py-2 small">${data.message}</div>`;
+                if (data.ok) pollTokkoStatus();
+                else { btn.disabled = false; btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Sincronizar Ahora'; }
+            });
+    }
+
+    function pollTokkoStatus() {
+        const btn = document.getElementById('btnSyncTokko');
+        const interval = setInterval(() => {
+            fetch('/tokko/sync/status')
+                .then(r => r.json())
+                .then(s => {
+                    document.getElementById('syncStatusBadge').textContent = s.status === 'running' ? '⏳ Corriendo' : '✅ Idle';
+                    document.getElementById('syncStatusBadge').className = 'badge ' + (s.status === 'running' ? 'bg-warning text-dark' : 'bg-success');
+                    if (s.total) document.getElementById('tokkoTotal').textContent = s.total;
+                    if (s.ultima_sync) document.getElementById('tokkoLastSync').textContent = s.ultima_sync;
+                    if (s.status !== 'running') {
+                        clearInterval(interval);
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Sincronizar Ahora';
+                    }
+                });
+        }, 3000);
+    }
+
+    // Load Tokko status on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        fetch('/tokko/sync/status')
+            .then(r => r.json())
+            .then(s => {
+                if (s.status) {
+                    document.getElementById('syncStatusBadge').textContent = s.status === 'running' ? '⏳ Corriendo' : '✅ Idle';
+                    document.getElementById('syncStatusBadge').className = 'badge ' + (s.status === 'running' ? 'bg-warning text-dark' : 'bg-success');
+                }
+                if (s.total) document.getElementById('tokkoTotal').textContent = s.total;
+                if (s.ultima_sync) document.getElementById('tokkoLastSync').textContent = s.ultima_sync;
+            }).catch(() => {});
+            
+        // Autocomplete JS for producer binding in Configuration
+        const prodInput = document.getElementById('productorInput');
+        const autoBox = document.getElementById('autocompleteBox');
+        const confirmBtn = document.getElementById('btnConfirmarVinculo');
+        const vincMsg = document.getElementById('vincularMsg');
+        let selectedProductor = null;
+        let debounceTimer;
+
+        if (prodInput && autoBox) {
+            prodInput.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const q = this.value.trim();
+                
+                // Show confirmation button if there is any input text
+                if (q.length > 0) {
+                    if (confirmBtn) confirmBtn.style.display = 'inline-block';
+                } else {
+                    if (confirmBtn) confirmBtn.style.display = 'none';
+                    autoBox.classList.add('d-none');
+                    return;
+                }
+
+                if (q.length < 2) { 
+                    autoBox.classList.add('d-none'); 
+                    return; 
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`/tokko/config/productores/buscar?q=${encodeURIComponent(q)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            autoBox.innerHTML = '';
+                            if (!data.length) {
+                                autoBox.innerHTML = `
+                                    <div style="padding: 12px; font-size: 0.8rem; color: #6c757d; text-align: center; line-height: 1.4;">
+                                        <i class="bi bi-info-circle me-1 text-warning"></i> Sin coincidencias en la base local.<br>
+                                        <span style="font-size:0.75rem;">Podés usar el botón <strong>"Confirmar Vinculación"</strong> de abajo para vincular tu usuario con este nombre de todos modos.</span>
+                                    </div>
+                                `;
+                                autoBox.classList.remove('d-none');
+                                return;
+                            }
+                            data.forEach(p => {
+                                const item = document.createElement('div');
+                                item.className = 'autocomplete-item';
+                                item.style.padding = '8px 12px';
+                                item.style.cursor = 'pointer';
+                                item.style.borderBottom = '1px solid #eee';
+                                item.style.display = 'flex';
+                                item.style.justifyContent = 'space-between';
+                                item.style.alignItems = 'center';
+                                item.style.transition = 'background-color 0.2s';
+                                
+                                item.onmouseover = () => item.style.backgroundColor = '#f8f9fa';
+                                item.onmouseout = () => item.style.backgroundColor = 'transparent';
+
+                                const pct = Math.round(p.score * 100);
+                                item.innerHTML = `
+                                    <div>
+                                        <strong style="font-size:0.85rem;">${p.nombre}</strong>
+                                        <div style="font-size:0.7rem; color:#6c757d;">${p.cantidad} propiedades</div>
+                                    </div>
+                                    <span class="badge bg-light text-primary" style="font-size:0.65rem;">${pct}% match</span>
+                                `;
+                                item.onclick = () => {
+                                    selectedProductor = p;
+                                    prodInput.value = p.nombre;
+                                    autoBox.classList.add('d-none');
+                                    if (confirmBtn) confirmBtn.style.display = 'inline-block';
+                                    if (vincMsg) {
+                                        vincMsg.innerHTML = `<div class="alert alert-info py-1 px-2 mb-0" style="font-size:0.8rem;">Vincular como: <strong>${p.nombre}</strong> (${p.cantidad} propiedades)</div>`;
+                                    }
+                                };
+                                autoBox.appendChild(item);
+                            });
+                            autoBox.classList.remove('d-none');
+                        });
+                }, 300);
+            });
+
+            // If input is focused and has text, trigger input logic to show options or button
+            prodInput.addEventListener('focus', function() {
+                const q = this.value.trim();
+                if (q.length > 0) {
+                    if (confirmBtn) confirmBtn.style.display = 'inline-block';
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('#productorInput') && !e.target.closest('#autocompleteBox')) {
+                    autoBox.classList.add('d-none');
+                }
+            });
+        }
+
+        window.confirmarVinculo = function() {
+            const name = prodInput.value.trim();
+            if (!name) return;
+            const fd = new FormData();
+            fd.append('productor_nombre', name);
+            fetch('/tokko/config/productores/vincular', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ok && vincMsg) {
+                        vincMsg.innerHTML = `<div class="alert alert-success py-1 px-2 mb-0" style="font-size:0.8rem;">${data.message}</div>`;
+                        setTimeout(() => location.reload(), 1500);
+                    }
+                });
+        };
+    });
+
+    // JS logic for admin connecting other agents using session id
+    window.adminConectarIgSessionId = function() {
+        const userSelect = document.getElementById('adminIgUserSelect');
+        const targetUserId = userSelect.value;
+        const igUsername = document.getElementById('adminIgUsername').value.trim();
+        const igPassword = document.getElementById('adminIgPassword').value;
+        const sessionId = document.getElementById('adminIgSessionId').value.trim();
+        
+        const btn = document.getElementById('btnAdminIgConnect');
+        const spinner = document.getElementById('adminIgSpinner');
+        const resultDiv = document.getElementById('adminIgResult');
+
+        if (!targetUserId || !igUsername || !igPassword || !sessionId) {
+            alert("Por favor, completá todos los campos requeridos.");
+            return;
+        }
+
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        resultDiv.className = 'small fw-bold text-muted';
+        resultDiv.innerText = 'Intentando vincular... (demora unos 15-30s)';
+
+        fetch('/api/instagram/admin_conectar_sessionid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                target_user_id: targetUserId,
+                ig_username: igUsername,
+                ig_password: igPassword,
+                session_id: sessionId
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            if (data.success) {
+                resultDiv.className = 'small fw-bold text-success';
+                resultDiv.innerText = data.message;
+                // Limpiar inputs
+                document.getElementById('adminIgUsername').value = '';
+                document.getElementById('adminIgPassword').value = '';
+                document.getElementById('adminIgSessionId').value = '';
+            } else {
+                resultDiv.className = 'small fw-bold text-danger';
+                resultDiv.innerText = data.error || 'Error al vincular sesión.';
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            resultDiv.className = 'small fw-bold text-danger';
+            resultDiv.innerText = 'Error de red o timeout.';
+        });
+    };
+
+    // --- 1. WHATSAPP PORTAL DE CLIENTES LIVE POLLING (ADMIN ONLY) ---
+    window.conectarWaPortal = function() {
+        const btn = document.getElementById('btnConectarWaPortal');
+        const spinner = document.getElementById('waPortalQrSpinner');
+        const qrText = document.getElementById('waPortalQrText');
+        const qrImg = document.getElementById('waPortalQrImg');
+        
+        if (qrImg) qrImg.classList.add('d-none');
+        if (spinner) spinner.classList.remove('d-none');
+        if (qrText) qrText.innerHTML = '<span class="text-primary fw-bold"><i class="bi bi-arrow-repeat spin me-1"></i> Iniciando vinculador del Portal de Clientes... Aguardá unos segundos.</span>';
+        if (btn) btn.disabled = true;
+
+        fetch('/crm/whatsapp/portal/conectar', { 
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (btn) btn.disabled = false;
+            window.checkWaPortalStatus();
+        })
+        .catch(err => {
+            if (btn) btn.disabled = false;
+            console.error("Error conectando portal:", err);
+        });
+    };
+
+    window.desconectarWaPortal = function() {
+        if (!confirm('¿Estás seguro de desconectar el WhatsApp del Portal de Clientes?')) return;
+        const btn = document.getElementById('btnDesconectarWaPortal');
+        if (btn) btn.disabled = true;
+
+        fetch('/crm/whatsapp/portal/logout', { 
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (btn) btn.disabled = false;
+            window.checkWaPortalStatus();
+        })
+        .catch(() => { if (btn) btn.disabled = false; });
+    };
+
+    window.checkWaPortalStatus = function() {
+        fetch('/api/whatsapp/portal/status')
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('waPortalStatusBadge');
+                const qrImg = document.getElementById('waPortalQrImg');
+                const qrText = document.getElementById('waPortalQrText');
+                const spinner = document.getElementById('waPortalQrSpinner');
+                
+                if (!badge) return;
+
+                if (data.status === 'connected') {
+                    badge.className = 'badge bg-white text-success fw-bold px-3 py-2 fs-6 shadow-sm';
+                    badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Conectado 🟢';
+                    if (qrImg) qrImg.classList.add('d-none');
+                    if (spinner) spinner.classList.add('d-none');
+                    if (qrText) qrText.innerHTML = '<strong class="text-success fs-6"><i class="bi bi-shield-check me-1"></i> WhatsApp del Portal activo y vinculado.</strong>';
+                } else if (data.status === 'connecting' || data.status === 'qr' || data.status === 'qr_ready') {
+                    badge.className = 'badge bg-warning text-dark fw-bold px-3 py-2 fs-6 shadow-sm';
+                    badge.innerHTML = '<i class="bi bi-clock-history me-1"></i> Generando / Escaneá QR... 🟡';
+                    
+                    if (data.qr && typeof QRCode !== 'undefined') {
+                        QRCode.toDataURL(data.qr, { width: 220, margin: 1 }, function (err, url) {
+                            if (!err && url) {
+                                if (qrImg) { qrImg.src = url; qrImg.classList.remove('d-none'); }
+                                if (spinner) spinner.classList.add('d-none');
+                                if (qrText) qrText.innerHTML = 'Escaneá este código QR desde tu celular secundario para conectar el Portal de Clientes.';
+                            }
+                        });
+                    } else {
+                        if (qrImg) qrImg.classList.add('d-none');
+                        if (spinner) spinner.classList.remove('d-none');
+                        if (qrText) qrText.innerHTML = '<span class="text-warning fw-semibold"><i class="bi bi-arrow-repeat spin me-1"></i> Generando código QR seguro... Por favor aguardá unos segundos.</span>';
+                    }
+                } else {
+                    badge.className = 'badge bg-danger text-white fw-bold px-3 py-2 fs-6 shadow-sm';
+                    badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Desconectado 🔴';
+                    if (qrImg) qrImg.classList.add('d-none');
+                    if (spinner) spinner.classList.add('d-none');
+                    if (qrText) qrText.innerHTML = 'WhatsApp del Portal sin vincular. Hacé clic en <strong>"Vincular / Escanear QR"</strong> para iniciar.';
+                }
+            }).catch(() => {});
+    };
+
+    // --- 2. WHATSAPP PUBLICADOR DE HISTORIAS LIVE POLLING (TODOS LOS AGENTES) ---
+    window.conectarWaHistorias = function() {
+        const btn = document.getElementById('btnConectarWaHistorias');
+        const spinner = document.getElementById('waHistoriasQrSpinner');
+        const qrText = document.getElementById('waHistoriasQrText');
+        const qrImg = document.getElementById('waHistoriasQrImg');
+        
+        if (qrImg) qrImg.classList.add('d-none');
+        if (spinner) spinner.classList.remove('d-none');
+        if (qrText) qrText.innerHTML = '<span class="text-primary fw-bold"><i class="bi bi-arrow-repeat spin me-1"></i> Iniciando vinculador personal de Historias... Aguardá unos segundos.</span>';
+        if (btn) btn.disabled = true;
+
+        fetch('/conectar_whatsapp', { 
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (btn) btn.disabled = false;
+            window.checkWaHistoriasStatus();
+        })
+        .catch(err => {
+            if (btn) btn.disabled = false;
+            console.error("Error conectando historias:", err);
+        });
+    };
+
+    window.desconectarWaHistorias = function() {
+        if (!confirm('¿Estás seguro de desconectar tu cuenta de WhatsApp para Historias?')) return;
+        const btn = document.getElementById('btnDesconectarWaHistorias');
+        if (btn) btn.disabled = true;
+
+        fetch('/logout_whatsapp', { 
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (btn) btn.disabled = false;
+            window.checkWaHistoriasStatus();
+        })
+        .catch(() => { if (btn) btn.disabled = false; });
+    };
+
+    window.checkWaHistoriasStatus = function() {
+        fetch('/api/whatsapp/historias/status')
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('waHistoriasStatusBadge');
+                const qrImg = document.getElementById('waHistoriasQrImg');
+                const qrText = document.getElementById('waHistoriasQrText');
+                const spinner = document.getElementById('waHistoriasQrSpinner');
+                
+                if (!badge) return;
+
+                if (data.status === 'connected') {
+                    badge.className = 'badge bg-white text-success fw-bold px-3 py-2 fs-6 shadow-sm';
+                    badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Conectado 🟢';
+                    if (qrImg) qrImg.classList.add('d-none');
+                    if (spinner) spinner.classList.add('d-none');
+                    if (qrText) qrText.innerHTML = '<strong class="text-success fs-6"><i class="bi bi-shield-check me-1"></i> Tu WhatsApp personal está activo para publicar historias.</strong>';
+                } else if (data.status === 'connecting' || data.status === 'qr' || data.status === 'qr_ready') {
+                    badge.className = 'badge bg-warning text-dark fw-bold px-3 py-2 fs-6 shadow-sm';
+                    badge.innerHTML = '<i class="bi bi-clock-history me-1"></i> Generando / Escaneá QR... 🟡';
+                    
+                    if (data.qr && typeof QRCode !== 'undefined') {
+                        QRCode.toDataURL(data.qr, { width: 220, margin: 1 }, function (err, url) {
+                            if (!err && url) {
+                                if (qrImg) { qrImg.src = url; qrImg.classList.remove('d-none'); }
+                                if (spinner) spinner.classList.add('d-none');
+                                if (qrText) qrText.innerHTML = 'Escaneá este código QR con tu WhatsApp personal para habilitar publicaciones.';
+                            }
+                        });
+                    } else {
+                        if (qrImg) qrImg.classList.add('d-none');
+                        if (spinner) spinner.classList.remove('d-none');
+                        if (qrText) qrText.innerHTML = '<span class="text-warning fw-semibold"><i class="bi bi-arrow-repeat spin me-1"></i> Iniciando vinculador de Historias y obteniendo QR... Por favor aguardá unos segundos.</span>';
+                    }
+                } else {
+                    badge.className = 'badge bg-danger text-white fw-bold px-3 py-2 fs-6 shadow-sm';
+                    badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Desconectado 🔴';
+                    if (qrImg) qrImg.classList.add('d-none');
+                    if (spinner) spinner.classList.add('d-none');
+                    if (qrText) qrText.innerHTML = 'Tu WhatsApp personal está sin vincular. Hacé clic en <strong>"Vincular / Escanear QR"</strong> para iniciar.';
+                }
+            }).catch(() => {});
+    };
+
+    // ── ADMIN WORKER MONITOR & CONTROLS ──
+    {% if current_user.rol == 'admin' or current_user.usuario == 'GermanMazza' %}
+    window.refreshAdminWorkerStatus = function() {
+        fetch('/admin/api/worker_status')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) return;
+                const w = data.worker;
+                const badge = document.getElementById('workerStatusBadge');
+                const pidText = document.getElementById('workerPidText');
+                const hbText = document.getElementById('workerHeartbeatText');
+                const wdText = document.getElementById('workerWatchdogText');
+                const btnStop = document.getElementById('btnStopWorker');
+                const btnStart = document.getElementById('btnStartWorker');
+
+                if (w.running) {
+                    if (badge) {
+                        badge.className = 'badge bg-success px-3 py-2 fs-6';
+                        badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Worker Activo 🟢';
+                    }
+                    if (pidText) pidText.textContent = `PID ${w.pid}`;
+                    if (btnStop) btnStop.disabled = false;
+                    if (btnStart) btnStart.disabled = true;
+                } else {
+                    if (badge) {
+                        badge.className = 'badge bg-danger px-3 py-2 fs-6';
+                        badge.innerHTML = '<i class="bi bi-pause-circle-fill me-1"></i> Worker Detenido 🔴';
+                    }
+                    if (pidText) pidText.textContent = 'Inactivo';
+                    if (btnStop) btnStop.disabled = true;
+                    if (btnStart) btnStart.disabled = false;
+                }
+
+                if (hbText) {
+                    if (w.last_heartbeat_ago !== null && w.last_heartbeat_ago !== undefined) {
+                        hbText.textContent = `Hace ${w.last_heartbeat_ago}s`;
+                        hbText.className = w.last_heartbeat_ago <= 10 ? 'text-success font-monospace fs-6' : 'text-warning font-monospace fs-6';
+                    } else {
+                        hbText.textContent = 'Sin señal';
+                        hbText.className = 'text-muted font-monospace fs-6';
+                    }
+                }
+
+                if (wdText) {
+                    wdText.textContent = w.manual_stopped ? 'Pausado Manual' : 'Automático Activo';
+                    wdText.className = w.manual_stopped ? 'text-warning font-monospace fs-6' : 'text-success font-monospace fs-6';
+                }
+            })
+            .catch(() => {});
+    };
+
+    window.controlWorkerAction = function(action) {
+        let confirmMsg = '';
+        if (action === 'stop') confirmMsg = '¿Seguro que querés detener el worker de historias y pausar el watchdog?';
+        if (action === 'restart') confirmMsg = '¿Seguro que querés reiniciar el worker de historias?';
+        if (confirmMsg && !confirm(confirmMsg)) return;
+
+        const btnRestart = document.getElementById('btnRestartWorker');
+        const originalText = btnRestart ? btnRestart.innerHTML : '';
+        if (btnRestart) {
+            btnRestart.disabled = true;
+            btnRestart.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+        }
+
+        fetch('/admin/api/worker_action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.refreshAdminWorkerStatus();
+            } else {
+                alert('Error: ' + (data.error || 'No se pudo realizar la acción'));
+            }
+        })
+        .catch(err => {
+            alert('Error de conexión: ' + err.message);
+        })
+        .finally(() => {
+            if (btnRestart) {
+                btnRestart.innerHTML = originalText;
+                btnRestart.disabled = false;
+            }
+        });
+    };
+
+    window.purgeCrmZombiesAction = function() {
+        if (!confirm('¿Deseas escanear y purgar quirúrgicamente todos los procesos zombis del CRM? (Claudia, ngrok y demás aplicaciones externas NO serán afectadas).')) return;
+
+        const btn = document.getElementById('btnPurgeZombies');
+        const originalText = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Escaneando memoria...';
+        }
+
+        fetch('/admin/api/purge_zombies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                if (typeof window.refreshAdminWorkerStatus === 'function') window.refreshAdminWorkerStatus();
+            } else {
+                alert('❌ Error: ' + (data.error || 'No se pudo realizar la purga'));
+            }
+        })
+        .catch(err => {
+            alert('❌ Error de conexión: ' + err.message);
+        })
+        .finally(() => {
+            if (btn) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+    };
+
+
+    window.conectarScraperConCredenciales = function() {
+        const url = document.getElementById('inputScraperUrl').value.trim();
+        const usuario = document.getElementById('inputScraperUser').value.trim();
+        const password = document.getElementById('inputScraperPassword').value;
+        const feedback = document.getElementById('scraperTestFeedback');
+        const btn = document.getElementById('btnConnectScraper');
+
+        if (!usuario || !password) {
+            feedback.innerHTML = '<span class="text-danger fw-bold"><i class="bi bi-exclamation-circle-fill me-1"></i> Por favor ingresá usuario y contraseña del motor.</span>';
+            return;
+        }
+
+        btn.disabled = true;
+        feedback.innerHTML = '<span class="spinner-border spinner-border-sm text-primary me-1"></span> Autenticando con el servidor de scraping...';
+
+        fetch('/api/scraper/login-connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url, usuario: usuario, password: password })
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            if (data.success) {
+                feedback.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i> ¡Conexión Establecida!</span> ${data.message}`;
+                setTimeout(() => window.location.reload(), 1200);
+            } else {
+                feedback.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-x-circle-fill me-1"></i> No se pudo conectar:</span> ${data.message}`;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            feedback.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> Error de red:</span> ${err.message}`;
+        });
+    };
+
+    window.desconectarScraper = function() {
+        if (!confirm('¿Deseas desconectar el CRM del motor de scraping?')) return;
+        fetch('/api/scraper/disconnect', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            window.location.reload();
+        });
+    };
+
+    window.probarConexionScraper = function() {
+        const url = document.getElementById('inputScraperUrl').value.trim();
+        const feedback = document.getElementById('scraperTestFeedback');
+        const btn = document.getElementById('btnTestScraperHealth');
+
+        btn.disabled = true;
+        feedback.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary me-1"></span> Verificando estado del servidor...';
+
+        fetch('/api/scraper/test-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            if (data.success) {
+                feedback.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-broadcast text-success me-1"></i> Servidor Online</span> (${data.proxies} proxies disponibles). ${data.license ? data.license.message : ''}`;
+            } else {
+                feedback.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-x-circle-fill me-1"></i> Servidor Inaccesible:</span> ${data.message || 'Sin respuesta'}`;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            feedback.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> Error:</span> ${err.message}`;
+        });
+    };
+    {% endif %}
+
+    {% if current_user.rol in ('admin', 'broker') or current_user.usuario == 'GermanMazza' %}
+    window.cargarAgentesMorningBriefing = function() {
+        const tbody = document.getElementById('tbodyMorningBriefingAgentes');
+        if (!tbody) return;
+        
+        fetch('/api/asistente_ia/agentes_config')
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success' && data.agentes) {
+                if (data.agentes.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">No se encontraron agentes comerciales.</td></tr>';
+                    return;
+                }
+                let html = '';
+                data.agentes.forEach(a => {
+                    const statusBadge = a.ultimo_envio !== 'Nunca' 
+                        ? `<span class="badge bg-light text-dark border"><i class="bi bi-clock-history me-1"></i>${a.ultimo_envio}</span>`
+                        : `<span class="badge bg-secondary bg-opacity-25 text-secondary">Pendiente</span>`;
+                    
+                    html += `
+                        <tr id="filaAgente_${a.id}">
+                            <td>
+                                <strong class="text-dark d-block">${a.nombre}</strong>
+                                <span class="text-muted small font-monospace">@${a.usuario}</span>
+                            </td>
+                            <td><span class="badge bg-primary bg-opacity-10 text-primary fw-semibold">${a.rol}</span></td>
+                            <td class="text-center"><span class="badge bg-light text-dark border px-2 py-1">${a.cant_contactos}</span></td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white"><i class="bi bi-whatsapp text-success"></i></span>
+                                    <input type="text" class="form-control font-monospace" id="inputTelAgente_${a.id}" value="${a.telefono || ''}" placeholder="+54 9 11 ...">
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-inline-block">
+                                    <input class="form-check-input" type="checkbox" id="switchAgente_${a.id}" ${a.habilitado ? 'checked' : ''}>
+                                </div>
+                            </td>
+                            <td>${statusBadge}</td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" title="Guardar cambios" onclick="guardarConfigAgente(${a.id}, this)">
+                                        <i class="bi bi-floppy"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success" title="Enviar prueba de Morning Briefing ahora" onclick="enviarPruebaAgente(${a.id}, this)">
+                                        <i class="bi bi-send-fill me-1"></i> Probar
+                                    </button>
+                                </div>
+                                <div id="feedbackAgente_${a.id}" class="small mt-1 text-end" style="font-size: 0.75rem;"></div>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3 text-danger">Error: ${data.message || 'No se pudieron cargar los datos.'}</td></tr>`;
+            }
+        })
+        .catch(err => {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3 text-danger">Error de red: ${err.message}</td></tr>`;
+        });
+    };
+
+    window.guardarConfigAgente = function(agenteId, btn) {
+        const telInput = document.getElementById(`inputTelAgente_${agenteId}`);
+        const switchInput = document.getElementById(`switchAgente_${agenteId}`);
+        const feedback = document.getElementById(`feedbackAgente_${agenteId}`);
+        
+        const telefono = telInput ? telInput.value.trim() : '';
+        const habilitado = switchInput ? switchInput.checked : true;
+        
+        if (btn) btn.disabled = true;
+        if (feedback) feedback.innerHTML = '<span class="text-muted">Guardando...</span>';
+        
+        fetch('/api/asistente_ia/guardar_agente_config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agente_id: agenteId, telefono: telefono, habilitado: habilitado })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (btn) btn.disabled = false;
+            if (data.status === 'success') {
+                if (feedback) feedback.innerHTML = '<span class="text-success fw-bold"><i class="bi bi-check2"></i> Guardado</span>';
+                setTimeout(() => { if (feedback) feedback.innerHTML = ''; }, 3000);
+            } else {
+                if (feedback) feedback.innerHTML = `<span class="text-danger">${data.message || 'Error'}</span>`;
+            }
+        })
+        .catch(err => {
+            if (btn) btn.disabled = false;
+            if (feedback) feedback.innerHTML = `<span class="text-danger">Error: ${err.message}</span>`;
+        });
+    };
+
+    window.enviarPruebaAgente = function(agenteId, btn) {
+        const feedback = document.getElementById(`feedbackAgente_${agenteId}`);
+        const originalHtml = btn ? btn.innerHTML : '';
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Enviando...';
+        }
+        if (feedback) feedback.innerHTML = '<span class="text-info">Disparando WhatsApp vía Portal...</span>';
+        
+        fetch('/api/asistente_ia/enviar_briefing_agente_especifico', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agente_id: agenteId })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+            if (data.status === 'success') {
+                if (feedback) feedback.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i> ¡Enviado!</span>`;
+                setTimeout(() => { window.cargarAgentesMorningBriefing(); }, 2000);
+            } else {
+                if (feedback) feedback.innerHTML = `<span class="text-danger fw-semibold"><i class="bi bi-x-circle me-1"></i> ${data.message}</span>`;
+            }
+        })
+        .catch(err => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+            if (feedback) feedback.innerHTML = `<span class="text-danger">Error: ${err.message}</span>`;
+        });
+    };
+    {% endif %}
+
+    setInterval(() => {
+        window.checkWaPortalStatus();
+        window.checkWaHistoriasStatus();
+        {% if current_user.rol == 'admin' or current_user.usuario == 'GermanMazza' %}
+        if (typeof window.refreshAdminWorkerStatus === 'function') window.refreshAdminWorkerStatus();
+        {% endif %}
+    }, 8000);
+    document.addEventListener('DOMContentLoaded', () => {
+        window.checkWaPortalStatus();
+        window.checkWaHistoriasStatus();
+        {% if current_user.rol in ('admin', 'broker') or current_user.usuario == 'GermanMazza' %}
+        if (typeof window.refreshAdminWorkerStatus === 'function') window.refreshAdminWorkerStatus();
+        if (typeof window.cargarAgentesMorningBriefing === 'function') window.cargarAgentesMorningBriefing();
+        {% endif %}
+    });
+
+    // ── 2FA MANAGEMENT (Google Authenticator / TOTP) ──
+    window.abrirModalSetup2FA = function() {
+        const modalEl = document.getElementById('modalSetup2FA');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        
+        document.getElementById('modal2faLoading').classList.remove('d-none');
+        document.getElementById('modal2faContent').classList.add('d-none');
+        document.getElementById('input2faCode').value = '';
+        document.getElementById('feedback2fa').innerHTML = '';
+        
+        fetch('/perfil/2fa/setup', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                document.getElementById('img2faQr').src = data.qr_base64;
+                document.getElementById('txt2faSecret').value = data.secret;
+                document.getElementById('modal2faLoading').classList.add('d-none');
+                document.getElementById('modal2faContent').classList.remove('d-none');
+                setTimeout(() => document.getElementById('input2faCode').focus(), 300);
+            } else {
+                alert('Error generando código 2FA');
+            }
+        })
+        .catch(err => {
+            alert('Error de conexión con el servidor');
+        });
+    };
+
+    window.confirmar2FA = function() {
+        const code = document.getElementById('input2faCode').value.trim();
+        const feedback = document.getElementById('feedback2fa');
+        if (!code || code.length !== 6) {
+            feedback.innerHTML = '<span class="text-danger">Ingresá los 6 dígitos.</span>';
+            return;
+        }
+        feedback.innerHTML = '<span class="text-muted">Verificando...</span>';
+        
+        fetch('/perfil/2fa/verificar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                feedback.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i> ${data.message}</span>`;
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                feedback.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-x-circle me-1"></i> ${data.message}</span>`;
+            }
+        })
+        .catch(err => {
+            feedback.innerHTML = `<span class="text-danger">Error: ${err.message}</span>`;
+        });
+    };
+
+    window.desactivar2FA = function() {
+        if (!confirm('¿Estás seguro de que querés desactivar la autenticación de doble factor en tu cuenta?')) return;
+        fetch('/perfil/2fa/desactivar', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message || '2FA Desactivado');
+            window.location.reload();
+        })
+        .catch(err => {
+            alert('Error al desactivar 2FA');
+        });
+    };
+</script>
+
+<!-- Modal Setup 2FA -->
+<div class="modal fade" id="modalSetup2FA" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white rounded-top-4 py-3">
+                <h5 class="modal-title fw-bold"><i class="bi bi-shield-lock-fill text-warning me-2"></i> Activar 2FA en tu Celular</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div id="modal2faLoading" class="py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted small mt-2">Generando código seguro...</p>
+                </div>
+                <div id="modal2faContent" class="d-none">
+                    <p class="text-muted small mb-3">
+                        1. Abrí <strong>Google Authenticator</strong> (o Authy) en tu teléfono.<br>
+                        2. Tocá <strong>"+" ➔ Escanear código QR</strong> y apuntá a esta imagen:
+                    </p>
+                    <div class="p-3 bg-white d-inline-block rounded-3 border shadow-sm mb-3">
+                        <img id="img2faQr" src="" alt="QR 2FA" class="img-fluid" style="max-width: 180px;">
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label class="form-label x-small fw-bold text-muted">¿No podés escanear? Clave de configuración manual:</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="txt2faSecret" class="form-control font-monospace text-center bg-light" readonly>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-dark">3. Ingresá el código de 6 dígitos que muestra tu app:</label>
+                        <input type="text" id="input2faCode" class="form-control form-control-lg text-center fw-bold fs-4" placeholder="000000" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" style="letter-spacing: 4px;">
+                        <div id="feedback2fa" class="small mt-2"></div>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100 py-2 fw-bold shadow-sm" onclick="confirmar2FA()">
+                        Confirmar y Activar 2FA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

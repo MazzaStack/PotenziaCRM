@@ -1,0 +1,946 @@
+{% extends "base.html" %}
+
+{% block title %}Tasador Express Geoespacial{% endblock %}
+
+{% block extra_head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map {
+        height: 400px;
+        width: 100%;
+        border-radius: 1rem;
+        z-index: 1;
+        position: relative;
+    }
+
+    .address-results {
+        position: absolute;
+        z-index: 1000;
+        width: 100%;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .slider-container .form-range::-webkit-slider-runnable-track {
+        background: linear-gradient(to right, #0d6efd 0%, #6610f2 100%);
+        height: 8px;
+        border-radius: 4px;
+    }
+
+    .slider-info {
+        font-size: 0.85rem;
+        font-weight: bold;
+        color: #6610f2;
+    }
+
+    .led-red {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background-color: #ff3b30;
+        border-radius: 50%;
+        box-shadow: 0 0 8px #ff3b30;
+        margin-left: 8px;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold">
+            <i class="bi bi-geo-alt-fill text-primary me-2"></i>Tasador Express Geoespacial
+            {% if resultado and resultado.is_fallback %}
+                <span class="led-red" title="Sondeo fuera de línea"></span>
+            {% endif %}
+        </h2>
+        <p class="text-muted">Hacé clic en el mapa o buscá una dirección para tasar. Definí el radio de comparación.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <form action="{{ url_for('tasador') }}" method="POST" id="tasadorForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold d-block text-secondary small">Modo de Tasación</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="modo_busqueda" id="modoZona" value="zona"
+                                {% if not resultado or resultado.modo_busqueda == 'zona' %}checked{% endif %}
+                                onchange="updateModoUI()">
+                            <label class="btn btn-outline-primary fw-bold btn-sm py-2" for="modoZona">
+                                📍 Búsqueda por Barrio / Zona
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="modo_busqueda" id="modoRadio" value="radio"
+                                {% if resultado and resultado.modo_busqueda == 'radio' %}checked{% endif %}
+                                onchange="updateModoUI()">
+                            <label class="btn btn-outline-primary fw-bold btn-sm py-2" for="modoRadio">
+                                🔵 Búsqueda por Radio (Círculo)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 position-relative">
+                        <label class="form-label fw-bold">📍 Dirección de la Propiedad</label>
+                        <div class="input-group">
+                            <input type="text" id="addressInput" name="zona" class="form-control"
+                                placeholder='Ej: "Villa Martelli", Belgrano, Olivos' required
+                                value="{{ resultado.zona if resultado else '' }}">
+                            <button type="button" class="btn btn-outline-primary" onclick="searchAddress()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                        <div id="addressResults" class="list-group address-results d-none"></div>
+                        <input type="hidden" name="lat" id="latInput" value="{{ resultado.lat if resultado else '' }}">
+                        <input type="hidden" name="lng" id="lngInput" value="{{ resultado.lng if resultado else '' }}">
+                    </div>
+
+                    <div class="mb-4 slider-container">
+                        <div class="d-flex justify-content-between mb-2">
+                            <label class="form-label fw-bold small mb-0">Radio de Búsqueda</label>
+                            <span class="slider-info" id="radioVal">1.0 km</span>
+                        </div>
+                        <input type="range" class="form-range" min="0.1" max="30" step="0.1" id="radioInput"
+                            name="radio" value="{{ resultado.radio if resultado else 1.0 }}"
+                            oninput="updateRadioUI(this.value)">
+                        <div class="d-flex justify-content-between x-small text-muted" style="font-size: 0.7rem;">
+                            <span>0.1 km</span>
+                            <span>30 km</span>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Tipo</label>
+                            <select name="tipo_propiedad" class="form-select form-select-sm">
+                                <option value="departamento" {% if resultado and resultado.tipo=='departamento'
+                                    %}selected{% endif %}>Departamento</option>
+                                <option value="casa" {% if resultado and resultado.tipo=='casa' %}selected{% endif %}>
+                                    Casa
+                                </option>
+                                <option value="ph" {% if resultado and resultado.tipo=='ph' %}selected{% endif %}>PH
+                                </option>
+                                <option value="terreno" {% if resultado and resultado.tipo=='terreno' %}selected{% endif
+                                    %}>
+                                    Terreno y Lote</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Método de Medición</label>
+                            <select name="metodo_metros" class="form-select form-select-sm" id="metodoMetrosSelect" onchange="toggleMetrosInputs()">
+                                <option value="totales" {% if resultado and resultado.metodo_metros == 'totales' %}selected{% endif %}>Opción A: M2 Totales</option>
+                                <option value="cubiertos" {% if resultado and resultado.metodo_metros == 'cubiertos' %}selected{% endif %}>Opción B: M2 Cubiertos</option>
+                                <option value="homogeneizados" {% if not resultado or resultado.metodo_metros == 'homogeneizados' %}selected{% endif %}>Opción C: M2 Homogeneizados</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="tasador_estado_activo" id="chkEstadoActivo" value="1"
+                                {% if (resultado and resultado.tasador_estado_activo) or (not resultado and get_config('tasador_estado_activo') == '1') %}checked{% endif %}
+                                onchange="toggleEstadoSelect()">
+                            <label class="form-check-label small fw-bold text-warning" for="chkEstadoActivo">
+                                <i class="bi bi-star-fill"></i> Activar Ajuste por Estado de Conservación
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2 mb-3 d-none" id="divEstadoPropiedad">
+                        <div class="col-12">
+                            <label class="form-label fw-bold small">Estado de Conservación</label>
+                            <select name="estado_propiedad" class="form-select form-select-sm border-warning">
+                                <option value="bueno" {% if resultado and resultado.estado_propiedad == 'bueno' %}selected{% endif %}>Bueno / Estándar (Base)</option>
+                                <option value="estrenar" {% if resultado and resultado.estado_propiedad == 'estrenar' %}selected{% endif %}>A Estrenar / Nuevo (+{{ get_config('tasador_ajuste_estrenar', '15') }}%)</option>
+                                <option value="muybueno" {% if resultado and resultado.estado_propiedad == 'muybueno' %}selected{% endif %}>Muy Bueno / Reciclado (+{{ get_config('tasador_ajuste_muybueno', '10') }}%)</option>
+                                <option value="refaccionar" {% if resultado and resultado.estado_propiedad == 'refaccionar' %}selected{% endif %}>A Refaccionar / Regular (-{{ get_config('tasador_ajuste_refaccionar', '15') }}%)</option>
+                                <option value="malo" {% if resultado and resultado.estado_propiedad == 'malo' %}selected{% endif %}>Malo / Crítico (-{{ get_config('tasador_ajuste_malo', '35') }}%)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- HERRAMIENTAS PARA COUNTRIES -->
+                    <div class="mb-3 form-check form-switch" id="divCountrySwitch">
+                        <input class="form-check-input" type="checkbox" name="country_activo" id="chkCountryActivo" value="1"
+                            {% if resultado and resultado.country_activo %}checked{% endif %}
+                            onchange="toggleCountryOptions()">
+                        <label class="form-check-label small fw-bold text-success" for="chkCountryActivo">
+                            <i class="bi bi-tree-fill"></i> Herramientas para Countries
+                        </label>
+                    </div>
+
+                    <div class="row g-2 mb-3 d-none" id="divCountryOptions">
+                        <div class="col-12">
+                            <label class="form-label fw-bold small">🌊 Ubicación de la Propiedad</label>
+                            <select name="country_ubicacion" class="form-select form-select-sm border-success" id="countryUbicacion">
+                                <option value="laguna" {% if resultado and resultado.country_ubicacion == 'laguna' %}selected{% endif %}>
+                                    Salida a Laguna (+{{ get_config('tasador_country_laguna', '10') }}%)
+                                </option>
+                                <option value="perimetral" {% if resultado and resultado.country_ubicacion == 'perimetral' %}selected{% endif %}>
+                                    Perimetral (-{{ get_config('tasador_country_perimetral', '10') }}%)
+                                </option>
+                                <option value="interno" {% if resultado and resultado.country_ubicacion == 'interno' %}selected{% endif %}>
+                                    Interno (+0% – Base)
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- HERRAMIENTAS PARA TOKKO BROKER -->
+                    <div class="mb-3 form-check form-switch" id="divTokkoSwitch">
+                        <input class="form-check-input" type="checkbox" name="tokko_activo" id="chkTokkoActivo" value="1"
+                            {% if resultado and resultado.tokko_activo %}checked{% endif %}
+                            onchange="toggleTokkoOptions()">
+                        <label class="form-check-label small fw-bold text-info" for="chkTokkoActivo">
+                            <i class="bi bi-clouds-fill"></i> Usar Base de Datos Tokko Broker (MLS)
+                        </label>
+                    </div>
+
+                    <div class="p-3 bg-light border rounded mb-3 d-none" id="divTokkoOptions">
+                        <div class="mb-2">
+                            <label class="form-label fw-bold small text-info mb-1 d-flex justify-content-between">
+                                📅 Antigüedad máxima de publicación
+                                <span id="valAntiguedadTokko" class="badge bg-info">{% if resultado and resultado.tokko_antiguedad %}{{ resultado.tokko_antiguedad }}{% else %}60{% endif %} días</span>
+                            </label>
+                            <input type="range" name="tokko_antiguedad" id="tokkoAntiguedad" class="form-range" min="1" max="365" 
+                                value="{% if resultado and resultado.tokko_antiguedad %}{{ resultado.tokko_antiguedad }}{% else %}60{% endif %}"
+                                oninput="document.getElementById('valAntiguedadTokko').textContent = this.value + ' días'">
+                            <div class="d-flex justify-content-between text-muted" style="font-size: 0.75rem;">
+                                <span>1 día</span>
+                                <span>60 días</span>
+                                <span>365 días</span>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" name="tokko_ignorar_fuera" id="tokkoIgnorarFuera" value="1"
+                                {% if not resultado or resultado.tokko_ignorar_fuera %}checked{% endif %}>
+                            <label class="form-check-label small fw-bold text-secondary" for="tokkoIgnorarFuera">
+                                🚫 Ignorar propiedades fuera de mercado (Vendidas / Suspendidas)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6" id="colMetrosTotales">
+                            <label class="form-label fw-bold small">Metros Totales</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" step="0.1" name="metros" id="metrosTotalesInput" class="form-control" placeholder="m2"
+                                    value="{{ resultado.metros if (resultado and resultado.metros != '0') else '' }}">
+                                <span class="input-group-text">m²</span>
+                            </div>
+                        </div>
+                        <div class="col-6" id="colMetrosCubiertos">
+                            <label class="form-label fw-bold small" id="lblMetrosCubiertos">Metros Cubiertos</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" step="0.1" name="metros_cubiertos" id="metrosCubiertosInput" class="form-control" placeholder="m2"
+                                    value="{{ resultado.metros_cubiertos if (resultado and resultado.metros_cubiertos) else '' }}">
+                                <span class="input-group-text">m²</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 p-2 border rounded bg-light">
+                        <div class="form-check form-switch m-0" id="divLiveSearchSwitch">
+                            <input class="form-check-input" type="checkbox" name="forzar_live_search" id="forzarLiveSearch" value="1"
+                                {% if (resultado and resultado.forzar_live_search) or (not resultado) %}checked{% endif %}>
+                            <label class="form-check-label small fw-bold text-success" for="forzarLiveSearch" title="Sondea en tiempo real Zonaprop y MercadoLibre para captar publicaciones en vivo">
+                                <i class="bi bi-broadcast me-1"></i> Sondeo en Tiempo Real (Live Search en Portales)
+                            </label>
+                        </div>
+                        <div class="text-muted" style="font-size: 0.72rem; margin-left: 2.3rem;">
+                            ON: Rastrea portales en vivo + base local | OFF: Cálculo instantáneo sobre base local
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check form-switch" id="divDescartarMalCargados">
+                        <input class="form-check-input" type="checkbox" name="descartar_mal_cargados" id="descartarMalCargados" value="1"
+                            {% if resultado and resultado.descartar_mal_cargados %}checked{% endif %}>
+                        <label class="form-check-label small fw-bold text-muted" for="descartarMalCargados">
+                            ⚠️ Descartar comparables mal cargadas (Totales = Cubiertos)
+                        </label>
+                    </div>
+
+                    <div class="mb-3 form-check form-switch" id="divSoloGeolocalizadas">
+                        <input class="form-check-input" type="checkbox" name="solo_geolocalizadas" id="soloGeolocalizadas" value="1"
+                            {% if not resultado or resultado.solo_geolocalizadas %}checked{% endif %}>
+                        <label class="form-check-label small fw-bold text-primary" for="soloGeolocalizadas">
+                            🎯 Geolocalización estricta (Solo dentro del círculo)
+                        </label>
+                    </div>
+
+                    <div class="mb-3 form-check form-switch" id="divFiltroEstrictoBarrio">
+                        <input class="form-check-input" type="checkbox" name="filtro_estricto_barrio" id="filtroEstrictoBarrio" value="1"
+                            {% if (resultado and resultado.filtro_estricto_barrio) or (not resultado and get_config('tasador_filtro_estricto_barrio') == '1') %}checked{% endif %}>
+                        <label class="form-check-label small fw-bold text-info" for="filtroEstrictoBarrio" title="Descarta propiedades de otras localidades cuya calle se llame igual que el barrio buscado">
+                            <i class="bi bi-shield-check"></i> Filtrado estricto por Barrio (ignorar calles homónimas)
+                        </label>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold small mb-1">Ambientes</label>
+                            
+                            <!-- Master Switch -->
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="chkCualquierAmbiente" name="ambientes_cualquier" value="1"
+                                    {% if resultado and (not resultado.ambientes or resultado.ambientes|length == 0) %}checked{% endif %}
+                                    onchange="toggleAmbientesCheckboxes()">
+                                <label class="form-check-label small fw-bold text-muted" for="chkCualquierAmbiente">Cualquier cantidad de ambientes</label>
+                            </div>
+                            
+                            <!-- Multi-select Buttons -->
+                            <div id="ambientesCheckboxes" class="d-flex flex-wrap gap-2">
+                                {% for i in range(1, 6) %}
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input btn-check" type="checkbox" name="ambientes" id="btnAmb{{ i }}" value="{{ i }}"
+                                        {% if resultado and resultado.ambientes and i|string in resultado.ambientes %}checked{% endif %}>
+                                    <label class="btn btn-outline-secondary btn-sm px-3" for="btnAmb{{ i }}">{{ i }}</label>
+                                </div>
+                                {% endfor %}
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input btn-check" type="checkbox" name="ambientes" id="btnAmb6" value="6"
+                                        {% if resultado and resultado.ambientes and '6' in resultado.ambientes %}checked{% endif %}>
+                                    <label class="btn btn-outline-secondary btn-sm px-3" for="btnAmb6">6+</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-primary"><i class="bi bi-funnel"></i> USD/m² Mínimo</label>
+                            <input type="number" name="min_m2_usd" class="form-control form-control-sm" placeholder="Filtro (ej: 800)"
+                                value="{{ request.form.get('min_m2_usd', '') }}">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-primary"><i class="bi bi-percent"></i> Rango m² Mín. (-%)</label>
+                            <input type="number" name="rango_negativo" class="form-control form-control-sm" placeholder="Por defecto 25"
+                                value="{{ resultado.rango_negativo if (resultado and resultado.rango_negativo is not none) else '25' }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-primary"><i class="bi bi-percent"></i> Rango m² Máx. (+%)</label>
+                            <input type="number" name="rango_positivo" class="form-control form-control-sm" placeholder="Por defecto 25"
+                                value="{{ resultado.rango_positivo if (resultado and resultado.rango_positivo is not none) else '25' }}">
+                        </div>
+                    </div>
+
+                    <div id="map" class="mb-4 shadow-sm border"></div>
+
+                    <div class="p-3 bg-light rounded-3 border mb-4">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-person-badge text-primary me-2"></i>Personalización del Reporte ACM</h6>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Tu Nombre</label>
+                            <input type="text" name="agente_nombre" class="form-control form-control-sm" placeholder="Tu Nombre" value="{% if current_user.usuario == 'GermanMazza' %}Germán Mazzaferro{% else %}{{ current_user.nombre_display or current_user.usuario }}{% endif %}">
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label small fw-bold">Firma / Contacto (Al pie de página)</label>
+                            <textarea name="agente_firma" class="form-control form-control-sm" rows="2" placeholder="Agente Inmobiliario - Contacto">{% if current_user.usuario == 'GermanMazza' %}Germán Mazzaferro&#10;{{ agency.nombre }} - {{ agency.telefono or '1161114414' }}{% else %}{{ current_user.nombre_display or current_user.usuario }}&#10;{{ agency.nombre }} - Contacto: {{ agency.telefono or '+54 9 11 0000-0000' }}{% endif %}</textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm"
+                        style="background: linear-gradient(45deg, #0d6efd, #6610f2); border: none;">
+                        <i class="bi bi-calculator me-1"></i> Calcular Valor de Mercado
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        {% if resultado and resultado.has_data %}
+        <div class="card shadow-sm border-0 bg-white mb-4 animate__animated animate__fadeIn">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Análisis Comparativo</h5>
+                    <div class="text-end">
+                        <span class="badge bg-light text-dark border">Basado en {{ resultado.muestra }}
+                            propiedades</span>
+                        {% if resultado.area_filtrada %}
+                        <span class="badge bg-info text-white border-0"
+                            title="Comparando con propiedades de {{ resultado.metros }}m² (-{{ resultado.rango_negativo }}% / +{{ resultado.rango_positivo }}%)">
+                            <i class="bi bi-rulers me-1"></i> Segmentado por m²
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary text-white border-0"
+                            title="No se encontraron suficientes datos con metraje similar. Muestra general.">
+                            <i class="bi bi-database me-1"></i> Muestra General
+                        </span>
+                        {% endif %}
+
+                        {% if resultado.has_live %}
+                        <span class="badge bg-success text-white border-1 border-white"
+                            title="Sondeo en tiempo real de Zonaprop y MercadoLibre aplicado">
+                            <i class="bi bi-broadcast me-1"></i> Live Search On
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-light mb-3">
+                            <small class="text-muted d-block mb-1">Piso de Mercado</small>
+                            <h4 class="fw-bold text-danger mb-0">USD {{ "{:,.0f}".format(resultado.bajo) }}</h4>
+                            {% if resultado.bajo_m2 %}<small class="text-muted" style="font-size: 0.8rem;">(USD {{ "{:,.0f}".format(resultado.bajo_m2) }}/m²)</small>{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-4 border rounded bg-primary text-white shadow-sm mb-3"
+                            style="background: linear-gradient(135deg, #0d6efd, #6610f2) !important;">
+                            <small class="text-white-50 d-block mb-1">Precio Objetivo</small>
+                            <h3 class="fw-bold mb-0">USD {{ "{:,.0f}".format(resultado.medio) }}</h3>
+                            {% if resultado.medio_m2 %}<div class="text-white-50" style="font-size: 0.9rem;">(USD {{ "{:,.0f}".format(resultado.medio_m2) }}/m²)</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-light mb-3">
+                            <small class="text-muted d-block mb-1">Techo Premium</small>
+                            <h4 class="fw-bold text-success mb-0">USD {{ "{:,.0f}".format(resultado.alto) }}</h4>
+                            {% if resultado.alto_m2 %}<small class="text-muted" style="font-size: 0.8rem;">(USD {{ "{:,.0f}".format(resultado.alto_m2) }}/m²)</small>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if resultado.tasador_estado_activo and resultado.estado_propiedad %}
+                <div class="alert alert-warning border-0 shadow-sm mb-3 d-flex align-items-center">
+                    <i class="bi bi-star-fill text-warning fs-3 me-3 animate__animated animate__pulse animate__infinite"></i>
+                    <div>
+                        <span class="d-block fw-bold text-dark" style="font-size: 0.95rem;">
+                            Considerando el estado de conservación 
+                            <strong>
+                                {% if resultado.estado_propiedad == 'estrenar' %}A Estrenar / Nuevo (+{{ get_config('tasador_ajuste_estrenar', '15') }}%)
+                                {% elif resultado.estado_propiedad == 'muybueno' %}Muy Bueno / Reciclado (+{{ get_config('tasador_ajuste_muybueno', '10') }}%)
+                                {% elif resultado.estado_propiedad == 'refaccionar' %}A Refaccionar / Regular (-{{ get_config('tasador_ajuste_refaccionar', '15') }}%)
+                                {% elif resultado.estado_propiedad == 'malo' %}Malo / Crítico (-{{ get_config('tasador_ajuste_malo', '35') }}%)
+                                {% else %}Bueno / Estándar (Base){% endif %}
+                            </strong>,
+                            el valor de mercado sugerido se ajusta a:
+                        </span>
+                        <h4 class="fw-extrabold text-primary mb-0 mt-1">USD {{ "{:,.0f}".format(resultado.medio_ajustado) }}</h4>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if resultado.country_activo and resultado.country_ubicacion %}
+                <div class="alert alert-success border-0 shadow-sm mb-3 d-flex align-items-center">
+                    <i class="bi bi-tree-fill text-success fs-3 me-3"></i>
+                    <div>
+                        <span class="d-block fw-bold text-dark" style="font-size: 0.95rem;">
+                            Country / Barrio Cerrado —
+                            <strong>
+                                {% if resultado.country_ubicacion == 'laguna' %}Salida a Laguna (+{{ get_config('tasador_country_laguna', '10') }}%)
+                                {% elif resultado.country_ubicacion == 'perimetral' %}Perimetral (-{{ get_config('tasador_country_perimetral', '10') }}%)
+                                {% else %}Interno (Base){% endif %}
+                            </strong>
+                        </span>
+                        <h4 class="fw-extrabold text-success mb-0 mt-1">Precio Ajustado: USD {{ "{:,.0f}".format(resultado.medio_country) }}</h4>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="p-3 bg-light rounded shadow-sm border-start border-4 border-info">
+                    <h6 class="fw-bold"><i class="bi bi-info-circle me-2"></i>Métrica de la Zona</h6>
+                    <p class="small text-muted mb-0">
+                        El valor promedio detectado en un radio de {{ resultado.radio }} km es de <strong>USD {{
+                            "{:,.0f}".format(resultado.m2_medio) }} por m²</strong>.
+                    </p>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="d-flex gap-2">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <button id="btnGenerarReporte" class="btn btn-outline-success w-100 fw-bold py-2">
+                                <i class="bi bi-whatsapp me-1"></i> Reporte WhatsApp
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <form action="{{ url_for('acm_report') }}" method="POST" target="_blank">
+                                <input type="hidden" name="zona" value="{{ resultado.zona }}">
+                                <input type="hidden" name="tipo" value="{{ resultado.tipo }}">
+                                <input type="hidden" name="metros" value="{{ resultado.metros }}">
+                                <input type="hidden" name="metros_cubiertos" value="{{ resultado.metros_cubiertos }}">
+                                <input type="hidden" name="metodo_metros" value="{{ resultado.metodo_metros }}">
+                                <input type="hidden" name="bajo" value="{{ resultado.bajo }}">
+                                <input type="hidden" name="medio" value="{{ resultado.medio }}">
+                                <input type="hidden" name="alto" value="{{ resultado.alto }}">
+                                <input type="hidden" name="m2_medio" value="{{ resultado.m2_medio }}">
+                                <input type="hidden" name="muestra" value="{{ resultado.muestra }}">
+                                <input type="hidden" name="lat" value="{{ resultado.lat }}">
+                                <input type="hidden" name="lng" value="{{ resultado.lng }}">
+                                <input type="hidden" name="agente_nombre" value="{{ request.form.get('agente_nombre', 'Germán Mazzaferro' if current_user.usuario == 'GermanMazza' else (current_user.nombre_display or current_user.usuario)) }}">
+                                <input type="hidden" name="agente_firma" value="{{ request.form.get('agente_firma', (('Germán Mazzaferro\n' ~ agency.nombre ~ ' - ' ~ (agency.telefono or '1161114414')) if current_user.usuario == 'GermanMazza' else ((current_user.nombre_display or current_user.usuario) ~ '\n' ~ agency.nombre ~ ' - Contacto: ' ~ (agency.telefono or '+54 9 11 0000-0000')))) }}">
+                                <input type="hidden" name="estado_propiedad" value="{{ resultado.estado_propiedad if resultado.estado_propiedad else '' }}">
+                                <input type="hidden" name="medio_ajustado" value="{{ resultado.medio_ajustado if resultado.medio_ajustado else '' }}">
+                                <input type="hidden" name="tasador_estado_activo" value="{{ '1' if resultado.tasador_estado_activo else '0' }}">
+                                <input type="hidden" name="solo_geolocalizadas" value="{{ '1' if resultado.solo_geolocalizadas else '0' }}">
+                                <input type="hidden" name="country_activo" value="{{ '1' if resultado.country_activo else '0' }}">
+                                <input type="hidden" name="country_ubicacion" value="{{ resultado.country_ubicacion if resultado.country_ubicacion else '' }}">
+                                <input type="hidden" name="modo_busqueda" value="{{ resultado.modo_busqueda if resultado else 'zona' }}">
+                                <input type="hidden" name="forzar_live_search" value="{{ '1' if resultado.forzar_live_search else '0' }}">
+                                <input type="hidden" name="comparables_json" value='{{ resultado.comparables|tojson }}'>
+                                <button type="submit" class="btn btn-dark w-100 fw-bold py-2">
+                                    <i class="bi bi-file-earmark-pdf me-1"></i> Reporte ACM
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-secondary py-2 px-4" onclick="window.print()">
+                        <i class="bi bi-printer"></i>
+                    </button>
+                </div>
+
+                <div id="reporteContenedor" class="mt-4 d-none">
+                    <textarea id="textoReporte" class="form-control mb-3" rows="6"
+                        style="font-size: 0.9rem;"></textarea>
+                    <button id="btnCopiarReporte" class="btn btn-dark btn-sm w-100">
+                        <i class="bi bi-clipboard me-1"></i> Copiar y Pegar en WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% elif resultado and not resultado.has_data %}
+        <div class="alert alert-warning shadow-sm border-0 py-4 text-center animate__animated animate__shakeX">
+            <i class="bi bi-exclamation-triangle-fill display-4 mb-3 d-block"></i>
+            <h5 class="fw-bold">No se encontraron propiedades comparables</h5>
+            <p class="mb-0">No hay suficientes datos en el Captador para un radio de {{ resultado.radio }} km. <br>
+                Probá <strong>agrandar el radio</strong> o buscar en otra zona.</p>
+        </div>
+        {% else %}
+        <div class="text-center py-5 bg-white rounded shadow-sm">
+            <div class="mb-4">
+                <i class="bi bi-map-fill display-1 text-primary opacity-10"></i>
+            </div>
+            <h5 class="text-muted">Buscá una dirección en el mapa para tasar.</h5>
+            <p class="text-muted small px-5">El sistema analizará todas las propiedades del Captador dentro del radio
+                seleccionado para darte valores precisos.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    let map, marker, circle;
+    const initialLat = parseFloat("{{ resultado.lat if (resultado and resultado.lat) else -34.5800 }}") || -34.5800;
+    const initialLng = parseFloat("{{ resultado.lng if (resultado and resultado.lng) else -58.4200 }}") || -58.4200;
+    const initialRadio = parseFloat("{{ resultado.radio if (resultado and resultado.radio) else 1.0 }}") || 1.0;
+
+    function initMap() {
+        map = L.map('map').setView([initialLat, initialLng], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        marker = L.marker([initialLat, initialLng], { draggable: true }).addTo(map);
+        circle = L.circle([initialLat, initialLng], {
+            radius: initialRadio * 1000,
+            color: '#6610f2',
+            fillColor: '#6610f2',
+            fillOpacity: 0.15
+        }).addTo(map);
+
+        marker.on('dragend', function (e) {
+            let pos = e.target.getLatLng();
+            updateCoords(pos.lat, pos.lng);
+            circle.setLatLng(pos);
+            reverseGeocode(pos.lat, pos.lng);
+        });
+
+        // Click on map to move marker and resolve address
+        map.on('click', function (e) {
+            marker.setLatLng(e.latlng);
+            circle.setLatLng(e.latlng);
+            updateCoords(e.latlng.lat, e.latlng.lng);
+            reverseGeocode(e.latlng.lat, e.latlng.lng);
+        });
+
+        updateRadioUI(initialRadio);
+        
+        // Fix Leaflet rendering bug "mapa partido en 4"
+        setTimeout(function() {
+            if (map) map.invalidateSize();
+        }, 300);
+    }
+
+    function updateCoords(lat, lng) {
+        document.getElementById('latInput').value = lat;
+        document.getElementById('lngInput').value = lng;
+    }
+
+    // Reverse geocode: convert lat/lng to human-readable address
+    async function reverseGeocode(lat, lng) {
+        const addressInput = document.getElementById('addressInput');
+        addressInput.value = 'Localizando direccion...';
+        try {
+            const resp = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=18&addressdetails=1');
+            const data = await resp.json();
+            if (data && data.display_name) {
+                // Build a clean short address
+                const addr = data.address || {};
+                let parts = [];
+                if (addr.road) parts.push(addr.road);
+                if (addr.house_number) parts[parts.length - 1] += ' ' + addr.house_number;
+                if (addr.suburb) parts.push(addr.suburb);
+                if (addr.city || addr.town) parts.push(addr.city || addr.town);
+                const shortAddr = parts.length > 0 ? parts.join(', ') : data.display_name.split(',').slice(0, 3).join(',');
+                addressInput.value = shortAddr;
+            } else {
+                addressInput.value = lat.toFixed(5) + ', ' + lng.toFixed(5);
+            }
+        } catch (e) {
+            console.error('Reverse geocode error:', e);
+            addressInput.value = lat.toFixed(5) + ', ' + lng.toFixed(5);
+        }
+    }
+
+    function updateRadioUI(val) {
+        document.getElementById('radioVal').innerText = val + ' km';
+        if (circle) circle.setRadius(val * 1000);
+    }
+
+    async function searchAddress() {
+        const query = document.getElementById('addressInput').value;
+        if (query.length < 3) return;
+
+        const modoZona = document.getElementById('modoZona').checked;
+        if (modoZona) return;
+
+        const resultsDiv = document.getElementById('addressResults');
+        resultsDiv.innerHTML = '<div class="list-group-item">Buscando...</div>';
+        resultsDiv.classList.remove('d-none');
+
+        try {
+            const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ar`);
+            const data = await resp.json();
+
+            resultsDiv.innerHTML = '';
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<div class="list-group-item text-danger">No se encontró la dirección</div>';
+                return;
+            }
+
+            data.slice(0, 5).forEach(item => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'list-group-item list-group-item-action small';
+                btn.innerText = item.display_name;
+                btn.onclick = () => {
+                    const lat = parseFloat(item.lat);
+                    const lon = parseFloat(item.lon);
+                    map.setView([lat, lon], 15);
+                    marker.setLatLng([lat, lon]);
+                    circle.setLatLng([lat, lon]);
+                    updateCoords(lat, lon);
+                    document.getElementById('addressInput').value = item.display_name;
+                    resultsDiv.classList.add('d-none');
+                };
+                resultsDiv.appendChild(btn);
+            });
+        } catch (e) {
+            resultsDiv.innerHTML = '<div class="list-group-item text-danger">Error al buscar</div>';
+        }
+    }
+
+    // Debounce function to limit API calls
+    function debounce(func, timeout = 500) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { func.apply(this, args); }, timeout);
+        };
+    }
+
+    const debouncedSearch = debounce(() => searchAddress());
+
+    // Event listener for autocomplete as user types
+    document.getElementById('addressInput').addEventListener('input', (e) => {
+        // Clear old coordinates on manual text edit to prevent stale submissions
+        document.getElementById('latInput').value = '';
+        document.getElementById('lngInput').value = '';
+        
+        const modoZona = document.getElementById('modoZona').checked;
+        if (modoZona) {
+            document.getElementById('addressResults').classList.add('d-none');
+            return;
+        }
+        
+        if (e.target.value.length >= 3) {
+            debouncedSearch();
+        } else {
+            document.getElementById('addressResults').classList.add('d-none');
+        }
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#addressInput') && !e.target.closest('#addressResults')) {
+            document.getElementById('addressResults').classList.add('d-none');
+        }
+    });
+
+    function toggleMetrosInputs() {
+        const select = document.getElementById('metodoMetrosSelect');
+        const colTotales = document.getElementById('colMetrosTotales');
+        const colCubiertos = document.getElementById('colMetrosCubiertos');
+        const inputTotales = document.getElementById('metrosTotalesInput');
+        const inputCubiertos = document.getElementById('metrosCubiertosInput');
+        const divDescartar = document.getElementById('divDescartarMalCargados');
+        
+        if (!select) return;
+        
+        if (select.value === 'totales') {
+            if (colTotales) colTotales.style.opacity = '1';
+            if (inputTotales) {
+                inputTotales.disabled = false;
+                inputTotales.required = true;
+            }
+            if (colCubiertos) colCubiertos.style.opacity = '0.5';
+            if (inputCubiertos) {
+                inputCubiertos.disabled = true;
+                inputCubiertos.required = false;
+            }
+            if (divDescartar) {
+                divDescartar.style.opacity = '0.5';
+                const chk = divDescartar.querySelector('input');
+                if (chk) chk.disabled = true;
+            }
+        } else if (select.value === 'cubiertos') {
+            if (colTotales) colTotales.style.opacity = '0.5';
+            if (inputTotales) {
+                inputTotales.disabled = true;
+                inputTotales.required = false;
+            }
+            if (colCubiertos) colCubiertos.style.opacity = '1';
+            if (inputCubiertos) {
+                inputCubiertos.disabled = false;
+                inputCubiertos.required = true;
+            }
+            if (divDescartar) {
+                divDescartar.style.opacity = '1';
+                const chk = divDescartar.querySelector('input');
+                if (chk) chk.disabled = false;
+            }
+        } else if (select.value === 'homogeneizados') {
+            if (colTotales) colTotales.style.opacity = '1';
+            if (inputTotales) {
+                inputTotales.disabled = false;
+                inputTotales.required = true;
+            }
+            if (colCubiertos) colCubiertos.style.opacity = '1';
+            if (inputCubiertos) {
+                inputCubiertos.disabled = false;
+                inputCubiertos.required = true;
+            }
+            if (divDescartar) {
+                divDescartar.style.opacity = '1';
+                const chk = divDescartar.querySelector('input');
+                if (chk) chk.disabled = false;
+            }
+        }
+    }
+
+    function toggleAmbientesCheckboxes() {
+        const cualquier = document.getElementById('chkCualquierAmbiente').checked;
+        const checkboxes = document.querySelectorAll('input[name="ambientes"]');
+        const container = document.getElementById('ambientesCheckboxes');
+        
+        checkboxes.forEach((cb) => {
+            cb.disabled = cualquier;
+            if (cualquier) {
+                cb.checked = false;
+            }
+        });
+        
+        if (cualquier) {
+            container.style.opacity = '0.5';
+            container.style.pointerEvents = 'none';
+        } else {
+            container.style.opacity = '1';
+            container.style.pointerEvents = 'auto';
+        }
+    }
+
+    function handleAmbienteChange(event) {
+        const checkboxes = document.querySelectorAll('input[name="ambientes"]');
+        const checked = Array.from(checkboxes).filter(cb => cb.checked);
+        
+        if (checked.length > 2) {
+            this.checked = false;
+            alert("Podés seleccionar un máximo de 2 ambientes a la vez.");
+        }
+    }
+
+    function toggleEstadoSelect() {
+        const chk = document.getElementById('chkEstadoActivo');
+        const div = document.getElementById('divEstadoPropiedad');
+        if (chk && div) {
+            if (chk.checked) {
+                div.classList.remove('d-none');
+            } else {
+                div.classList.add('d-none');
+            }
+        }
+    }
+
+    function toggleCountryOptions() {
+        const chk = document.getElementById('chkCountryActivo');
+        const div = document.getElementById('divCountryOptions');
+        if (chk && div) {
+            if (chk.checked) { div.classList.remove('d-none'); }
+            else { div.classList.add('d-none'); }
+        }
+    }
+
+    function toggleTokkoOptions() {
+        const chk = document.getElementById('chkTokkoActivo');
+        const div = document.getElementById('divTokkoOptions');
+        if (chk && div) {
+            if (chk.checked) { div.classList.remove('d-none'); }
+            else { div.classList.add('d-none'); }
+        }
+    }
+
+    function updateModoUI() {
+        const modoZona = document.getElementById('modoZona').checked;
+        const mapEl = document.getElementById('map');
+        const radioSlider = document.getElementById('radioInput') ? document.getElementById('radioInput').closest('.slider-container') : null;
+        const soloGeoSwitch = document.getElementById('soloGeolocalizadas') ? document.getElementById('soloGeolocalizadas').closest('#divSoloGeolocalizadas') : null;
+        const addressLabel = document.querySelector('label[for="addressInput"]') || document.querySelector('.mb-3.position-relative label');
+        const addressInput = document.getElementById('addressInput');
+
+        if (modoZona) {
+            if (mapEl) mapEl.style.display = 'none';
+            if (radioSlider) {
+                radioSlider.style.opacity = '0.4';
+                radioSlider.style.pointerEvents = 'none';
+                document.getElementById('radioInput').disabled = true;
+            }
+            if (soloGeoSwitch) {
+                soloGeoSwitch.style.opacity = '0.4';
+                soloGeoSwitch.style.pointerEvents = 'none';
+                document.getElementById('soloGeolocalizadas').disabled = true;
+            }
+            if (addressLabel) addressLabel.innerHTML = '📍 Barrio o Zona';
+            if (addressInput) {
+                addressInput.placeholder = 'Ej: Palermo, Escobar, Belgrano';
+            }
+        } else {
+            if (mapEl) {
+                mapEl.style.display = 'block';
+                setTimeout(() => {
+                    if (map) map.invalidateSize();
+                }, 100);
+            }
+            if (radioSlider) {
+                radioSlider.style.opacity = '1';
+                radioSlider.style.pointerEvents = 'auto';
+                document.getElementById('radioInput').disabled = false;
+            }
+            if (soloGeoSwitch) {
+                soloGeoSwitch.style.opacity = '1';
+                soloGeoSwitch.style.pointerEvents = 'auto';
+                document.getElementById('soloGeolocalizadas').disabled = false;
+            }
+            if (addressLabel) addressLabel.innerHTML = '📍 Dirección de la Propiedad';
+            if (addressInput) {
+                addressInput.placeholder = 'Ej: Av. del Libertador 1500, Nuñez';
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initMap();
+        toggleMetrosInputs();
+        toggleAmbientesCheckboxes();
+        toggleEstadoSelect();
+        toggleCountryOptions();
+        toggleTokkoOptions();
+        updateModoUI();
+        
+        document.querySelectorAll('input[name="ambientes"]').forEach(cb => {
+            cb.addEventListener('change', handleAmbienteChange);
+        });
+    });
+
+    {% if resultado %}
+    document.getElementById('btnGenerarReporte').addEventListener('click', function () {
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Generando Informe...';
+
+        const payload = {
+            zona: "{{ resultado.zona }}",
+            tipo: "{{ resultado.tipo }}",
+            metros: "{{ resultado.metros }}",
+            bajo: "{{ resultado.bajo|default(0) }}",
+            medio: "{{ resultado.medio|default(0) }}",
+            alto: "{{ resultado.alto|default(0) }}",
+            m2_medio: "{{ resultado.m2_medio|default(0) }}",
+            estado_propiedad: "{{ resultado.estado_propiedad if resultado.estado_propiedad else '' }}",
+            medio_ajustado: "{{ resultado.medio_ajustado if resultado.medio_ajustado else '' }}",
+            country_activo: "{{ '1' if resultado.country_activo else '0' }}",
+            country_ubicacion: "{{ resultado.country_ubicacion if resultado.country_ubicacion else '' }}",
+            country_ajuste_pct: "{{ resultado.country_ajuste_pct if resultado.country_ajuste_pct is defined else '' }}",
+            tokko_activo: "{{ '1' if resultado.tokko_activo else '0' }}",
+            tokko_antiguedad: "{{ resultado.tokko_antiguedad if resultado.tokko_antiguedad is defined else '' }}",
+            tokko_ignorar_fuera: "{{ '1' if resultado.tokko_ignorar_fuera else '0' }}",
+        };
+
+        // Add coordinates if present
+        if ("{{ resultado.lat }}" && "{{ resultado.lng }}") {
+            payload.lat = "{{ resultado.lat }}";
+            payload.lng = "{{ resultado.lng }}";
+        }
+
+        fetch('/crm/reporte_tasacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-whatsapp me-2"></i> Enviar Reporte a Cliente';
+
+            const contenedor = document.getElementById('reporteContenedor');
+            const textarea = document.getElementById('textoReporte');
+
+            contenedor.classList.remove('d-none');
+            textarea.value = data.mensaje || data.error || 'Error generando el reporte. Intenta nuevamente.';
+            textarea.scrollIntoView({ behavior: 'smooth' });
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-whatsapp me-2"></i> Enviar Reporte a Cliente';
+            console.error('Error:', err);
+            alert('Hubo un error al generar el reporte. Intenta nuevamente.');
+        });
+    });
+
+    document.getElementById('btnCopiarReporte').addEventListener('click', function () {
+        const textarea = document.getElementById('textoReporte');
+        textarea.select();
+        document.execCommand('copy');
+        alert("¡Reporte copiado! Ya podés pegarlo en WhatsApp.");
+    });
+    {% endif %}
+    document.getElementById('tasadorForm').addEventListener('submit', function () {
+        const btn = this.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Calculando...';
+    });
+</script>
+{% endblock %}

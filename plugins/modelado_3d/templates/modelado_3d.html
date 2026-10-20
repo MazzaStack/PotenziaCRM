@@ -1,0 +1,1500 @@
+{% extends 'base.html' %}
+
+{% block title %}Modelado 3D de Propiedades{% endblock %}
+
+{% block extra_head %}
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    /* Premium Theme Variables & Overrides */
+    :root {
+        --glass-bg: rgba(15, 23, 42, 0.45);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --glass-border-glow: rgba(99, 102, 241, 0.15);
+        --color-neon-violet: #6366f1;
+        --color-neon-violet-hover: #4f46e5;
+        --color-neon-blue: #06b6d4;
+        --color-success-neon: #10b981;
+        --color-error-neon: #ef4444;
+        --color-warning-neon: #f59e0b;
+        --font-outfit: 'Outfit', 'Inter', sans-serif;
+        --font-inter: 'Inter', sans-serif;
+    }
+
+    /* Override main background for 3D module to be ultra-premium dark */
+    .main-content {
+        background-color: #090d16 !important;
+        color: #f3f4f6 !important;
+        font-family: var(--font-inter);
+    }
+    
+    .border-bottom {
+        border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .main-content h1, .main-content h2, .main-content h3, .main-content h4, .main-content h5 {
+        font-family: var(--font-outfit);
+        font-weight: 600;
+        letter-spacing: -0.02em;
+    }
+
+    /* Glassmorphic Container */
+    .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-card:hover {
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.1);
+    }
+
+    /* Custom Navigation Tabs */
+    .custom-nav-tabs {
+        border-bottom: 1px solid var(--glass-border);
+        gap: 8px;
+    }
+
+    .custom-nav-tabs .nav-link {
+        color: rgba(255, 255, 255, 0.6);
+        border: 1px solid transparent;
+        border-radius: 12px 12px 0 0;
+        padding: 12px 20px;
+        font-family: var(--font-outfit);
+        font-weight: 500;
+        transition: all 0.3s ease;
+        background: transparent;
+    }
+
+    .custom-nav-tabs .nav-link:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.03);
+        border-color: var(--glass-border) var(--glass-border) transparent;
+    }
+
+    .custom-nav-tabs .nav-link.active {
+        color: #fff !important;
+        background: rgba(99, 102, 241, 0.15) !important;
+        border-color: var(--color-neon-violet) var(--color-neon-violet) transparent !important;
+        border-bottom: 2px solid var(--color-neon-violet) !important;
+        box-shadow: 0 -4px 12px rgba(99, 102, 241, 0.05);
+    }
+
+    /* Buttons */
+    .btn-neon-violet {
+        background: linear-gradient(135deg, var(--color-neon-violet) 0%, #4f46e5 100%);
+        color: white;
+        font-family: var(--font-outfit);
+        font-weight: 500;
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .btn-neon-violet:hover {
+        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+    }
+
+    .btn-neon-outline {
+        background: transparent;
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+        font-family: var(--font-outfit);
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-neon-outline:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-1px);
+    }
+
+    /* Status Badges */
+    .badge-status {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .badge-pending {
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--color-warning-neon);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-processing {
+        background: rgba(6, 182, 212, 0.12);
+        color: var(--color-neon-blue);
+        border: 1px solid rgba(6, 182, 212, 0.3);
+        animation: pulse-glow 2s infinite alternate;
+    }
+
+    .badge-completed {
+        background: rgba(16, 185, 129, 0.12);
+        color: var(--color-success-neon);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-failed {
+        background: rgba(239, 68, 68, 0.12);
+        color: var(--color-error-neon);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    @keyframes pulse-glow {
+        0% { box-shadow: 0 0 4px rgba(6, 182, 212, 0.1); }
+        100% { box-shadow: 0 0 12px rgba(6, 182, 212, 0.4); }
+    }
+
+    /* Project Cards Grid */
+    .projects-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+    }
+
+    .project-card {
+        background: rgba(17, 24, 39, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 14px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 230px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .project-card:hover {
+        border-color: rgba(99, 102, 241, 0.25);
+        background: rgba(17, 24, 39, 0.85);
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    .project-title {
+        font-size: 1.15rem;
+        color: #fff;
+        margin-bottom: 4px;
+    }
+
+    .project-property {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.5);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .project-date {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Interactive Progress Bar */
+    .progress-container {
+        margin: 16px 0;
+    }
+
+    .progress-text-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        margin-bottom: 6px;
+    }
+
+    .progress-bar-glow {
+        height: 8px;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .progress-fill-glow {
+        height: 100%;
+        border-radius: 10px;
+        background: linear-gradient(90deg, var(--color-neon-blue) 0%, var(--color-neon-violet) 100%);
+        box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        transition: width 0.4s ease;
+    }
+
+    .progress-fill-glow.pulsing {
+        animation: progress-pulse 1.5s infinite;
+    }
+
+    @keyframes progress-pulse {
+        0% { opacity: 0.8; }
+        50% { opacity: 1; filter: brightness(1.2); }
+        100% { opacity: 0.8; }
+    }
+
+    /* Drag & Drop Area */
+    .drag-drop-zone {
+        border: 2px dashed rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        padding: 35px 20px;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.02);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .drag-drop-zone.dragover {
+        border-color: var(--color-neon-violet);
+        background: rgba(99, 102, 241, 0.05);
+        box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
+    }
+
+    .drag-drop-icon {
+        font-size: 2.5rem;
+        color: rgba(255, 255, 255, 0.4);
+        margin-bottom: 12px;
+        transition: color 0.3s ease;
+    }
+
+    .drag-drop-zone:hover .drag-drop-icon {
+        color: var(--color-neon-violet);
+    }
+
+    /* Modals styled in glassmorphism */
+    .glass-modal .modal-content {
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(25px);
+        border: 1px solid var(--glass-border);
+        border-radius: 18px;
+        color: #fff;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .glass-modal .modal-header {
+        border-bottom: 1px solid var(--glass-border);
+        font-family: var(--font-outfit);
+    }
+
+    .glass-modal .modal-footer {
+        border-top: 1px solid var(--glass-border);
+    }
+
+    .glass-modal .form-control, .glass-modal .form-select {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border-radius: 8px;
+    }
+
+    .glass-modal .form-control:focus, .glass-modal .form-select:focus {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--color-neon-violet);
+        box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25);
+        color: #fff;
+    }
+    
+    .glass-modal select option {
+        background: #0f172a;
+        color: #fff;
+    }
+
+    /* 3D Canvas Container */
+    #canvas-container {
+        position: relative;
+        width: 100%;
+        height: 600px;
+        background: #000;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid var(--glass-border);
+    }
+
+    #viewer-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+
+    .viewer-overlay {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    .viewer-controls-card {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+        padding: 10px 15px;
+        font-size: 0.8rem;
+        pointer-events: auto;
+    }
+
+    .viewer-loader {
+        position: absolute;
+        inset: 0;
+        background: rgba(9, 13, 22, 0.9);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+    }
+
+    .spinner-orbital {
+        width: 60px;
+        height: 60px;
+        border: 3px solid transparent;
+        border-top-color: var(--color-neon-violet);
+        border-bottom-color: var(--color-neon-blue);
+        border-radius: 50%;
+        animation: spin-orbit 1.2s linear infinite;
+        margin-bottom: 16px;
+    }
+
+    @keyframes spin-orbit {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Iframe Editor Styling */
+    .editor-container {
+        width: 100%;
+        height: 680px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid var(--glass-border);
+    }
+
+    .editor-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: #111;
+    }
+
+    /* Toast styling overrides */
+    .toast-container-custom {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+    }
+</style>
+{% endblock %}
+
+{% block header %}
+<span class="d-flex align-items-center gap-2">
+    <i class="bi bi-box-perspective text-indigo"></i>
+    Escaneos & Modelado 3DGS
+</span>
+{% endblock %}
+
+{% block actions %}
+<button class="btn btn-neon-outline me-2" onclick="openSettingsModal()">
+    <i class="bi bi-gear-fill me-1"></i> Configurar Motor
+</button>
+<button class="btn btn-neon-violet" onclick="openNewScanModal()">
+    <i class="bi bi-plus-lg me-1"></i> Nuevo Escaneo
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="toast-container-custom" id="toastContainer"></div>
+
+<!-- MAIN WORKSPACE -->
+<div class="row">
+    <div class="col-12">
+        <div class="card glass-card p-4 mb-4">
+            
+            <!-- Custom Tabs Navigation -->
+            <ul class="nav nav-tabs custom-nav-tabs mb-4" id="modeladoTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="scans-tab" data-bs-toggle="tab" data-bs-target="#scans-content" type="button" role="tab" aria-controls="scans-content" aria-selected="true">
+                        <i class="bi bi-grid-fill me-2"></i>Panel de Escaneos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="viewer-tab" data-bs-toggle="tab" data-bs-target="#viewer-content" type="button" role="tab" aria-controls="viewer-content" aria-selected="false" onclick="onViewerTabActive()">
+                        <i class="bi bi-eye-fill me-2"></i>Visor de Recorridos 3D
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="editor-tab" data-bs-toggle="tab" data-bs-target="#editor-content" type="button" role="tab" aria-controls="editor-content" aria-selected="false">
+                        <i class="bi bi-scissors me-2"></i>Limpieza (SuperSplat)
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tabs Content -->
+            <div class="tab-content" id="modeladoTabsContent">
+                
+                <!-- TAB 1: CONTROL PANEL -->
+                <div class="tab-pane fade show active" id="scans-content" role="tabpanel" aria-labelledby="scans-tab">
+                    
+                    <!-- Engine Connectivity Banner -->
+                    <div id="engine-status-alert" class="alert alert-dark border-secondary bg-opacity-25 d-none align-items-center mb-4 py-2 px-3 rounded-3" style="font-size: 0.9rem;">
+                        <span class="spinner-grow spinner-grow-sm text-warning me-2" role="status"></span>
+                        <span id="engine-status-text">Conectando al motor 3DGS...</span>
+                    </div>
+
+                    <!-- Filter / Stats Header -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="mb-0 text-white">Mis Proyectos 3D</h4>
+                        <div class="text-muted" style="font-size: 0.9rem;" id="project-counter">
+                            Cargando proyectos...
+                        </div>
+                    </div>
+
+                    <!-- Project Cards Grid -->
+                    <div class="projects-grid" id="projectsContainer">
+                        <!-- Loading placeholder -->
+                        <div class="col-12 text-center py-5">
+                            <div class="spinner-border text-indigo mb-2" role="status"></div>
+                            <p class="text-muted">Cargando la lista de proyectos...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: 3D VIEWER -->
+                <div class="tab-pane fade" id="viewer-content" role="tabpanel" aria-labelledby="viewer-tab">
+                    <div class="row">
+                        <div class="col-lg-3 mb-4 mb-lg-0">
+                            <div class="p-3 border rounded-3 bg-dark bg-opacity-50" style="border-color: var(--glass-border) !important;">
+                                <h5 class="text-white mb-3">Modelos Disponibles</h5>
+                                <div class="mb-3">
+                                    <label for="viewerModelSelect" class="form-label text-muted" style="font-size: 0.85rem;">Selecciona un Proyecto</label>
+                                    <select class="form-select bg-dark text-white border-secondary" id="viewerModelSelect" onchange="loadModelInViewer(this.value)">
+                                        <option value="">-- Elige un modelo --</option>
+                                    </select>
+                                </div>
+                                <div id="viewer-meta-details" class="d-none mt-4">
+                                    <div class="border-top pt-3 border-secondary">
+                                        <h6 class="text-indigo">Detalles del Modelo</h6>
+                                        <p class="mb-1" style="font-size: 0.85rem;"><strong>ID:</strong> <span id="meta-project-id" class="text-muted"></span></p>
+                                        <p class="mb-1" style="font-size: 0.85rem;"><strong>Propiedad:</strong> <span id="meta-property" class="text-muted"></span></p>
+                                        <p class="mb-3" style="font-size: 0.85rem;"><strong>Creado:</strong> <span id="meta-created" class="text-muted"></span></p>
+                                        <div class="d-grid gap-2">
+                                            <a id="viewer-download-ply" href="#" class="btn btn-sm btn-neon-outline text-center" download>
+                                                <i class="bi bi-download me-1"></i> Descargar .PLY
+                                            </a>
+                                            <a id="viewer-download-spz" href="#" class="btn btn-sm btn-neon-outline text-center" download>
+                                                <i class="bi bi-file-zip-fill me-1"></i> Descargar .SPZ
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-9">
+                            <div id="canvas-container">
+                                <!-- Loader UI -->
+                                <div id="viewerLoader" class="viewer-loader d-none">
+                                    <div class="spinner-orbital"></div>
+                                    <h5 class="text-white mb-2" id="viewerLoaderStatus">Inicializando visor...</h5>
+                                    <div class="w-50 progress progress-bar-glow">
+                                        <div id="viewerLoaderProgressBar" class="progress-fill-glow" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <!-- Interactive Help Overlay -->
+                                <div class="viewer-overlay">
+                                    <span class="badge bg-dark bg-opacity-75 text-white border border-secondary px-3 py-2">
+                                        <i class="bi bi-unity text-indigo me-1"></i> Visor WebGL 3DGS
+                                    </span>
+                                </div>
+                                <!-- Desktop Mouse Interactions Info -->
+                                <div class="viewer-controls-card text-white">
+                                    <div class="fw-bold mb-1"><i class="bi bi-mouse2 me-1"></i> Controles del Visor</div>
+                                    <div><strong>Rotar:</strong> Clic Izquierdo + Arrastrar</div>
+                                    <div><strong>Mover:</strong> Clic Derecho + Arrastrar</div>
+                                    <div><strong>Zoom:</strong> Rueda del ratón</div>
+                                </div>
+                                <canvas id="viewer-canvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: SUPERSPLAT EDITOR -->
+                <div class="tab-pane fade" id="editor-content" role="tabpanel" aria-labelledby="editor-tab">
+                    <div class="row">
+                        <div class="col-lg-3 mb-4 mb-lg-0">
+                            <div class="p-3 border rounded-3 bg-dark bg-opacity-50 h-100 d-flex flex-column justify-content-between" style="border-color: var(--glass-border) !important;">
+                                <div>
+                                    <h5 class="text-white mb-3"><i class="bi bi-scissors text-indigo me-1"></i> Limpieza 3D</h5>
+                                    <p class="text-muted" style="font-size: 0.85rem; line-height: 1.5;">
+                                        PlayCanvas SuperSplat permite limpiar el ruido de fondo, flotantes y recortar zonas no deseadas del modelo 3DGS.
+                                    </p>
+                                    <hr class="border-secondary">
+                                    
+                                    <div class="mb-3">
+                                        <label for="editorModelSelect" class="form-label text-muted" style="font-size: 0.85rem;">Modelo para Editar</label>
+                                        <select class="form-select bg-dark text-white border-secondary" id="editorModelSelect" onchange="updateEditorActiveModel(this.value)">
+                                            <option value="">-- Elige un modelo --</option>
+                                        </select>
+                                    </div>
+
+                                    <div id="editor-help-details" class="d-none">
+                                        <div class="alert alert-info bg-info bg-opacity-10 border-info text-info py-2" style="font-size: 0.8rem;">
+                                            <i class="bi bi-info-circle-fill me-1"></i>
+                                            Para limpiar, copia el enlace a continuación y pégalo en la opción <strong>URL</strong> de SuperSplat.
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted" style="font-size: 0.75rem;">URL del Archivo PLY</label>
+                                            <div class="input-group">
+                                                <input type="text" id="editor-ply-url-input" class="form-control form-control-sm bg-dark text-white border-secondary text-truncate" readonly>
+                                                <button class="btn btn-sm btn-neon-violet" type="button" onclick="copyPlyUrl()">
+                                                    <i class="bi bi-copy"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 pt-3 border-top border-secondary">
+                                    <small class="text-muted d-block mb-2">Una vez que termines de limpiar:</small>
+                                    <ol class="text-muted ps-3 mb-0" style="font-size: 0.8rem;">
+                                        <li>Exporta el archivo editado como `.ply` en SuperSplat.</li>
+                                        <li>Súbelo como una nueva versión o crea un escaneo de respaldo.</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-9">
+                            <div class="editor-container">
+                                <iframe id="supersplat-iframe" class="editor-iframe" src="https://superspl.at/editor/"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <!-- End tab content -->
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: NUEVO ESCANEO -->
+<div class="modal fade glass-modal" id="newScanModal" tabindex="-1" aria-labelledby="newScanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white" id="newScanModalLabel"><i class="bi bi-camera-video-fill text-indigo me-2"></i>Nuevo Escaneo 3D</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="newScanForm" onsubmit="handleNewScanSubmit(event)">
+                <div class="modal-body">
+                    
+                    <!-- Scan Name -->
+                    <div class="mb-3">
+                        <label for="scanName" class="form-label text-white-50">Nombre del Escaneo</label>
+                        <input type="text" class="form-control text-white" id="scanName" required placeholder="Ej. Duplex Palermo - Living">
+                    </div>
+
+                    <!-- Linked CRM Property -->
+                    <div class="mb-3">
+                        <label for="scanProperty" class="form-label text-white-50">Propiedad Vinculada (Opcional)</label>
+                        <select class="form-select" id="scanProperty">
+                            <option value="">-- Sin Vincular / Opcional --</option>
+                            {% for p in properties %}
+                            <option value="{{ p.id }}">{{ p.titulo or p.direccion or 'Propiedad #' ~ p.id }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Drag & Drop Zone -->
+                    <div class="mb-3">
+                        <label class="form-label text-white-50">Archivo de Video</label>
+                        <div id="dropZone" class="drag-drop-zone" onclick="document.getElementById('videoFile').click()">
+                            <i class="bi bi-cloud-arrow-up-fill drag-drop-icon"></i>
+                            <h6 class="text-white mb-1">Arrastra tu video aquí</h6>
+                            <p class="text-muted mb-0" style="font-size: 0.75rem;">o haz clic para explorar (.mp4, .mov)</p>
+                            <input type="file" id="videoFile" accept="video/mp4,video/quicktime" class="d-none" onchange="handleFileSelect(this)">
+                        </div>
+                        <div id="fileInfo" class="d-none mt-2 alert alert-secondary bg-opacity-25 border-secondary text-white py-2 px-3 rounded d-flex justify-content-between align-items-center" style="font-size: 0.85rem;">
+                            <span id="fileName" class="text-truncate" style="max-width: 250px;">video.mp4</span>
+                            <span id="fileSize" class="text-muted">0 MB</span>
+                        </div>
+                    </div>
+
+                    <!-- Upload Progress UI -->
+                    <div id="uploadProgressContainer" class="d-none mt-3">
+                        <div class="d-flex justify-content-between text-white-50 mb-1" style="font-size: 0.8rem;">
+                            <span>Subiendo video...</span>
+                            <span id="uploadPercent">0%</span>
+                        </div>
+                        <div class="progress progress-bar-glow">
+                            <div id="uploadProgressBar" class="progress-fill-glow" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="submitScanBtn" class="btn btn-neon-violet" disabled>
+                        <i class="bi bi-cloud-upload me-1"></i> Subir Escaneo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CONFIGURAR MOTOR -->
+<div class="modal fade glass-modal" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white" id="settingsModalLabel"><i class="bi bi-gear-fill text-indigo me-2"></i>Configuración del Motor 3D</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="font-size: 0.85rem;">
+                    Configura la IP y puerto del motor de modelado 3D (Gaussian Splatting) asignado a tu cuenta. Esto aislará tus ejecuciones de las de otros agentes.
+                </p>
+                <div class="mb-3">
+                    <label for="engineUrlInput" class="form-label text-white-50">URL / IP del Backend 3D</label>
+                    <input type="url" class="form-control text-white" id="engineUrlInput" placeholder="Ej. http://localhost:5001" required>
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">Debe incluir http:// o https:// y el puerto correspondiente.</div>
+                </div>
+                <div class="mb-3 form-check form-switch mt-4">
+                    <input class="form-check-input" type="checkbox" id="simulateModeInput">
+                    <label class="form-check-label text-white-50" for="simulateModeInput">Simular Procesamiento (PC de Desarrollo / Sin GPU)</label>
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">Si está activado, generará una nube de puntos ficticia de forma instantánea sin requerir Nerfstudio o GPU.</div>
+                </div>
+                <!-- Test Connection Status UI -->
+                <div id="testConnectionResult" class="d-none alert py-2 px-3 mb-0" style="font-size: 0.85rem;">
+                    <span id="testConnectionText">Validando...</span>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-neon-outline me-auto" id="testConnBtn" onclick="testBackendConnection()">
+                    <i class="bi bi-wifi me-1"></i> Probar Conexión
+                </button>
+                <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-neon-violet" onclick="saveBackendSettings()">
+                    <i class="bi bi-check-lg me-1"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- gsplat.js Library Loaded via ESM Module -->
+<script type="importmap">
+{
+    "imports": {
+        "gsplat": "/static/js/gsplat.es.min.js"
+    }
+}
+</script>
+
+<script type="module">
+    import * as SPLAT from 'gsplat';
+    window.SPLAT = SPLAT; // Share with global scope
+</script>
+
+<script>
+    // Global State Variables
+    let activeProjects = [];
+    let pollingInterval = null;
+    let newScanModalInstance = null;
+    let settingsModalInstance = null;
+    let selectedFile = null;
+
+    // 3D Viewer variables
+    let splatRenderer = null;
+    let splatScene = null;
+    let splatCamera = null;
+    let splatControls = null;
+    let splatAnimationId = null;
+    let isViewerInitialized = false;
+
+    // Toast helpers
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        const icon = type === 'success' ? 'bi-check-circle-fill' : type === 'error' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill';
+        const color = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#6366f1';
+        
+        toast.className = 'd-flex align-items-center p-3 text-white rounded shadow-lg border border-opacity-10 mb-2';
+        toast.style.background = 'rgba(15, 23, 42, 0.95)';
+        toast.style.border = `1px solid ${color}`;
+        toast.style.minWidth = '300px';
+        toast.style.transition = 'all 0.4s ease';
+        toast.innerHTML = `
+            <i class="bi ${icon} me-2 text-white" style="color: ${color} !important; font-size: 1.15rem;"></i>
+            <div class="flex-grow-1" style="font-size: 0.88rem;">${message}</div>
+            <button type="button" class="btn-close btn-close-white ms-2" onclick="this.parentElement.remove()" aria-label="Close"></button>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 400);
+        }, 5000);
+    }
+
+    // Modal Initializations
+    document.addEventListener('DOMContentLoaded', () => {
+        newScanModalInstance = new bootstrap.Modal(document.getElementById('newScanModal'));
+        settingsModalInstance = new bootstrap.Modal(document.getElementById('settingsModal'));
+
+        // Initialize drag & drop triggers
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length) {
+                    const fileInput = document.getElementById('videoFile');
+                    fileInput.files = files;
+                    handleFileSelect(fileInput);
+                }
+            });
+        }
+
+        // Initialize Dashboard Data
+        loadProjects();
+        checkEngineStatus();
+    });
+
+    // Clean viewport animation
+    function stopViewerLoop() {
+        if (splatAnimationId) {
+            cancelAnimationFrame(splatAnimationId);
+            splatAnimationId = null;
+        }
+        if (splatScene) {
+            try {
+                splatScene.reset();
+            } catch(e) {}
+        }
+    }
+
+    // Modal Openers
+    window.openNewScanModal = function() {
+        // Reset form
+        document.getElementById('newScanForm').reset();
+        selectedFile = null;
+        document.getElementById('fileInfo').classList.add('d-none');
+        document.getElementById('uploadProgressContainer').classList.add('d-none');
+        document.getElementById('submitScanBtn').disabled = true;
+        newScanModalInstance.show();
+    }
+
+    window.openSettingsModal = function() {
+        const urlInput = document.getElementById('engineUrlInput');
+        const statusAlert = document.getElementById('testConnectionResult');
+        statusAlert.classList.add('d-none');
+        
+        // Load simulate checkbox state from localStorage (default to true if not set)
+        const isSimulate = localStorage.getItem('3d_engine_simulate') !== 'false';
+        document.getElementById('simulateModeInput').checked = isSimulate;
+        
+        // Fetch current setting
+        fetch('/modelado_3d/api/settings')
+            .then(res => res.json())
+            .then(data => {
+                urlInput.value = data.backend_url || 'http://localhost:5001';
+                settingsModalInstance.show();
+            })
+            .catch(() => {
+                urlInput.value = 'http://localhost:5001';
+                settingsModalInstance.show();
+            });
+    }
+
+    // Save Backend IP settings
+    window.saveBackendSettings = function() {
+        const urlInput = document.getElementById('engineUrlInput').value.trim();
+        if (!urlInput) return;
+
+        // Save simulate checkbox state to localStorage
+        const isSimulate = document.getElementById('simulateModeInput').checked;
+        localStorage.setItem('3d_engine_simulate', isSimulate);
+
+        fetch('/modelado_3d/api/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({backend_url: urlInput})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast("Configuración guardada correctamente");
+                settingsModalInstance.hide();
+                // Refresh status and projects list
+                checkEngineStatus();
+                loadProjects();
+            } else {
+                showToast(data.error || "Error al guardar configuración", "error");
+            }
+        })
+        .catch(err => {
+            showToast("No se pudo conectar con el servidor del CRM", "error");
+        });
+    }
+
+    // Test IP connection
+    window.testBackendConnection = function() {
+        const urlInput = document.getElementById('engineUrlInput').value.trim();
+        const resultDiv = document.getElementById('testConnectionResult');
+        const resultText = document.getElementById('testConnectionText');
+
+        resultDiv.className = "alert alert-secondary py-2 px-3 mt-3 d-flex align-items-center";
+        resultDiv.classList.remove('d-none');
+        resultText.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status"></span> Probando conexión...`;
+
+        fetch('/modelado_3d/api/settings/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({backend_url: urlInput})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'online') {
+                resultDiv.className = "alert alert-success py-2 px-3 mt-3";
+                resultText.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> ${data.message}`;
+            } else {
+                resultDiv.className = "alert alert-danger py-2 px-3 mt-3";
+                resultText.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i> ${data.message}`;
+            }
+        })
+        .catch(err => {
+            resultDiv.className = "alert alert-danger py-2 px-3 mt-3";
+            resultText.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> Error: No se pudo contactar al proxy del CRM.`;
+        });
+    }
+
+    // Check backend connection banner status
+    function checkEngineStatus() {
+        const alertBanner = document.getElementById('engine-status-alert');
+        const alertText = document.getElementById('engine-status-text');
+
+        fetch('/modelado_3d/api/settings/test', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({}) })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'online') {
+                    alertBanner.classList.add('d-none');
+                } else {
+                    alertBanner.className = "alert alert-danger border-danger bg-danger bg-opacity-10 d-flex align-items-center mb-4 py-2 px-3 rounded-3";
+                    alertBanner.classList.remove('d-none');
+                    alertText.innerHTML = `<i class="bi bi-exclamation-octagon-fill text-danger me-2"></i> El motor 3DGS configurado no está disponible. Modifica la IP en "Configurar Motor".`;
+                }
+            })
+            .catch(() => {
+                alertBanner.className = "alert alert-warning border-warning bg-warning bg-opacity-10 d-flex align-items-center mb-4 py-2 px-3 rounded-3";
+                alertBanner.classList.remove('d-none');
+                alertText.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning me-2"></i> No se pudo comunicar con el proxy.`;
+            });
+    }
+
+    // Video File selection validation
+    window.handleFileSelect = function(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        // Size check (max 500MB)
+        if (file.size > 500 * 1024 * 1024) {
+            showToast("El archivo es demasiado grande (Máximo 500 MB)", "error");
+            input.value = "";
+            return;
+        }
+
+        selectedFile = file;
+        
+        // Show file info
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = (file.size / (1024 * 1024)).toFixed(1) + " MB";
+        document.getElementById('fileInfo').classList.remove('d-none');
+        document.getElementById('submitScanBtn').disabled = false;
+    }
+
+    // Upload project form submit
+    window.handleNewScanSubmit = function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('scanName').value.trim();
+        const propertyId = document.getElementById('scanProperty').value;
+        const videoInput = document.getElementById('videoFile');
+        const file = videoInput.files[0];
+
+        if (!name || !file) {
+            showToast("Por favor asigne un nombre y seleccione un video", "error");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('property_id', propertyId);
+        formData.append('video', file);
+
+        // UI transitions during upload
+        document.getElementById('submitScanBtn').disabled = true;
+        const progressContainer = document.getElementById('uploadProgressContainer');
+        const progressBar = document.getElementById('uploadProgressBar');
+        const progressPercent = document.getElementById('uploadPercent');
+        
+        progressContainer.classList.remove('d-none');
+        progressBar.style.width = '0%';
+        progressPercent.textContent = '0%';
+
+        // AJAX Upload
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/modelado_3d/api/projects', true);
+        
+        xhr.upload.onprogress = function(event) {
+            if (event.lengthComputable) {
+                const percent = Math.round((event.loaded / event.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressPercent.textContent = percent + '%';
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                showToast("¡Proyecto subido exitosamente! Listo para procesar.");
+                newScanModalInstance.hide();
+                loadProjects();
+            } else {
+                let errMessage = "Error en el servidor al subir el archivo";
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errMessage = response.error || errMessage;
+                } catch(e) {}
+                showToast(errMessage, "error");
+                document.getElementById('submitScanBtn').disabled = false;
+            }
+        };
+
+        xhr.onerror = function() {
+            showToast("Fallo en la red durante la subida del video", "error");
+            document.getElementById('submitScanBtn').disabled = false;
+        };
+
+        xhr.send(formData);
+    }
+
+    // Retrieve projects list
+    window.loadProjects = function() {
+        const container = document.getElementById('projectsContainer');
+        const counterEl = document.getElementById('project-counter');
+
+        fetch('/modelado_3d/api/projects')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    activeProjects = data;
+                    counterEl.textContent = `${activeProjects.length} Proyecto(s) registrado(s)`;
+                    renderProjectsGrid(activeProjects);
+                    setupPollingIfNeeded();
+                    updateModelDropdowns(activeProjects);
+                } else {
+                    container.innerHTML = `
+                        <div class="col-12 text-center py-4">
+                            <i class="bi bi-exclamation-diamond text-danger fs-1 mb-2"></i>
+                            <p class="text-white">Error al obtener proyectos: ${data.error || 'Respuesta inválida'}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                container.innerHTML = `
+                    <div class="col-12 text-center py-4">
+                        <i class="bi bi-wifi-off text-danger fs-1 mb-2"></i>
+                        <p class="text-muted">Error de red. No se pudo conectar al motor 3DGS.</p>
+                    </div>
+                `;
+            });
+    }
+
+    // Populate dropdown selectors in tabs 2 and 3
+    function updateModelDropdowns(projects) {
+        const viewerSelect = document.getElementById('viewerModelSelect');
+        const editorSelect = document.getElementById('editorModelSelect');
+        
+        // Save current selections
+        const currentViewerVal = viewerSelect.value;
+        const currentEditorVal = editorSelect.value;
+
+        // Clear except first option
+        viewerSelect.innerHTML = '<option value="">-- Elige un modelo --</option>';
+        editorSelect.innerHTML = '<option value="">-- Elige un modelo --</option>';
+
+        // Populate completed projects
+        projects.forEach(p => {
+            if (p.status === 'completed') {
+                const optText = `${p.name} (ID: ${p.id.substring(0, 6)})`;
+                
+                const opt1 = document.createElement('option');
+                opt1.value = p.id;
+                opt1.textContent = optText;
+                viewerSelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = p.id;
+                opt2.textContent = optText;
+                editorSelect.appendChild(opt2);
+            }
+        });
+
+        // Restore selections if still valid
+        if (projects.some(p => p.id === currentViewerVal && p.status === 'completed')) {
+            viewerSelect.value = currentViewerVal;
+        }
+        if (projects.some(p => p.id === currentEditorVal && p.status === 'completed')) {
+            editorSelect.value = currentEditorVal;
+        }
+    }
+
+    // Generate cards layout
+    function renderProjectsGrid(projects) {
+        const container = document.getElementById('projectsContainer');
+        if (projects.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center py-5">
+                    <i class="bi bi-folder2-open text-muted fs-1 mb-2 d-block"></i>
+                    <p class="text-white-50">No hay proyectos de modelado creados todavía.</p>
+                    <button class="btn btn-sm btn-neon-violet px-3 py-2 mt-2" onclick="openNewScanModal()">
+                        <i class="bi bi-camera-video-fill me-1"></i> Subir Primer Video
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        projects.forEach(p => {
+            const statusClass = p.status === 'pending' ? 'badge-pending' : 
+                                p.status === 'processing' ? 'badge-processing' : 
+                                p.status === 'completed' ? 'badge-completed' : 'badge-failed';
+            const statusLabel = p.status === 'pending' ? 'Pendiente' : 
+                                p.status === 'processing' ? 'Procesando' : 
+                                p.status === 'completed' ? 'Completado' : 'Fallido';
+            const icon = p.status === 'pending' ? 'bi-hourglass-split' : 
+                         p.status === 'processing' ? 'bi-gear-wide-connected spin-icon' : 
+                         p.status === 'completed' ? 'bi-check-circle-fill' : 'bi-exclamation-octagon-fill';
+            
+            // Format dates
+            let formattedDate = p.created_at || 'Fecha desconocida';
+            if (p.created_at && p.created_at.includes('T')) {
+                try {
+                    formattedDate = new Date(p.created_at).toLocaleDateString('es-ES', {
+                        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    });
+                } catch(e) {}
+            }
+
+            html += `
+                <div class="project-card" id="card-${p.id}">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="project-title text-truncate" style="max-width: 200px;" title="${p.name}">${p.name}</h5>
+                            <span class="badge-status ${statusClass}">
+                                <i class="bi ${icon}"></i> ${statusLabel}
+                            </span>
+                        </div>
+                        <div class="project-property mb-1">
+                            <i class="bi bi-house-door"></i> Propiedad: ${p.property_id || 'Sin vincular'}
+                        </div>
+                        <div class="project-date">
+                            <i class="bi bi-calendar-event"></i> ${formattedDate}
+                        </div>
+                    </div>
+
+                    <div>
+            `;
+
+            // Inner contents by status
+            if (p.status === 'pending') {
+                html += `
+                        <div class="row g-2 mt-4">
+                            <div class="col-9">
+                                <button class="btn btn-sm btn-success bg-opacity-75 border-0 py-2 w-100" onclick="startTraining('${p.id}')">
+                                    <i class="bi bi-play-fill me-1"></i> Iniciar Procesamiento (Entrenar)
+                                </button>
+                            </div>
+                            <div class="col-3">
+                                <button class="btn btn-sm btn-neon-outline w-100 py-2 text-danger" onclick="deleteProject('${p.id}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                `;
+            } else if (p.status === 'processing') {
+                const progress = p.progress || 0;
+                const message = p.message || 'Procesando en cola...';
+                html += `
+                        <div class="progress-container mt-3">
+                            <div class="progress-text-row">
+                                <span class="text-white-50 text-truncate" style="max-width: 170px;">${message}</span>
+                                <span class="text-indigo fw-bold">${progress}%</span>
+                            </div>
+                            <div class="progress-bar-glow">
+                                <div class="progress-fill-glow pulsing" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+                `;
+            } else if (p.status === 'completed') {
+                html += `
+                        <div class="row g-2 mt-4">
+                            <div class="col-6">
+                                <button class="btn btn-sm btn-neon-violet w-100 py-2" onclick="switchToViewerTab('${p.id}')">
+                                    <i class="bi bi-eye"></i> Recorrido 3D
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-sm btn-neon-outline w-100 py-2" onclick="switchToEditorTab('${p.id}')">
+                                    <i class="bi bi-scissors"></i> Limpiar
+                                </button>
+                            </div>
+                            <div class="col-10 mt-2 d-flex gap-2">
+                                <a href="/modelado_3d/model/${p.id}/model.ply" class="btn btn-xs btn-outline-secondary w-50 py-1" style="font-size: 0.75rem; text-align: center;" download>
+                                    Descargar PLY
+                                </a>
+                                <a href="/modelado_3d/model/${p.id}/model.spz" class="btn btn-xs btn-outline-secondary w-50 py-1" style="font-size: 0.75rem; text-align: center;" download>
+                                    Descargar SPZ
+                                </a>
+                            </div>
+                            <div class="col-2 mt-2">
+                                <button class="btn btn-xs btn-neon-outline w-100 py-1 text-danger" style="height: 100%; display: flex; align-items: center; justify-content: center;" onclick="deleteProject('${p.id}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                `;
+            } else if (p.status === 'failed') {
+                html += `
+                        <div class="alert alert-danger py-1 px-2 border-danger bg-opacity-10 text-danger mt-3" style="font-size: 0.8rem;">
+                            Error: ${p.message || 'Fallo desconocido'}
+                        </div>
+                        <div class="row g-2 mt-2">
+                            <div class="col-7">
+                                <button class="btn btn-sm btn-neon-violet w-100" onclick="startTraining('${p.id}')">
+                                    <i class="bi bi-arrow-clockwise"></i> Reintentar
+                                </button>
+                            </div>
+                            <div class="col-5">
+                                <button class="btn btn-sm btn-neon-outline w-100 text-danger" onclick="deleteProject('${p.id}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    // Trigger Training
+    window.startTraining = function(projectId) {
+        const isSimulate = localStorage.getItem('3d_engine_simulate') !== 'false';
+        fetch(`/modelado_3d/api/projects/${projectId}/train`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({simulate: isSimulate})
+        })
+        .then(res => res.json())
+        .then(data => {
+            showToast("Entrenamiento iniciado exitosamente.");
+            loadProjects();
+        })
+        .catch(err => {
+            showToast("No se pudo iniciar el entrenamiento del modelo", "error");
+        });
+    }
+
+    // Delete project
+    window.deleteProject = function(projectId) {
+        if (!confirm("¿Está seguro de que desea eliminar este proyecto?")) return;
+
+        fetch(`/modelado_3d/api/projects/${projectId}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(data => {
+                showToast("Proyecto eliminado con éxito.");
+                loadProjects();
+            })
+            .catch(err => {
+                showToast("Error al eliminar el proyecto", "error");
+            });
+    }
+
+    // Smart Polling triggers
+    function setupPollingIfNeeded() {
+        const needsPolling = activeProjects.some(p => p.status === 'processing');
+        
+        if (needsPolling && !pollingInterval) {
+            pollingInterval = setInterval(() => {
+                pollActiveProjects();
+            }, 3000);
+        } else if (!needsPolling && pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+    }
+
+    // Pool specific active projects
+    function pollActiveProjects() {
+        const activeIds = activeProjects
+            .filter(p => p.status === 'processing')
+            .map(p => p.id);
+
+        if (activeIds.length === 0) {
+            setupPollingIfNeeded();
+            return;
+        }
+
+        // Poll each active project status
+        const promises = activeIds.map(id => {
+            return fetch(`/modelado_3d/api/projects/${id}/status`)
+                .then(res => res.json())
+                .then(data => {
+                    // Find and update item locally
+                    const idx = activeProjects.findIndex(p => p.id === id);
+                    if (idx !== -1) {
+                        activeProjects[idx].progress = data.progress;
+                        activeProjects[idx].message = data.message;
+                        activeProjects[idx].status = data.status;
+                    }
+                }).catch(() => {});
+        });
+
+        Promise.all(promises).then(() => {
+            renderProjectsGrid(activeProjects);
+            updateModelDropdowns(activeProjects);
+            setupPollingIfNeeded();
+        });
+    }
+
+    // Tab transitions loaders
+    window.switchToViewerTab = function(projectId) {
+        // Toggle view
+        const tabEl = document.getElementById('viewer-tab');
+        const tabTrigger = new bootstrap.Tab(tabEl);
+        tabTrigger.show();
+        
+        // Select & load
+        setTimeout(() => {
+            const selectEl = document.getElementById('viewerModelSelect');
+            selectEl.value = projectId;
+            loadModelInViewer(projectId);
+        }, 150);
+    }
+
+    window.switchToEditorTab = function(projectId) {
+        const tabEl = document.getElementById('editor-tab');
+        const tabTrigger = new bootstrap.Tab(tabEl);
+        tabTrigger.show();
+        
+        setTimeout(() => {
+            const selectEl = document.getElementById('editorModelSelect');
+            selectEl.value = projectId;
+            updateEditorActiveModel(projectId);
+        }, 150);
+    }
+
+    // 3D VIEWER: gsplat.js logic
+    window.onViewerTabActive = function() {
+        if (!isViewerInitialized) {
+            // First time viewport activation
+            initSplatViewer();
+        }
+    }
+
+    function initSplatViewer() {
+        const canvas = document.getElementById('viewer-canvas');
+        if (!canvas) return;
+
+        try {
+            splatRenderer = new SPLAT.WebGLRenderer(canvas);
+            splatScene = new SPLAT.Scene();
+            splatCamera = new SPLAT.Camera();
+            splatControls = new SPLAT.OrbitControls(splatCamera, canvas);
+            
+            isViewerInitialized = true;
+            
+            // Render Frame loop
+            const frame = () => {
+                if (!isViewerInitialized) return;
+                splatControls.update();
+                splatRenderer.render(splatScene, splatCamera);
+                splatAnimationId = requestAnimationFrame(frame);
+            };
+            splatAnimationId = requestAnimationFrame(frame);
+            
+            // Adjust to viewport size
+            resizeViewerCanvas();
+            window.addEventListener('resize', resizeViewerCanvas);
+        } catch(e) {
+            console.error("Fallo al inicializar WebGL gsplat.js: ", e);
+            showToast("Su navegador no soporta WebGL o gsplat.js falló al iniciar.", "error");
+        }
+    }
+
+    function resizeViewerCanvas() {
+        if (!splatRenderer) return;
+        const container = document.getElementById('canvas-container');
+        const canvas = document.getElementById('viewer-canvas');
+        
+        // Resize buffer matches dimensions
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        splatRenderer.setSize(canvas.width, canvas.height);
+    }
+
+    window.loadModelInViewer = function(projectId) {
+        if (!projectId) {
+            document.getElementById('viewer-meta-details').classList.add('d-none');
+            stopViewerLoop();
+            return;
+        }
+
+        // Find metadata
+        const proj = activeProjects.find(p => p.id === projectId);
+        if (!proj) return;
+
+        // Display meta cards
+        document.getElementById('meta-project-id').textContent = proj.id;
+        document.getElementById('meta-property').textContent = proj.property_id || 'Sin vincular';
+        
+        let formattedDate = proj.created_at || 'Desconocida';
+        if (proj.created_at && proj.created_at.includes('T')) {
+            try {
+                formattedDate = new Date(proj.created_at).toLocaleDateString('es-ES', {
+                    day: 'numeric', month: 'long', year: 'numeric'
+                });
+            } catch(e) {}
+        }
+        document.getElementById('meta-created').textContent = formattedDate;
+
+        document.getElementById('viewer-download-ply').href = `/modelado_3d/model/${proj.id}/model.ply`;
+        document.getElementById('viewer-download-spz').href = `/modelado_3d/model/${proj.id}/model.spz`;
+        document.getElementById('viewer-meta-details').classList.remove('d-none');
+
+        // Loading visual animation
+        const loader = document.getElementById('viewerLoader');
+        const loaderStatus = document.getElementById('viewerLoaderStatus');
+        const loaderBar = document.getElementById('viewerLoaderProgressBar');
+
+        loader.classList.remove('d-none');
+        loaderStatus.textContent = "Iniciando carga del modelo...";
+        loaderBar.style.width = '0%';
+
+        // Ensure canvas and renderer are running
+        if (!isViewerInitialized) {
+            initSplatViewer();
+        } else {
+            stopViewerLoop();
+            // Restart frame loop
+            const frame = () => {
+                if (!isViewerInitialized) return;
+                splatControls.update();
+                splatRenderer.render(splatScene, splatCamera);
+                splatAnimationId = requestAnimationFrame(frame);
+            };
+            splatAnimationId = requestAnimationFrame(frame);
+        }
+
+        // Load splat (fetch PLY or SPZ dynamically)
+        // PLY loader matches the output model
+        const modelUrl = `/modelado_3d/model/${proj.id}/model.ply`;
+
+        loaderStatus.textContent = "Descargando malla 3DGS...";
+
+        SPLAT.PLYLoader.LoadAsync(modelUrl, splatScene, (progress) => {
+            const percent = Math.round(progress * 100);
+            loaderBar.style.width = percent + '%';
+            loaderStatus.textContent = `Descargando: ${percent}%`;
+        })
+        .then(() => {
+            loader.classList.add('d-none');
+            showToast("¡Recorrido 3D cargado exitosamente!");
+        })
+        .catch(err => {
+            console.error("Error al cargar el archivo de modelado: ", err);
+            loaderStatus.textContent = "Error al decodificar la nube de puntos. Intenta descargar el .ply.";
+            loaderBar.style.width = '0%';
+            showToast("No se pudo renderizar el modelo 3D.", "error");
+        });
+    }
+
+    // SUPERSPLAT EDITOR LOGIC
+    window.updateEditorActiveModel = function(projectId) {
+        const detailsContainer = document.getElementById('editor-help-details');
+        const inputUrl = document.getElementById('editor-ply-url-input');
+
+        if (!projectId) {
+            detailsContainer.classList.add('d-none');
+            return;
+        }
+
+        // Host domain resolving
+        const absolutePlyUrl = window.location.origin + `/modelado_3d/model/${projectId}/model.ply`;
+        inputUrl.value = absolutePlyUrl;
+        detailsContainer.classList.remove('d-none');
+    }
+
+    window.copyPlyUrl = function() {
+        const input = document.getElementById('editor-ply-url-input');
+        input.select();
+        input.setSelectionRange(0, 99999); // Mobile compatibility
+        
+        navigator.clipboard.writeText(input.value)
+            .then(() => {
+                showToast("¡Enlace PLY copiado al portapapeles!");
+            })
+            .catch(() => {
+                showToast("No se pudo copiar el enlace automáticamente", "error");
+            });
+    }
+
+    // Cleanup animations on page exits
+    window.addEventListener('beforeunload', () => {
+        stopViewerLoop();
+        if (pollingInterval) clearInterval(pollingInterval);
+    });
+
+</script>
+{% endblock %}

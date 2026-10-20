@@ -1,0 +1,80 @@
+# Databases y almacenamiento SQLite / Configs locales
+*.db
+*.sqlite
+*.sqlite3
+database/*.db
+database/usuarios/
+db_config.json
+
+# Sesiones de WhatsApp (WWebJS, Baileys, etc.)
+**/.wwebjs_auth/
+.wwebjs_auth/
+**/.wwebjs_cache/
+.wwebjs_cache/
+whatsapp_session/
+.whatsapp_bot_session*
+*.session*
+
+# Sesiones de Instagram
+.instagram_session*
+*.session
+
+# Archivos de entorno y credenciales sensibles
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.pfx
+service_account*.json
+credentials*.json
+plugins/meta_ai/chatbot/configs/
+plugins/meta_ai/chatbot/bot_state.json
+
+
+# Binarios pesados y dependencias
+node_modules/
+**/node_modules/
+.chrome/
+**/.chrome/
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos de datos, Excel, CSV y exports locales
+*.xlsx
+*.xls
+*.csv
+Base_Test_Export.xlsx
+base_temp.xlsx
+
+# Archivos temporales, logs y scratch
+*.log
+**/logs/
+scratch/
+scratch_*
+debug_html/
+audit_*.json
+static/reports/*.json
+test_transcripts_*.txt
+*.exe
+*.tgz
+
+
+# Uploads y archivos subidos por usuarios/agentes
+static/uploads/*
+!static/uploads/.gitkeep
+static/uploads/historias/*
+!static/uploads/historias/.gitkeep
+
+# IDEs y asistentes
+.gemini/
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace

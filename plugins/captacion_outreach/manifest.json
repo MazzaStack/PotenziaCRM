@@ -1,0 +1,8 @@
+{
+  "id": "captacion_outreach",
+  "name": "Módulo de Captación y Mensajería",
+  "version": "1.0.0",
+  "description": "Handles properties view, advanced search portals, weekly drips, automated email templates and multi-profile WhatsApp outreach.",
+  "author": "German Mazzaferro",
+  "enabled": true
+}

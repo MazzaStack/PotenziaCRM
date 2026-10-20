@@ -1,0 +1,931 @@
+{% extends "base.html" %}
+{% block title %}Libro de Finanzas & ERP de Sucursal{% endblock %}
+{% block header %}Libro de Finanzas{% endblock %}
+
+{% block extra_head %}
+<style>
+    :root {
+        --color-credit: 142, 70%, 45%;   /* Emerald Green */
+        --color-debit: 354, 70%, 54%;    /* Crimson Red */
+        --color-primary: 256, 75%, 55%;  /* Premium Purple */
+    }
+
+    .card-stat {
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        border-radius: 12px;
+        border: none;
+    }
+
+    .card-stat:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.06) !important;
+    }
+
+    .badge-credit {
+        background-color: hsl(var(--color-credit), 15%);
+        color: hsl(var(--color-credit));
+        border: 1px solid hsl(var(--color-credit), 30%);
+    }
+
+    .badge-debit {
+        background-color: hsl(var(--color-debit), 15%);
+        color: hsl(var(--color-debit));
+        border: 1px solid hsl(var(--color-debit), 30%);
+    }
+
+    .text-credit { color: hsl(var(--color-credit)) !important; }
+    .text-debit { color: hsl(var(--color-debit)) !important; }
+
+    .nav-tabs-custom .nav-link {
+        border: none;
+        color: #6c757d;
+        font-weight: 600;
+        padding: 0.8rem 1.4rem;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .nav-tabs-custom .nav-link.active {
+        color: #59359a;
+        background: transparent;
+        border-bottom: 3px solid #59359a;
+    }
+
+    .btn-premium {
+        background: linear-gradient(135deg, hsl(var(--color-primary)), #7f39fb);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block actions %}
+<div class="d-flex align-items-center gap-2 flex-wrap">
+    {% if current_user.usuario == 'GermanMazza' and oficinas %}
+    <div class="d-flex align-items-center gap-2">
+        <label class="fw-bold mb-0 text-muted small"><i class="bi bi-building me-1"></i> Sucursal:</label>
+        <select class="form-select form-select-sm border-0 shadow-sm rounded-pill px-3" style="min-width: 200px;" onchange="window.location.href='?oficina_id=' + this.value + '&tab={{ active_tab }}'">
+            {% for ofi in oficinas %}
+            <option value="{{ ofi.id }}" {% if target_oficina_id == ofi.id %}selected{% endif %}>{{ ofi.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+    <button class="btn btn-sm btn-outline-primary shadow-sm" onclick="window.print()">
+        <i class="bi bi-printer me-1"></i> Imprimir Reporte
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Navegación por Pestañas Principales (ERP) -->
+<ul class="nav nav-tabs nav-tabs-custom mb-4 bg-white rounded-3 shadow-sm px-3 pt-2" id="financeTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if active_tab == 'pnl' %}active{% endif %}" id="pnl-tab" data-bs-toggle="tab" data-bs-target="#pnl" type="button" role="tab">
+            <i class="bi bi-graph-up-arrow me-1 text-primary"></i> 1. Estado de Resultados (P&L)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if active_tab == 'agentes' %}active{% endif %}" id="agentes-tab" data-bs-toggle="tab" data-bs-target="#agentes" type="button" role="tab">
+            <i class="bi bi-people me-1 text-info"></i> 2. Cuentas Corrientes Agentes
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if active_tab == 'tesoreria' %}active{% endif %}" id="tesoreria-tab" data-bs-toggle="tab" data-bs-target="#tesoreria" type="button" role="tab">
+            <i class="bi bi-bank me-1 text-success"></i> 3. Cajas y Tesorería
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if active_tab == 'opex' %}active{% endif %}" id="opex-tab" data-bs-toggle="tab" data-bs-target="#opex" type="button" role="tab">
+            <i class="bi bi-receipt me-1 text-danger"></i> 4. Gastos OPEX & Proveedores
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="financeTabsContent">
+    <!-- ==================================================== -->
+    <!-- ==================================================== -->
+    <!-- TAB 1: ESTADO DE RESULTADOS (P&L) Y METRICAS SUCURSAL -->
+    <!-- ==================================================== -->
+    <div class="tab-pane fade {% if active_tab == 'pnl' %}show active{% endif %}" id="pnl" role="tabpanel">
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card card-stat bg-white shadow-sm p-4 h-100 border-start border-4 border-primary">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Ventas Brutas Sucursal</span>
+                    <h3 class="fw-bold text-dark mb-1">USD {{ "{:,.2f}".format(balance_oficina.resumen.ventas_totales_brutas) }}</h3>
+                    <span class="small text-muted">Comisiones brutas de ventas cerradas</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-stat bg-white shadow-sm p-4 h-100 border-start border-4 border-info">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Margen Oficina + Desk Fees</span>
+                    <div class="fw-bold text-primary fs-4 mb-0">USD {{ "{:,.2f}".format(balance_oficina.resumen.ingresos_totales_oficina_usd) }}</div>
+                    {% if balance_oficina.resumen.ingresos_totales_oficina_ars > 0 %}
+                    <div class="fw-bold text-info fs-6 mb-1">+ ARS {{ "{:,.2f}".format(balance_oficina.resumen.ingresos_totales_oficina_ars) }}</div>
+                    {% endif %}
+                    <span class="small text-muted d-block border-top mt-2 pt-1">Retención ventas: USD {{ "{:,.2f}".format(balance_oficina.resumen.margen_oficina_bruto) }}</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-stat bg-white shadow-sm p-4 h-100 border-start border-4 border-danger">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Gastos Operativos (OPEX Pagados)</span>
+                    <div class="fw-bold text-danger fs-5 mb-0">USD {{ "{:,.2f}".format(balance_oficina.resumen.opex_pagado_usd) }}</div>
+                    <div class="fw-bold text-danger fs-5 mb-1">ARS {{ "{:,.2f}".format(balance_oficina.resumen.opex_pagado_ars) }}</div>
+                    <span class="small text-muted d-block border-top mt-1 pt-1">Pendiente: USD {{ "{:,.2f}".format(balance_oficina.resumen.opex_pendiente_usd) }} | ARS {{ "{:,.2f}".format(balance_oficina.resumen.opex_pendiente_ars) }}</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-stat bg-white shadow-sm p-4 h-100 border-start border-4 border-success">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Resultado Neto Operativo (P&L)</span>
+                    <div class="fw-bold {{ 'text-success' if balance_oficina.resumen.resultado_neto_usd >= 0 else 'text-danger' }} fs-5 mb-0">
+                        {{ '+USD' if balance_oficina.resumen.resultado_neto_usd >= 0 else 'USD' }} {{ "{:,.2f}".format(balance_oficina.resumen.resultado_neto_usd) }}
+                    </div>
+                    <div class="fw-bold {{ 'text-success' if balance_oficina.resumen.resultado_neto_ars >= 0 else 'text-danger' }} fs-5 mb-1">
+                        {{ '+ARS' if balance_oficina.resumen.resultado_neto_ars >= 0 else 'ARS' }} {{ "{:,.2f}".format(balance_oficina.resumen.resultado_neto_ars) }}
+                    </div>
+                    <span class="small text-muted d-block border-top mt-1 pt-1">Superávit operativo por moneda</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Categorías de Gastos & Liquidez Disponible -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-pie-chart-fill text-primary me-2"></i>Estructura de Gastos OPEX por Categoría</h6>
+                    </div>
+                    <div class="card-body">
+                        {% if balance_oficina.categorias_opex %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead>
+                                    <tr class="text-muted small">
+                                        <th>Categoría</th>
+                                        <th>Registros</th>
+                                        <th class="text-end">Monto USD</th>
+                                        <th class="text-end">Monto ARS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cat, data in balance_oficina.categorias_opex.items() %}
+                                    <tr>
+                                        <td><span class="badge bg-secondary text-uppercase">{{ cat }}</span></td>
+                                        <td>{{ data.count }} facturas</td>
+                                        <td class="text-end fw-bold text-dark">USD {{ "{:,.2f}".format(data.monto_usd) }}</td>
+                                        <td class="text-end fw-bold text-muted">ARS {{ "{:,.2f}".format(data.monto_ars) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center py-4 mb-0">No hay gastos operativos registrados aún en esta sucursal.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-cash-stack text-success me-2"></i>Arqueo de Liquidez en Cajas y Bancos</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <div class="p-3 bg-light rounded-3 text-center border">
+                                    <span class="text-muted small d-block mb-1">Liquidez Total USD</span>
+                                    <h4 class="fw-bold text-success mb-0">USD {{ "{:,.2f}".format(balance_oficina.resumen.liquidez_usd) }}</h4>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 bg-light rounded-3 text-center border">
+                                    <span class="text-muted small d-block mb-1">Liquidez Total ARS</span>
+                                    <h4 class="fw-bold text-primary mb-0">ARS {{ "{:,.2f}".format(balance_oficina.resumen.liquidez_ars) }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <ul class="list-group list-group-flush">
+                            {% for c in balance_oficina.cajas %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div>
+                                    <i class="bi {% if c.tipo == 'cuenta_bancaria' %}bi-bank text-primary{% else %}bi-safe text-warning{% endif %} me-2"></i>
+                                    <strong>{{ c.nombre }}</strong>
+                                    <span class="badge bg-light text-dark border ms-1">{{ c.tipo | replace('_', ' ') | title }}</span>
+                                </div>
+                                <span class="fw-bold {{ 'text-success' if c.saldo_actual >= 0 else 'text-danger' }}">
+                                    {{ c.moneda }} {{ "{:,.2f}".format(c.saldo_actual) }}
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- TAB 2: CUENTAS CORRIENTES DE AGENTES -->
+    <!-- ==================================================== -->
+    <div class="tab-pane fade {% if active_tab == 'agentes' %}show active{% endif %}" id="agentes" role="tabpanel">
+        {% if usuarios %}
+        <div class="card shadow-sm border-0 p-3 mb-4 bg-light">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <label class="fw-bold text-muted mb-0"><i class="bi bi-person-badge me-1"></i> Seleccionar Agente:</label>
+                <select class="form-select border-0 shadow-sm px-3 rounded-pill" style="max-width: 300px;" onchange="window.location.href='?agente_id=' + this.value + '&tab=agentes&oficina_id={{ target_oficina_id }}'">
+                    {% for u in usuarios %}
+                    <option value="{{ u.id }}" {% if target_agente_id == u.id %}selected{% endif %}>{{ u.nombre_display or u.usuario }} ({{ u.rol | upper }})</option>
+                    {% endfor %}
+                </select>
+                {% if balance_agente %}
+                <div class="ms-auto d-flex gap-2">
+                    <span class="badge bg-primary px-3 py-2 rounded-pill">
+                        Saldo USD: {{ '+' if balance_agente.resumen.saldo_neto_usd >= 0 else '' }}{{ "{:,.2f}".format(balance_agente.resumen.saldo_neto_usd) }}
+                    </span>
+                    {% if balance_agente.resumen.saldo_neto_ars != 0 %}
+                    <span class="badge bg-secondary px-3 py-2 rounded-pill">
+                        Saldo ARS: {{ '+' if balance_agente.resumen.saldo_neto_ars >= 0 else '' }}{{ "{:,.2f}".format(balance_agente.resumen.saldo_neto_ars) }}
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if balance_agente %}
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card card-stat bg-white shadow-sm p-4 h-100">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Comisiones Netas Ganadas</span>
+                    <h3 class="fw-bold text-credit mb-1">USD {{ "{:,.2f}".format(balance_agente.resumen.comisiones_totales_netas) }}</h3>
+                    <div class="small text-muted mt-2 border-top pt-2">
+                        <span class="text-success"><i class="bi bi-check-circle me-1"></i>USD {{ "{:,.2f}".format(balance_agente.resumen.comisiones_rendidas) }}</span> rendidas.<br>
+                        <span class="text-warning"><i class="bi bi-clock me-1"></i>USD {{ "{:,.2f}".format(balance_agente.resumen.comisiones_pendientes) }}</span> pendientes.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-stat bg-white shadow-sm p-4 h-100">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Deudas / Gastos de Oficina</span>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold text-debit fs-5">USD {{ "{:,.2f}".format(balance_agente.resumen.deudas_totales_usd) }}</span>
+                        <span class="fw-bold text-debit fs-5">ARS {{ "{:,.2f}".format(balance_agente.resumen.deudas_totales_ars) }}</span>
+                    </div>
+                    <div class="small text-muted mt-2 border-top pt-2">
+                        <div><strong>USD:</strong> <span class="text-success">{{ "{:,.2f}".format(balance_agente.resumen.deudas_canceladas_usd) }}</span> pagado | <span class="text-danger">{{ "{:,.2f}".format(balance_agente.resumen.deudas_pendientes_usd) }}</span> falta</div>
+                        <div><strong>ARS:</strong> <span class="text-success">{{ "{:,.2f}".format(balance_agente.resumen.deudas_canceladas_ars) }}</span> pagado | <span class="text-danger">{{ "{:,.2f}".format(balance_agente.resumen.deudas_pendientes_ars) }}</span> falta</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-stat bg-white shadow-sm p-4 h-100">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Saldo Corriente Final</span>
+                    <div class="mb-1">
+                        <span class="small text-muted d-block">Saldo USD:</span>
+                        <h4 class="fw-bold {{ 'text-success' if balance_agente.resumen.saldo_neto_usd >= 0 else 'text-danger' }} mb-0">
+                            USD {{ '+' if balance_agente.resumen.saldo_neto_usd >= 0 else '' }}{{ "{:,.2f}".format(balance_agente.resumen.saldo_neto_usd) }}
+                        </h4>
+                    </div>
+                    <div>
+                        <span class="small text-muted d-block">Saldo ARS:</span>
+                        <h4 class="fw-bold {{ 'text-success' if balance_agente.resumen.saldo_neto_ars >= 0 else 'text-danger' }} mb-0">
+                            ARS {{ '+' if balance_agente.resumen.saldo_neto_ars >= 0 else '' }}{{ "{:,.2f}".format(balance_agente.resumen.saldo_neto_ars) }}
+                        </h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-receipt text-primary me-2"></i>Comisiones de Ventas (Créditos)</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light small">
+                                    <tr>
+                                        <th>Domicilio</th>
+                                        <th>Comisión Neta</th>
+                                        <th>Rendido</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for op in balance_agente.operaciones %}
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold">{{ op.domicilio }}</div>
+                                            <span class="badge bg-light text-muted border small">{{ op.mes or '-' }}</span>
+                                        </td>
+                                        <td class="fw-bold text-success">USD {{ "{:,.2f}".format(op.neto|float) }}</td>
+                                        <td>
+                                            <button class="btn btn-sm {% if op.comision_rendida == 1 %}btn-success{% else %}btn-outline-warning text-dark{% endif %}" onclick="toggleControl({{ op.id }}, 'comision_rendida', this)">
+                                                {% if op.comision_rendida == 1 %}Rendido{% else %}Pendiente{% endif %}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="3" class="text-center py-4 text-muted">Sin operaciones registradas.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-card-checklist text-danger me-2"></i>Deudas y Gastos Fijos (Débitos)</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light small">
+                                    <tr>
+                                        <th>Concepto</th>
+                                        <th>Monto</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for d in balance_agente.deudas %}
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold">{{ d.descripcion }}</div>
+                                            <span class="small text-muted">{{ d.fecha_vencimiento or '-' }}</span>
+                                        </td>
+                                        <td class="fw-bold text-danger">{{ d.moneda }} {{ "{:,.2f}".format(d.monto|float) }}</td>
+                                        <td>
+                                            <button class="btn btn-sm {% if d.estado == 'cancelada' %}btn-success{% else %}btn-outline-danger{% endif %}" onclick="toggleDeuda(this, {{ d.id }})">
+                                                {% if d.estado == 'cancelada' %}Cancelada{% else %}Falta Pagar{% endif %}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="3" class="text-center py-4 text-muted">Sin deudas registradas.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- TAB 3: CAJAS Y TESORERÍA (GESTIÓN DE CUENTAS) -->
+    <!-- ==================================================== -->
+    <div class="tab-pane fade {% if active_tab == 'tesoreria' %}show active{% endif %}" id="tesoreria" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <h5 class="fw-bold mb-0"><i class="bi bi-safe2 text-success me-2"></i>Cuentas Bancarias y Cajas de Seguridad</h5>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modalMovimiento">
+                    <i class="bi bi-arrow-left-right me-1"></i> Registrar Movimiento / Ajuste
+                </button>
+                <button class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaCaja">
+                    <i class="bi bi-plus-circle me-1"></i> Nueva Cuenta / Caja
+                </button>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            {% for c in cajas %}
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 p-4 h-100 bg-white border-top border-4 border-primary">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark">{{ c.nombre }}</h5>
+                            <span class="badge bg-light text-muted border small">{{ c.tipo | replace('_', ' ') | title }}</span>
+                        </div>
+                        <span class="badge bg-primary px-2 py-1">{{ c.moneda }}</span>
+                    </div>
+                    <div class="my-3">
+                        <span class="text-muted small d-block">Saldo en Tesorería:</span>
+                        <h2 class="fw-extrabold {{ 'text-success' if c.saldo_actual >= 0 else 'text-danger' }} mb-0">
+                            {{ c.moneda }} {{ "{:,.2f}".format(c.saldo_actual) }}
+                        </h2>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted border-top pt-2 mt-auto">
+                        <span>Saldo Inicial: {{ "{:,.2f}".format(c.saldo_inicial) }}</span>
+                        <form action="{{ url_for('finanzas_plugin.borrar_caja', cid=c.id) }}" method="POST" onsubmit="return confirm('¿Desactivar esta caja?');">
+                            <button type="submit" class="btn btn-link text-danger p-0 small text-decoration-none">Desactivar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12">
+                <div class="card p-5 text-center text-muted shadow-sm border-0">
+                    <i class="bi bi-wallet2 display-4 mb-2"></i>
+                    <p>No hay cajas ni cuentas bancarias creadas para esta oficina.</p>
+                    <button class="btn btn-primary btn-sm mx-auto" data-bs-toggle="modal" data-bs-target="#modalNuevaCaja">Crear Primera Caja</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Historial de Movimientos de Caja -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-clock-history text-primary me-2"></i>Libro Diario de Movimientos de Tesorería</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light small">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Caja / Cuenta</th>
+                                <th>Tipo</th>
+                                <th>Monto Operado</th>
+                                <th>Impacto en Caja</th>
+                                <th>Descripción</th>
+                                <th>Usuario</th>
+                                <th class="text-end">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in movimientos_caja %}
+                            <tr>
+                                <td class="small text-muted">{{ m.fecha_movimiento }}</td>
+                                <td>
+                                    <div class="fw-bold">{{ m.caja_nombre }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge {% if m.tipo_movimiento == 'ingreso' %}bg-success{% else %}bg-danger{% endif %} text-uppercase small">
+                                        {{ m.tipo_movimiento }}
+                                    </span>
+                                </td>
+                                <td class="fw-bold">
+                                    {{ m.moneda }} {{ "{:,.2f}".format(m.monto|float) }}
+                                </td>
+                                <td>
+                                    {% if m.tipo_cambio and m.tipo_cambio > 1.0 %}
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="bi bi-currency-exchange me-1 text-primary"></i>TC: {{ "{:,.2f}".format(m.tipo_cambio|float) }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted small">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ m.descripcion or '-' }}</td>
+                                <td class="small text-muted">{{ m.modificado_por or 'sistema' }}</td>
+                                <td class="text-end">
+                                    <form action="{{ url_for('finanzas_plugin.borrar_movimiento', mid=m.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar este movimiento de tesorería?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1" title="Eliminar Movimiento">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="8" class="text-center py-4 text-muted">Sin movimientos registrados.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- TAB 4: GASTOS OPERATIVOS (OPEX) Y PROVEEDORES -->
+    <!-- ==================================================== -->
+    <div class="tab-pane fade {% if active_tab == 'opex' %}show active{% endif %}" id="opex" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <h5 class="fw-bold mb-0"><i class="bi bi-receipt text-danger me-2"></i>Facturas y Cuentas por Pagar (OPEX)</h5>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoProveedor">
+                    <i class="bi bi-building-add me-1"></i> Alta Proveedor
+                </button>
+                <button class="btn btn-sm btn-danger shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoGasto">
+                    <i class="bi bi-plus-circle me-1"></i> Cargar Gasto / Factura
+                </button>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0 border-start border-4 border-warning bg-white">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Pendiente de Pago (USD)</span>
+                    <h4 class="fw-bold text-warning text-dark mb-0">USD {{ "{:,.2f}".format(balance_oficina.resumen.opex_pendiente_usd) }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0 border-start border-4 border-warning bg-white">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Pendiente de Pago (ARS)</span>
+                    <h4 class="fw-bold text-warning text-dark mb-0">ARS {{ "{:,.2f}".format(balance_oficina.resumen.opex_pendiente_ars) }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0 border-start border-4 border-success bg-white">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Total Pagado (USD)</span>
+                    <h4 class="fw-bold text-success mb-0">USD {{ "{:,.2f}".format(balance_oficina.resumen.opex_pagado_usd) }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0 border-start border-4 border-success bg-white">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Total Pagado (ARS)</span>
+                    <h4 class="fw-bold text-success mb-0">ARS {{ "{:,.2f}".format(balance_oficina.resumen.opex_pagado_ars) }}</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light small">
+                            <tr>
+                                <th>Proveedor / Descripción</th>
+                                <th>Categoría</th>
+                                <th>Vencimiento</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for g in gastos_opex %}
+                            <tr class="{{ 'opacity-75' if g.estado == 'pagado' }}">
+                                <td>
+                                    <div class="fw-bold">{{ g.descripcion }}</div>
+                                    <span class="small text-muted"><i class="bi bi-building me-1"></i>{{ g.proveedor_nombre }}</span>
+                                </td>
+                                <td><span class="badge bg-secondary text-uppercase">{{ g.categoria }}</span></td>
+                                <td class="small">{{ g.fecha_vencimiento or '-' }}</td>
+                                <td class="fw-bold text-{{ 'success' if g.estado == 'pagado' else 'danger' }}">
+                                    {{ g.moneda }} {{ "{:,.2f}".format(g.monto|float) }}
+                                </td>
+                                <td>
+                                    <span class="badge {% if g.estado == 'pagado' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                        {{ g.estado | upper }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    {% if g.estado == 'pendiente' and cajas %}
+                                    <button class="btn btn-sm btn-success shadow-sm me-1" onclick="abrirModalPagar({{ g.id }}, '{{ g.descripcion }}', '{{ g.moneda }}', {{ g.monto }})">
+                                        <i class="bi bi-check2-circle me-1"></i> Pagar
+                                    </button>
+                                    {% endif %}
+                                    <form action="{{ url_for('finanzas_plugin.borrar_gasto', gid=g.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar este gasto?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="6" class="text-center py-5 text-muted">No hay gastos operativos registrados.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================================================== -->
+<!-- MODALES DE GESTIÓN FINANCIERA -->
+<!-- ==================================================== -->
+
+<!-- Modal: Cargar Gasto OPEX -->
+<div class="modal fade" id="modalNuevoGasto" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" action="{{ url_for('finanzas_plugin.guardar_gasto_opex') }}" method="POST">
+            <input type="hidden" name="oficina_id" value="{{ target_oficina_id }}">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-receipt text-danger me-2"></i>Cargar Gasto Operativo (OPEX)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Descripción del Gasto / Factura *</label>
+                    <input type="text" class="form-control" name="descripcion" required placeholder="Ej: Factura Zonaprop Mayo, Alquiler Sede Central">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Proveedor</label>
+                        <select class="form-select" name="proveedor_id">
+                            <option value="">-- Proveedor Directo / Varios --</option>
+                            {% for p in proveedores %}
+                            <option value="{{ p.id }}">{{ p.nombre }} ({{ p.rubro }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Categoría *</label>
+                        <select class="form-select" name="categoria" required>
+                            <option value="portales">Portales Inmobiliarios</option>
+                            <option value="marketing">Marketing & Publicidad</option>
+                            <option value="infraestructura">Alquiler & Infraestructura</option>
+                            <option value="servicios">Servicios Básicos & Software</option>
+                            <option value="impuestos">Impuestos & Tasas</option>
+                            <option value="otros">Otros Gastos</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Monto *</label>
+                        <input type="number" step="0.01" class="form-control" name="monto" required placeholder="0.00">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Moneda *</label>
+                        <select class="form-select" name="moneda">
+                            <option value="ARS">ARS ($)</option>
+                            <option value="USD">USD ($)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Fecha Emisión</label>
+                        <input type="date" class="form-control" name="fecha_emision" value="{{ now.strftime('%Y-%m-%d') }}">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Fecha Vencimiento</label>
+                        <input type="date" class="form-control" name="fecha_vencimiento" value="{{ now.strftime('%Y-%m-%d') }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Notas Adicionales</label>
+                    <textarea class="form-control" name="notas" rows="2" placeholder="Detalles de facturación, número de comprobante..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Guardar Gasto</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Pagar Factura con Caja -->
+<div class="modal fade" id="modalPagarGasto" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="formPagarGasto" method="POST">
+            <input type="hidden" name="oficina_id" value="{{ target_oficina_id }}">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-cash-coin text-success me-2"></i>Pagar Gasto desde Caja</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" id="txtDetalleGasto"></p>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Seleccionar Caja / Cuenta Bancaria de Origen *</label>
+                    <select class="form-select" name="caja_id" required>
+                        {% for c in cajas %}
+                        <option value="{{ c.id }}">{{ c.nombre }} (Saldo: {{ c.moneda }} {{ "{:,.2f}".format(c.saldo_actual) }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-success">Confirmar Pago</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Nuevo Proveedor -->
+<div class="modal fade" id="modalNuevoProveedor" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" action="{{ url_for('finanzas_plugin.guardar_proveedor') }}" method="POST">
+            <input type="hidden" name="oficina_id" value="{{ target_oficina_id }}">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-building-add text-secondary me-2"></i>Registrar Proveedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Nombre de la Empresa / Proveedor *</label>
+                    <input type="text" class="form-control" name="nombre" required placeholder="Ej: Navent S.A., Meta Platforms">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">CUIT / RUT / Tax ID</label>
+                        <input type="text" class="form-control" name="cuit_rut" placeholder="30-XXXXXXXX-X">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Rubro</label>
+                        <input type="text" class="form-control" name="rubro" placeholder="Portales, Marketing, Alquiler">
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Teléfono</label>
+                        <input type="text" class="form-control" name="telefono" placeholder="+54 9 ...">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Email</label>
+                        <input type="email" class="form-control" name="email" placeholder="facturacion@proveedor.com">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-secondary">Guardar Proveedor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Nueva Caja / Cuenta -->
+<div class="modal fade" id="modalNuevaCaja" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" action="{{ url_for('finanzas_plugin.guardar_caja') }}" method="POST">
+            <input type="hidden" name="oficina_id" value="{{ target_oficina_id }}">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-bank text-primary me-2"></i>Nueva Cuenta Bancaria o Caja</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Nombre de la Cuenta *</label>
+                    <input type="text" class="form-control" name="nombre" required placeholder="Ej: Banco Galicia ARS, Caja Fuerte USD">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Tipo de Cuenta *</label>
+                        <select class="form-select" name="tipo">
+                            <option value="caja_efectivo">Caja de Seguridad / Efectivo</option>
+                            <option value="cuenta_bancaria">Cuenta Bancaria</option>
+                            <option value="billetera_virtual">Billetera Virtual / MercadoPago</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Moneda *</label>
+                        <select class="form-select" name="moneda">
+                            <option value="USD">USD ($)</option>
+                            <option value="ARS">ARS ($)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Saldo Inicial</label>
+                    <input type="number" step="0.01" class="form-control" name="saldo_inicial" value="0.00">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear Cuenta</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Registrar Movimiento / Ajuste de Caja -->
+<div class="modal fade" id="modalMovimiento" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" action="{{ url_for('finanzas_plugin.registrar_movimiento') }}" method="POST">
+            <input type="hidden" name="oficina_id" value="{{ target_oficina_id }}">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-arrow-left-right text-success me-2"></i>Registrar Movimiento en Tesorería</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Caja / Cuenta Destino *</label>
+                    <select class="form-select" name="caja_id" id="mov_caja_id" required onchange="actualizarConversionMovimiento()">
+                        {% for c in cajas %}
+                        <option value="{{ c.id }}" data-moneda="{{ c.moneda }}">{{ c.nombre }} (Moneda nativa: {{ c.moneda }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Tipo de Movimiento *</label>
+                        <select class="form-select" name="tipo_movimiento">
+                            <option value="ingreso">Ingreso (+)</option>
+                            <option value="egreso">Egreso (-)</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Moneda del Movimiento *</label>
+                        <select class="form-select" name="moneda" id="mov_moneda" onchange="actualizarConversionMovimiento()">
+                            <option value="USD">USD</option>
+                            <option value="ARS">ARS</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Monto *</label>
+                        <input type="number" step="0.01" class="form-control" name="monto" id="mov_monto" required placeholder="0.00" oninput="actualizarConversionMovimiento()">
+                    </div>
+                    <div class="col-6" id="div_tc_container">
+                        <label class="form-label fw-bold small text-primary"><i class="bi bi-currency-exchange me-1"></i>Tipo de Cambio (ARS/USD)</label>
+                        <input type="number" step="0.01" class="form-control border-primary" name="tipo_cambio" id="mov_tipo_cambio" value="1530.00" oninput="actualizarConversionMovimiento()">
+                    </div>
+                </div>
+                <div class="alert alert-info py-2 px-3 small d-none" id="div_preview_conversion">
+                    <i class="bi bi-info-circle me-1"></i> <span id="txt_preview_conversion"></span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Descripción / Motivo *</label>
+                    <input type="text" class="form-control" name="descripcion" required placeholder="Ej: Aporte inicial de capital, Depósito en efectivo, Cobro...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-success">Registrar Movimiento</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function actualizarConversionMovimiento() {
+    const selectCaja = document.getElementById('mov_caja_id');
+    if (!selectCaja) return;
+    const selectedOption = selectCaja.options[selectCaja.selectedIndex];
+    const cajaMoneda = selectedOption ? selectedOption.getAttribute('data-moneda') : 'USD';
+    const movMoneda = document.getElementById('mov_moneda').value;
+    const monto = parseFloat(document.getElementById('mov_monto').value) || 0;
+    const tc = parseFloat(document.getElementById('mov_tipo_cambio').value) || 1530;
+    const previewDiv = document.getElementById('div_preview_conversion');
+    const previewTxt = document.getElementById('txt_preview_conversion');
+    const tcContainer = document.getElementById('div_tc_container');
+
+    if (cajaMoneda !== movMoneda) {
+        tcContainer.classList.remove('d-none');
+        previewDiv.classList.remove('d-none');
+        if (cajaMoneda === 'ARS' && movMoneda === 'USD') {
+            const res = monto * tc;
+            previewTxt.innerHTML = `Conversión a moneda de caja: <strong>USD ${monto.toLocaleString()} × ${tc.toLocaleString()} = ARS $${res.toLocaleString()}</strong> a impactar en la cuenta.`;
+        } else if (cajaMoneda === 'USD' && movMoneda === 'ARS') {
+            const res = tc > 0 ? (monto / tc) : 0;
+            previewTxt.innerHTML = `Conversión a moneda de caja: <strong>ARS $${monto.toLocaleString()} ÷ ${tc.toLocaleString()} = USD ${res.toFixed(2)}</strong> a impactar en la cuenta.`;
+        }
+    } else {
+        tcContainer.classList.add('d-none');
+        previewDiv.classList.add('d-none');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modalMov = document.getElementById('modalMovimiento');
+    if (modalMov) {
+        modalMov.addEventListener('show.bs.modal', function() {
+            const selectCaja = document.getElementById('mov_caja_id');
+            if (selectCaja && selectCaja.options.length > 0) {
+                const cajaMoneda = selectCaja.options[selectCaja.selectedIndex].getAttribute('data-moneda');
+                document.getElementById('mov_moneda').value = cajaMoneda || 'USD';
+            }
+            actualizarConversionMovimiento();
+        });
+    }
+});
+
+function abrirModalPagar(gid, desc, moneda, monto) {
+    document.getElementById('formPagarGasto').action = '/finanzas/gasto/pagar/' + gid;
+    document.getElementById('txtDetalleGasto').innerHTML = 'Confirmar débito para: <strong>' + desc + '</strong> por <strong>' + moneda + ' ' + Number(monto).toLocaleString() + '</strong>.';
+    new bootstrap.Modal(document.getElementById('modalPagarGasto')).show();
+}
+
+function toggleDeuda(btn, did) {
+    fetch('/finanzas/toggle_estado/' + did, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('No se pudo modificar el estado de la deuda.');
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+function toggleControl(oid, campo, btn) {
+    fetch('/finanzas/operacion/toggle_control/' + oid + '/' + campo, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('No se pudo modificar el control de la operación.');
+        }
+    })
+    .catch(err => console.error(err));
+}
+</script>
+{% endblock %}

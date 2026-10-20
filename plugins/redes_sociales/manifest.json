@@ -1,0 +1,8 @@
+{
+  "id": "redes_sociales",
+  "name": "Publicador de Redes Sociales (IG/WA)",
+  "version": "1.0.0",
+  "description": "Publicador y calendarizador de historias para Instagram y WhatsApp.",
+  "author": "German Mazzaferro",
+  "enabled": true
+}

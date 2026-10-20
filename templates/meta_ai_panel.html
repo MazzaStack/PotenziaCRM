@@ -1,0 +1,1417 @@
+{% extends 'base.html' %}
+
+{% block title %}Mi ClaudIA - Chatbot Personal{% endblock %}
+{% block header %}ClaudIA: Tu Asistente Virtual Personal{% endblock %}
+
+{% block extra_head %}
+<style>
+    .qr-container {
+        border: 2px dashed rgba(0, 0, 0, 0.15);
+        border-radius: 1rem;
+        background-color: #fff;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 250px;
+        transition: all 0.3s;
+    }
+    .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    .status-connected { background-color: #2ec4b6; box-shadow: 0 0 8px #2ec4b6; }
+    .status-connecting { background-color: #ff9f1c; box-shadow: 0 0 8px #ff9f1c; }
+    .status-qr { background-color: #3a86c8; box-shadow: 0 0 8px #3a86c8; }
+    .status-disconnected { background-color: #e71d36; box-shadow: 0 0 8px #e71d36; }
+    
+    /* Wizard styles */
+    .wizard-step {
+        display: none;
+    }
+    .wizard-step.active {
+        display: block;
+    }
+    .wizard-nav-btn {
+        min-width: 120px;
+    }
+    .step-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+    .step-indicator::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #e9ecef;
+        z-index: 1;
+        transform: translateY(-50%);
+    }
+    .step-dot {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #e9ecef;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        z-index: 2;
+        position: relative;
+        border: 3px solid #fff;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .step-dot.active {
+        background-color: #ffc107;
+        color: #212529;
+        box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.25);
+    }
+    .step-dot.completed {
+        background-color: #198754;
+        color: #fff;
+    }
+
+    /* Simulator chat box */
+    .chat-box {
+        height: 380px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        background-color: #f8f9fa;
+        padding: 1rem;
+    }
+    .chat-bubble {
+        max-width: 80%;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        margin-bottom: 0.75rem;
+        position: relative;
+        font-size: 0.9rem;
+    }
+    .chat-bubble.bot {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        margin-right: auto;
+        border-top-left-radius: 0;
+    }
+    .chat-bubble.user {
+        background-color: #ffc107;
+        color: #212529;
+        margin-left: auto;
+        border-top-right-radius: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if is_solo_agent %}
+<div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="z-index: 1050; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px);">
+    <div class="card shadow-lg border-0 text-center p-5 mx-3" style="max-width: 550px; border-radius: 24px; background: #ffffff;">
+        <div class="mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10 text-warning" style="width: 80px; height: 80px;">
+                <i class="bi bi-shield-lock-fill fs-1"></i>
+            </div>
+        </div>
+        <h3 class="fw-bold text-dark mb-2">Mi ClaudIA Restringido</h3>
+        <p class="text-muted mb-4 lead fs-6">
+            El asistente virtual con IA <strong>Mi ClaudIA</strong> y la integración de WhatsApp están habilitados exclusivamente para asesores pertenecientes a una <strong>Oficina</strong> registrada.<br><br>
+            Tu usuario opera como <strong>Agente Suelto</strong> (sin oficina asignada).
+        </p>
+        <div class="d-flex gap-2 justify-content-center">
+            <a href="{{ url_for('index') }}" class="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
+                <i class="bi bi-house-door me-2"></i>Volver al Inicio
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="container-fluid py-4" {% if is_solo_agent %}style="filter: grayscale(100%) blur(2px) opacity(0.35); pointer-events: none; user-select: none;"{% endif %}>
+    <!-- Encabezado y Progreso del Asistente -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+            <h4 class="fw-bold text-dark mb-1">Configuración Guiada de ClaudIA</h4>
+            <p class="text-muted mb-4">Seguí los pasos para configurar tu asistente virtual con inteligencia artificial y WhatsApp.</p>
+            
+            <div class="step-indicator">
+                <div class="step-dot active" onclick="goToStep(1)" id="dot-1">1</div>
+                <div class="step-dot" onclick="goToStep(2)" id="dot-2">2</div>
+                <div class="step-dot" onclick="goToStep(3)" id="dot-3">3</div>
+                <div class="step-dot" onclick="goToStep(4)" id="dot-4">4</div>
+                <div class="step-dot" onclick="goToStep(5)" id="dot-5">5</div>
+                <div class="step-dot" onclick="goToStep(6)" id="dot-6">6</div>
+            </div>
+            <div class="d-flex justify-content-between text-muted small px-1">
+                <span>1. Credenciales y API</span>
+                <span>2. Conexión WhatsApp</span>
+                <span>3. Personalidad</span>
+                <span>4. Caminos / Flujos</span>
+                <span>5. Sinónimos y Catálogo</span>
+                <span>6. Probar ClaudIA</span>
+            </div>
+        </div>
+    </div>
+
+    <form action="{{ url_for('meta_ai.panel') }}" method="POST" id="configForm" onsubmit="compileJSONFields()">
+        <!-- Inputs ocultos para guardar JSONs -->
+        <input type="hidden" name="paths_json" id="paths_json">
+        <input type="hidden" name="synonyms_json" id="synonyms_json">
+
+        <!-- ================= PASO 1 ================= -->
+        <div class="wizard-step active" id="step-1">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 pt-4">
+                    <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-key-fill me-2"></i>Paso 1: API de Inteligencia Artificial (Grok)</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center mb-4">
+                        <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
+                        <div>
+                            <strong>¡Importante!</strong> ClaudIA requiere tu propia API Key de Groq para poder procesar mensajes sin cargo para el administrador. 
+                            Podés obtener tu key gratis o con saldo de pruebas creando una cuenta en el panel de desarrolladores.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark mb-1">Groq API Key (GPT-OSS / IA)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill"></i></span>
+                            <input type="password" name="groqApiKey" id="groqApiKey" class="form-control font-monospace border-start-0" value="{% if config.credentials.groqApiKey %}{{ config.credentials.groqApiKey }}{% endif %}" placeholder="gsk_...">
+                        </div>
+                        <div class="form-text mt-2">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>
+                            <a href="https://console.groq.com/" target="_blank" class="fw-bold text-decoration-none text-success">Hacé click aquí para registrarte y obtener tu API Key en la Consola de Groq</a>.
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 mt-4">Meta Integration (Opcional - Lead Ads)</h6>
+                    <div class="alert alert-info py-2 px-3 mb-3 small">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <strong>Callback URL para Meta Webhook:</strong> 
+                        <code class="font-monospace select-all" id="metaCallbackUrl">https://...</code>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Meta User Access Token</label>
+                            <input type="password" name="metaToken" class="form-control font-monospace" value="{% if config.credentials.metaToken %}{{ config.credentials.metaToken }}{% endif %}" placeholder="EAAE...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Meta Verify Token (Webhook)</label>
+                            <input type="password" name="metaVerifyToken" class="form-control font-monospace" value="{% if config.credentials.metaVerifyToken %}{{ config.credentials.metaVerifyToken }}{% endif %}" placeholder="Token de verificación webhook">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Teléfono del Administrador</label>
+                            <input type="text" name="adminPhone" class="form-control" value="{{ config.credentials.adminPhone }}" placeholder="Ej: 54911...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Licencia de ClaudIA Pro</label>
+                            <input type="password" name="licenseKey" class="form-control font-monospace" value="{% if config.credentials.licenseKey %}{{ config.credentials.licenseKey }}{% endif %}" placeholder="Licencia ID">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4 gap-2">
+                        <button type="button" class="btn btn-outline-success fw-bold px-3 py-2" onclick="saveCurrentStep(1)"><i class="bi bi-save me-1"></i>Guardar</button>
+                        <button type="button" class="btn btn-warning fw-bold px-4 py-2" onclick="nextStep(2)">Siguiente Paso <i class="bi bi-arrow-right ms-2"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PASO 2 ================= -->
+        <div class="wizard-step" id="step-2">
+            <div class="row">
+                <div class="col-md-5 mb-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-2">
+                            <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-whatsapp me-2"></i>Paso 2: Conexión a WhatsApp</h5>
+                        </div>
+                        <div class="card-body d-flex flex-column justify-content-between p-4">
+                            <div class="text-center mb-4">
+                                <p class="text-muted small">Vinculá tu cuenta de WhatsApp escaneando el código QR para ClaudIA.</p>
+                                
+                                <div id="connectionStatusCard" class="alert alert-secondary py-2 d-inline-flex align-items-center mb-3">
+                                    <span class="status-dot status-disconnected" id="statusDot"></span>
+                                    <strong id="statusText">Cargando estado...</strong>
+                                </div>
+
+                                <div class="qr-container mb-3" id="qrWrapper">
+                                    <div id="qrPlaceholder" class="text-muted">
+                                        <i class="bi bi-qr-code fs-1 d-block mb-2"></i>
+                                        <span>Hacé click abajo para iniciar vinculación</span>
+                                    </div>
+                                    <div id="qrSpinner" class="d-none spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    <img id="qrImage" class="img-fluid d-none" style="max-width: 220px;" alt="Código QR">
+                                    <div id="successCheck" class="d-none text-success text-center">
+                                        <i class="bi bi-check-circle-fill fs-1 d-block mb-2 text-success"></i>
+                                        <h6 class="fw-bold">¡ClaudIA vinculada correctamente!</h6>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-warning fw-bold" id="btnConnect" onclick="startWhatsAppSession()">
+                                    <i class="bi bi-play-fill me-1"></i> Iniciar Vinculación
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnDisconnect" onclick="logoutWhatsAppSession()">
+                                    <i class="bi bi-power me-1"></i> Desvincular / Apagar Bot
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-7 mb-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body p-4 d-flex flex-column justify-content-center">
+                            <h5>¿Cómo funciona la vinculación?</h5>
+                            <ol class="text-muted my-3">
+                                <li>Hacé click en <strong>"Iniciar Vinculación"</strong> para generar el QR.</li>
+                                <li>Abrí WhatsApp en tu teléfono celular.</li>
+                                <li>Andá a <strong>Dispositivos Vinculados</strong> y tocá <strong>Vincular un dispositivo</strong>.</li>
+                                <li>Escaneá el código QR que aparecerá en pantalla.</li>
+                            </ol>
+                            <p class="text-warning small"><i class="bi bi-info-circle me-1"></i> No cierres esta pestaña mientras se realiza la vinculación.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between mt-4">
+                <button type="button" class="btn btn-outline-secondary fw-bold" onclick="prevStep(1)"><i class="bi bi-arrow-left me-2"></i> Atrás</button>
+                <button type="button" class="btn btn-warning fw-bold px-4" onclick="nextStep(3)">Siguiente Paso <i class="bi bi-arrow-right ms-2"></i></button>
+            </div>
+        </div>
+
+        <!-- ================= PASO 3 ================= -->
+        <div class="wizard-step" id="step-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 pt-4">
+                    <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-sliders me-2"></i>Paso 3: Personalización de ClaudIA</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Nombre del Bot</label>
+                            <input type="text" name="botName" class="form-control" value="{{ config.system.botName }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Tono de Voz</label>
+                            <input type="text" name="tone" class="form-control" value="{{ config.personality.tone }}" placeholder="Ej: profesional, amable, rioplatense">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Instrucciones Base para la IA (System Prompt)</label>
+                        <textarea name="baseInstructions" class="form-control" rows="4" placeholder="Ej: Eres la asistente virtual de la inmobiliaria. Tu objetivo es calificar clientes interesados en comprar..." required>{{ config.personality.baseInstructions }}</textarea>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Mensaje de Saludo Inicial (A)</label>
+                            <input type="text" name="globalGreeting" class="form-control" value="{{ config.personality.globalGreeting }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Mensaje de Pregunta Inicial (B)</label>
+                            <input type="text" name="initialQuestion" class="form-control" value="{{ config.personality.initialQuestion }}">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Espera de Escritura Humana Mínima (segundos)</label>
+                            <input type="number" name="delayMin" class="form-control" value="{{ config.system.humanDelay.min }}" min="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Espera de Escritura Humana Máxima (segundos)</label>
+                            <input type="number" name="delayMax" class="form-control" value="{{ config.system.humanDelay.max }}" min="2">
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch p-3 bg-light rounded shadow-sm mb-3">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="checkOpenMode" name="openMode" value="1" {% if config.system.openMode %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="checkOpenMode">Modo Abierto (Responde a todos)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch p-3 bg-light rounded shadow-sm mb-3">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="checkStrangers" name="strangersOnly" value="1" {% if config.system.strangersOnly %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="checkStrangers">Solo Desconocidos</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch p-3 bg-light rounded shadow-sm mb-3">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="checkOnlyGreet" name="onlyGreet" value="1" {% if config.system.onlyGreet %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="checkOnlyGreet">Solo Saludar (No derivar a IA dinámica)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch p-3 bg-light rounded shadow-sm">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="checkIgnoreAudio" name="ignoreAudio" value="1" {% if config.system.ignoreAudio %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="checkIgnoreAudio">Ignorar Audios</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" class="btn btn-outline-secondary fw-bold" onclick="prevStep(2)"><i class="bi bi-arrow-left me-2"></i> Atrás</button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-success fw-bold px-3" onclick="saveCurrentStep(3)"><i class="bi bi-save me-1"></i>Guardar</button>
+                            <button type="button" class="btn btn-warning fw-bold px-4" onclick="nextStep(4)">Siguiente Paso <i class="bi bi-arrow-right ms-2"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PASO 4 ================= -->
+        <div class="wizard-step" id="step-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 pt-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-signpost-split me-2"></i>Paso 4: Caminos de Conversación (Funnels)</h5>
+                    <button type="button" class="btn btn-warning btn-sm fw-bold" onclick="addNewPath()"><i class="bi bi-plus-circle me-1"></i> Agregar Camino</button>
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-muted small">Configurá flujos específicos que ClaudIA debe seguir cuando detecte el objetivo de la persona o cuando ingresen desde una campaña publicitaria específica.</p>
+
+                    <div id="pathsContainer" class="row">
+                        <!-- Caminos cargados dinámicamente -->
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" class="btn btn-outline-secondary fw-bold" onclick="prevStep(3)"><i class="bi bi-arrow-left me-2"></i> Atrás</button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-success fw-bold px-3" onclick="saveCurrentStep(4)"><i class="bi bi-save me-1"></i>Guardar</button>
+                            <button type="button" class="btn btn-warning fw-bold px-4" onclick="nextStep(5)">Siguiente Paso <i class="bi bi-arrow-right ms-2"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PASO 5 ================= -->
+        <!-- ================= PASO 5 ================= -->
+        <div class="wizard-step" id="step-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 pt-4">
+                    <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-building me-2"></i>Paso 5: Catálogo de Propiedades y Sinónimos</h5>
+                </div>
+                <div class="card-body p-4">
+
+                    <!-- CATÁLOGO DE PROPIEDADES -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h6 class="fw-bold mb-0">Catálogo de Propiedades</h6>
+                            <p class="text-muted small mb-0">ClaudIA usará este catálogo para buscar y recomendar propiedades. Cada propiedad que cargues va a estar disponible para que ClaudIA la mencione.</p>
+                        </div>
+                        <div class="d-flex gap-2 ms-3 flex-shrink-0">
+                            <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="document.getElementById('excelInput').click()">
+                                <i class="bi bi-file-earmark-excel me-1"></i> Importar Excel / CSV
+                            </button>
+                            <input type="file" id="excelInput" style="display: none;" accept=".xlsx, .xls, .csv" onchange="handleExcelFile(this)">
+                            <button type="button" class="btn btn-warning btn-sm fw-bold" onclick="addCatalogItem()">
+                                <i class="bi bi-plus-circle me-1"></i> Agregar Propiedad
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle" style="min-width: 700px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width:160px;">Nombre / Propiedad</th>
+                                    <th style="min-width:100px;">Precio</th>
+                                    <th style="min-width:200px;">Descripción</th>
+                                    <th style="min-width:180px;">Link (Zonaprop / MercadoLibre)</th>
+                                    <th style="width:60px;">Acc.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="catalogTableBody">
+                                <!-- Propiedades dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- SINÓNIMOS -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h6 class="fw-bold mb-0">Reglas de Sinónimos</h6>
+                            <p class="text-muted small mb-0">Mapeá palabras informales a categorías del catálogo (ej: "triplex" → "Duplex").</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm fw-bold ms-3 flex-shrink-0" onclick="addNewSynonym()"><i class="bi bi-plus-circle me-1"></i> Agregar Regla</button>
+                    </div>
+
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Categoría Oficial</th>
+                                    <th>Sinónimos / Términos (separados por coma)</th>
+                                    <th style="width: 80px;">Acc.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="synonymsTableBody">
+                                <!-- Sinónimos dinámicos -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4 border-top pt-4">
+                        <button type="button" class="btn btn-outline-secondary fw-bold" onclick="prevStep(4)"><i class="bi bi-arrow-left me-2"></i> Atrás</button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-success fw-bold px-3" onclick="saveCurrentStep(5)"><i class="bi bi-save me-1"></i>Guardar</button>
+                            <button type="button" class="btn btn-warning fw-bold px-4" onclick="nextStep(6)">Siguiente Paso <i class="bi bi-arrow-right ms-2"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PASO 6 ================= -->
+        <div class="wizard-step" id="step-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 pt-4">
+                    <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-chat-left-dots me-2"></i>Paso 6: Simulador en Vivo (Test de ClaudIA)</h5>
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-muted small">Configurá el escenario de prueba y hacé click en "Iniciar Chat". ClaudIA responderá según la configuración activa.</p>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold text-muted">Nombre de Prueba del Lead</label>
+                            <input type="text" id="simLeadName" class="form-control mb-3" value="Juan Pérez">
+
+                            <label class="form-label small fw-bold text-muted">Escenario de Simulación</label>
+                            <select id="simScenario" class="form-select mb-2" onchange="onScenarioChange()">
+                                <option value="unknown">👤 Cliente desconocido escribe primero</option>
+                                <option value="meta">📢 Cliente viene por anuncio de Meta Ads</option>
+                                <option value="scheduled">✅ Cliente agendado (ya en lista) escribe primero</option>
+                            </select>
+
+                            <div id="simPathSelector" class="mb-3 d-none">
+                                <label class="form-label small fw-bold text-muted">Camino / Campaña asociada</label>
+                                <select id="simPathId" class="form-select form-select-sm">
+                                    <option value="">-- Sin camino específico --</option>
+                                </select>
+                                <div class="form-text text-muted" style="font-size:0.75rem;">ClaudIA iniciará proactivamente con el Mensaje A y B de ese camino.</div>
+                            </div>
+
+                            <button type="button" class="btn btn-warning fw-bold w-100" onclick="resetSimulationChat()">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Iniciar / Reiniciar Chat
+                            </button>
+                            
+                            <div class="alert alert-secondary mt-3 small">
+                                <i class="bi bi-lightbulb me-1"></i>
+                                Escribí mensajes de prueba (quiero vender, quiero comprar, hablar con el asesor) y verificá que ClaudIA activa el camino correcto.
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <div class="chat-box mb-3 d-flex flex-column" id="chatBoxContainer">
+                                <div class="text-center text-muted my-auto small">
+                                    Hacé click en "Iniciar/Reiniciar Chat" para simular la conversación.
+                                </div>
+                            </div>
+                            
+                            <div class="input-group">
+                                <input type="text" id="simMessageText" class="form-control" placeholder="Escribí un mensaje de prueba aquí..." onkeydown="if(event.key === 'Enter') sendSimulationMessage()">
+                                <button type="button" class="btn btn-warning fw-bold" onclick="sendSimulationMessage()" id="btnSendSim">
+                                    Enviar <i class="bi bi-send-fill ms-1"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- SUITE DE PRUEBAS DE INTEGRACIÓN Y CONCURRENCIA -->
+                    <div class="card border border-primary shadow-sm mb-4">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center py-3">
+                            <h6 class="fw-bold mb-0 text-primary">
+                                <i class="bi bi-shield-check me-2"></i>Suite de Pruebas de Integración y Concurrencia
+                            </h6>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="testRealGroq" name="testRealGroq">
+                                    <label class="form-check-label small fw-bold text-muted" for="testRealGroq">Usar Groq API Real</label>
+                                </div>
+                                <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="runConcurrencyTests()" id="btnRunConcurrency">
+                                    <i class="bi bi-play-circle-fill me-1"></i> Ejecutar Suite de Pruebas
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-4">
+                            <p class="text-muted small">
+                                Esta suite de pruebas automatizada simula la entrada concurrente de Leads de Meta Ads, validando la lógica de buffers de burst (debouncing),
+                                la integración con el CRM, y confirmando que ClaudIA no se pause ante las respuestas automáticas de WhatsApp Business.
+                            </p>
+                            
+                            <div class="row">
+                                <div class="col-md-7 mb-3">
+                                    <label class="form-label small fw-bold text-muted">Consola de Ejecución (Logs del Test)</label>
+                                    <textarea id="concurrencyConsole" class="form-control font-monospace bg-dark text-success small" rows="12" readonly placeholder="Hacé click en 'Ejecutar Suite de Pruebas' para ver la salida del simulador..."></textarea>
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label class="form-label small fw-bold text-muted">Diálogos Capturados durante la Prueba</label>
+                                    <textarea id="concurrencyTranscripts" class="form-control font-monospace bg-dark text-info small" rows="12" readonly placeholder="Las transcripciones detalladas de los diálogos aparecerán aquí..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- REGISTRO DE AUDITORÍA (LOGS DE CLAUDIA) -->
+                    <div class="card border border-warning shadow-sm mb-4">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center py-3">
+                            <h6 class="fw-bold mb-0 text-dark">
+                                <i class="bi bi-journal-text text-warning me-2"></i>Registro de Auditoría (Logs de ClaudIA)
+                            </h6>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-warning btn-sm fw-bold" onclick="loadAuditLogs()">
+                                    <i class="bi bi-arrow-clockwise me-1"></i> Actualizar Logs
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold" data-bs-toggle="collapse" data-bs-target="#collapseAuditLogs" aria-expanded="true" aria-controls="collapseAuditLogs">
+                                    Colapsar / Expandir
+                                </button>
+                            </div>
+                        </div>
+                        <div id="collapseAuditLogs" class="collapse show">
+                            <div class="card-body p-3">
+                                <textarea id="auditLogsTextArea" class="form-control font-monospace bg-dark text-light small" rows="12" readonly placeholder="No hay registros disponibles aún. Hacé click en 'Actualizar Logs' para cargarlos."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4 border-top pt-4">
+                        <button type="button" class="btn btn-outline-secondary fw-bold" onclick="prevStep(5)"><i class="bi bi-arrow-left me-2"></i> Atrás</button>
+                        <button type="submit" class="btn btn-success btn-lg fw-bold px-5"><i class="bi bi-check-circle-fill me-2"></i> Guardar Todo y Finalizar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- MODAL DE MAPEO DE EXCEL -->
+    <div id="mappingModal" class="modal" tabindex="-1" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1050; justify-content: center; align-items: center; padding: 20px;">
+        <div class="modal-dialog modal-dialog-centered" style="width: 500px; max-width: 95%;">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold">📍 Mapeo de Columnas Excel</h5>
+                    <button type="button" class="btn-close" onclick="closeMappingModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Asociá las columnas de tu archivo de Excel con los campos que ClaudIA necesita para recomendar propiedades.</p>
+                    <div id="mappingFields" class="my-3" style="max-height: 300px; overflow-y: auto;">
+                        <!-- Se llena con JS -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary fw-bold" onclick="closeMappingModal()">Cancelar</button>
+                    <button type="button" class="btn btn-warning fw-bold text-dark" onclick="applyExcelMapping()">Procesar e Importar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template para un camino de conversación -->
+<script type="text/template" id="pathTemplate">
+    <div class="col-md-6 mb-4 path-card" id="path-card-{id}">
+        <div class="card border border-warning h-100 shadow-sm">
+            <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center py-3">
+                <input type="text" class="form-control form-control-sm fw-bold bg-transparent border-0 text-dark w-75 path-name" value="{name}" placeholder="Nombre del Camino">
+                <button type="button" class="btn btn-outline-danger btn-sm border-0" onclick="removePathCard('{id}')"><i class="bi bi-trash"></i></button>
+            </div>
+            <div class="card-body">
+                <input type="hidden" class="path-id" value="{id}">
+                <div class="mb-2">
+                    <label class="small text-muted fw-bold">Disparador / Cuándo usar</label>
+                    <input type="text" class="form-control form-control-sm path-description" value="{description}" placeholder="Ej: Cuando quiere vender o tasar">
+                </div>
+                <div class="mb-2">
+                    <label class="small text-muted fw-bold">Campañas de Meta Ads asociadas (opcional, por comas)</label>
+                    <input type="text" class="form-control form-control-sm path-meta" value="{metaCampaigns}" placeholder="Ej: campana_vender_leads, 120409204">
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                        <label class="small text-muted fw-bold"><i class="bi bi-chat-square-text me-1"></i>Mensaje A (Saludo proactivo)</label>
+                        <input type="text" class="form-control form-control-sm path-msgA" value="{welcomeMessageA}" placeholder="Ej: ¡Hola {name}! Vi que te interesó...">
+                        <div class="form-text text-muted" style="font-size: 0.72rem;">Si está vacío, se usa el saludo global. Usá {name} para el nombre del lead.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small text-muted fw-bold"><i class="bi bi-chat-square-text me-1"></i>Mensaje B (Segunda línea)</label>
+                        <input type="text" class="form-control form-control-sm path-msgB" value="{welcomeMessageB}" placeholder="Ej: ¿Querés que te cuente más?">
+                        <div class="form-text text-muted" style="font-size: 0.72rem;">Si está vacío, no se envía segundo mensaje.</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="small text-muted fw-bold">Instrucciones Estrictas</label>
+                    <textarea class="form-control form-control-sm path-instructions" rows="4" placeholder="Ej: Presentate y pregunta si tiene escritura...">{instructions}</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+<script>
+    let pollInterval = null;
+    let currentStep = 1;
+
+    // Load initial structures from backend
+    let pathsList = {{ config.get('paths', []) | tojson | safe }};
+    let synonymRulesList = {{ (config.get('catalog', {}).get('synonymRules', []) if config.catalog is defined else []) | tojson | safe }};
+    let catalogItemsList = {{ (config.get('catalog', {}).get('items', []) if config.catalog is defined else []) | tojson | safe }};
+
+    // Excel Import variables
+    let tempExcelHeaders = [];
+    let tempExcelData = [];
+
+    function handleExcelFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            
+            // Convertir a JSON
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+            
+            if (jsonData.length < 2) {
+                alert("El archivo parece estar vacío o no tener encabezados.");
+                return;
+            }
+
+            tempExcelHeaders = jsonData[0]; // Primera fila
+            tempExcelData = jsonData.slice(1); // Resto de filas
+            
+            renderMappingModal();
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function renderMappingModal() {
+        const container = document.getElementById('mappingFields');
+        container.innerHTML = '';
+        
+        document.getElementById('mappingModal').style.display = 'flex';
+
+        const schema = [
+            { id: "nombre", label: "Nombre / Propiedad" },
+            { id: "precio", label: "Precio" },
+            { id: "descripcion", label: "Descripción" },
+            { id: "link", label: "Link (Zonaprop / MercadoLibre)" }
+        ];
+
+        schema.forEach(col => {
+            const div = document.createElement('div');
+            div.className = 'mb-3';
+            div.innerHTML = `
+                <label class="form-label small fw-bold text-dark">${col.label}</label>
+                <select id="map_${col.id}" class="form-select form-select-sm">
+                    <option value="">-- Ignorar este campo --</option>
+                    ${tempExcelHeaders.map((header, index) => `<option value="${index}">${header || 'Columna ' + (index+1)}</option>`).join('')}
+                </select>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function closeMappingModal() {
+        document.getElementById('mappingModal').style.display = 'none';
+        document.getElementById('excelInput').value = '';
+    }
+
+    function applyExcelMapping() {
+        const mapping = {};
+        let mappedAny = false;
+        
+        const schema = [
+            { id: "nombre", label: "Nombre / Propiedad" },
+            { id: "precio", label: "Precio" },
+            { id: "descripcion", label: "Descripción" },
+            { id: "link", label: "Link (Zonaprop / MercadoLibre)" }
+        ];
+
+        schema.forEach(col => {
+            const index = document.getElementById(`map_${col.id}`).value;
+            if (index !== "") {
+                mapping[col.id] = parseInt(index);
+                mappedAny = true;
+            }
+        });
+
+        if (!mappedAny) {
+            alert("Debes mapear al menos una columna.");
+            return;
+        }
+
+        const newItems = tempExcelData.map((row, i) => {
+            const item = { id: 'item_' + (Date.now() + i).toString() };
+            schema.forEach(col => {
+                const excelIdx = mapping[col.id];
+                item[col.id] = (excelIdx !== undefined && row[excelIdx] !== undefined) ? row[excelIdx].toString().trim() : "";
+            });
+            return item;
+        });
+
+        syncCatalogFromDOM();
+        catalogItemsList = [...catalogItemsList, ...newItems];
+
+        renderCatalogItems();
+        closeMappingModal();
+        alert(`Se importaron ${newItems.length} propiedades correctamente.`);
+    }
+
+    function runConcurrencyTests() {
+        const btn = document.getElementById('btnRunConcurrency');
+        const consoleTxt = document.getElementById('concurrencyConsole');
+        const transTxt = document.getElementById('concurrencyTranscripts');
+        const realGroq = document.getElementById('testRealGroq').checked;
+
+        btn.disabled = true;
+        const origHTML = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Ejecutando...';
+
+        consoleTxt.value = 'Iniciando suite de pruebas de integración y concurrencia...\nEste proceso simula todos tus caminos de conversación de manera secuencial y tomará unos segundos por cada camino.\nPor favor, espera...\n';
+        transTxt.value = 'Esperando transcripciones de diálogos...';
+
+        // Compile latest configuration to ensure tests run with the updated Paths
+        compileJSONFields();
+
+        fetch('/crm/meta_ai/simulate/concurrency', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ realGroq })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+
+            if (data.consoleOutput) {
+                consoleTxt.value = data.consoleOutput;
+            } else if (data.error) {
+                consoleTxt.value = '⚠️ Ocurrió un error al ejecutar la suite:\n' + data.error;
+            } else {
+                consoleTxt.value = 'No se recibió salida del comando.';
+            }
+
+            if (data.transcripts) {
+                transTxt.value = data.transcripts;
+            } else {
+                transTxt.value = 'No se generaron transcripciones de diálogos.';
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+            consoleTxt.value = '❌ Error de comunicación: No se pudo conectar con el servidor de simulación.';
+            transTxt.value = 'No disponible.';
+            console.error("Error running concurrency tests:", err);
+        });
+    }
+
+    function loadAuditLogs() {
+        const textArea = document.getElementById('auditLogsTextArea');
+        if (textArea) {
+            textArea.value = 'Cargando registros...';
+            
+            fetch('/crm/meta_ai/audit_logs')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.logs && data.logs.length > 0) {
+                        textArea.value = data.logs.join('\n');
+                    } else {
+                        textArea.value = 'No se encontraron registros de auditoría para este agente.';
+                    }
+                })
+                .catch(err => {
+                    console.error("Error al cargar logs:", err);
+                    textArea.value = 'Error al conectar con el servidor para obtener los registros.';
+                });
+        }
+    }
+
+    function goToStep(stepNum) {
+        document.querySelectorAll('.wizard-step').forEach(step => {
+            step.classList.remove('active');
+        });
+        document.getElementById(`step-${stepNum}`).classList.add('active');
+        
+        // Update dots
+        for (let i = 1; i <= 6; i++) {
+            const dot = document.getElementById(`dot-${i}`);
+            dot.classList.remove('active', 'completed');
+            if (i < stepNum) {
+                dot.classList.add('completed');
+            } else if (i === stepNum) {
+                dot.classList.add('active');
+            }
+        }
+        currentStep = stepNum;
+        if (stepNum === 6) {
+            loadAuditLogs();
+        }
+        window.scrollTo(0, 0);
+    }
+
+    function nextStep(stepNum) {
+        goToStep(stepNum);
+    }
+
+    function prevStep(stepNum) {
+        goToStep(stepNum);
+    }
+
+    // --- CAMINOS (PATHS) EDITOR ---
+    function renderPaths() {
+        const container = document.getElementById('pathsContainer');
+        container.innerHTML = '';
+        const template = document.getElementById('pathTemplate').innerHTML;
+        
+        pathsList.forEach(path => {
+            let html = template
+                .replace(/{id}/g, path.id || Math.random().toString(36).substr(2, 9))
+                .replace(/{name}/g, escapeAttr(path.name || ''))
+                .replace(/{description}/g, escapeAttr(path.description || path.trigger || ''))
+                .replace(/{metaCampaigns}/g, escapeAttr(path.metaCampaigns || ''))
+                .replace(/{welcomeMessageA}/g, escapeAttr(path.welcomeMessageA || ''))
+                .replace(/{welcomeMessageB}/g, escapeAttr(path.welcomeMessageB || ''))
+                .replace(/{instructions}/g, path.instructions || path.steps || '');
+            container.insertAdjacentHTML('beforeend', html);
+        });
+        populateSimPathSelector();
+    }
+
+    function escapeAttr(str) {
+        return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function addNewPath() {
+        syncPathsFromDOM();
+        const newId = 'path_' + Date.now();
+        pathsList.push({
+            id: newId,
+            name: 'Nuevo Camino',
+            description: '',
+            metaCampaigns: '',
+            welcomeMessageA: '',
+            welcomeMessageB: '',
+            instructions: ''
+        });
+        renderPaths();
+    }
+
+    function removePathCard(id) {
+        syncPathsFromDOM();
+        pathsList = pathsList.filter(p => p.id !== id);
+        renderPaths();
+    }
+
+    // Sync in-memory pathsList from the current DOM state
+    function syncPathsFromDOM() {
+        const cards = document.querySelectorAll('.path-card');
+        const synced = [];
+        cards.forEach(card => {
+            synced.push({
+                id: card.querySelector('.path-id').value,
+                name: card.querySelector('.path-name').value,
+                description: card.querySelector('.path-description').value,
+                metaCampaigns: card.querySelector('.path-meta').value,
+                welcomeMessageA: card.querySelector('.path-msgA').value,
+                welcomeMessageB: card.querySelector('.path-msgB').value,
+                instructions: card.querySelector('.path-instructions').value
+            });
+        });
+        if (synced.length > 0 || document.querySelectorAll('.path-card').length === 0) {
+            pathsList = synced;
+        }
+    }
+
+    // --- SINÓNIMOS EDITOR ---
+    // Sync in-memory synonymRulesList from current DOM inputs
+    function syncSynonymsFromDOM() {
+        const rows = document.querySelectorAll('.synonym-row');
+        const synced = [];
+        rows.forEach(row => {
+            const cat = row.querySelector('.syn-category').value.trim();
+            const kw = row.querySelector('.syn-keywords').value;
+            synced.push({
+                id: 'rule_' + Math.random().toString(36).substr(2, 9),
+                category: cat,
+                keywords: kw.split(',').map(k => k.trim()).filter(k => k.length > 0)
+            });
+        });
+        synonymRulesList = synced;
+    }
+
+    function renderSynonyms() {
+        const tbody = document.getElementById('synonymsTableBody');
+        tbody.innerHTML = '';
+        
+        synonymRulesList.forEach((rule, index) => {
+            const safeCategory = (rule.category || '').replace(/"/g, '&quot;');
+            const safeKeywords = (rule.keywords || []).join(', ').replace(/"/g, '&quot;');
+            const row = `
+                <tr class="synonym-row" id="syn-row-${index}">
+                    <td>
+                        <input type="text" class="form-control form-control-sm syn-category" value="${safeCategory}" placeholder="Ej: Duplex">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm syn-keywords" value="${safeKeywords}" placeholder="Ej: triplex, 3 plantas">
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-outline-danger btn-sm border-0" onclick="removeSynonymRow(${index})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+            tbody.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    function addNewSynonym() {
+        syncSynonymsFromDOM();
+        synonymRulesList.push({
+            id: 'rule_' + Date.now(),
+            category: '',
+            keywords: []
+        });
+        renderSynonyms();
+    }
+
+    function removeSynonymRow(index) {
+        syncSynonymsFromDOM();
+        synonymRulesList.splice(index, 1);
+        renderSynonyms();
+    }
+
+    // --- FORM JSON PACKER ---
+    function compileJSONFields() {
+        // Compile Paths from DOM
+        syncPathsFromDOM();
+        const compiledPaths = pathsList.map(p => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            trigger: p.description,
+            metaCampaigns: p.metaCampaigns,
+            welcomeMessageA: p.welcomeMessageA || '',
+            welcomeMessageB: p.welcomeMessageB || '',
+            instructions: p.instructions,
+            steps: p.instructions
+        }));
+
+        // Compile Synonyms from DOM
+        syncSynonymsFromDOM();
+        const compiledSynonyms = synonymRulesList.filter(r => r.category);
+
+        // Compile Catalog Items from DOM
+        syncCatalogFromDOM();
+        const compiledItems = catalogItemsList.filter(i => i.nombre);
+
+        document.getElementById('paths_json').value = JSON.stringify(compiledPaths);
+        document.getElementById('synonyms_json').value = JSON.stringify(compiledSynonyms);
+        // catalog_items stored in a hidden field as well
+        let catalogInput = document.getElementById('catalog_items_json');
+        if (!catalogInput) {
+            catalogInput = document.createElement('input');
+            catalogInput.type = 'hidden';
+            catalogInput.id = 'catalog_items_json';
+            catalogInput.name = 'catalog_items_json';
+            document.getElementById('configForm').appendChild(catalogInput);
+        }
+        catalogInput.value = JSON.stringify(compiledItems);
+    }
+
+    // --- AJAX PARTIAL SAVE ---
+    function saveCurrentStep(stepNum) {
+        compileJSONFields();
+        let payload = {};
+
+        if (stepNum === 1) {
+            payload.credentials = {
+                groqApiKey: document.querySelector('[name=groqApiKey]').value,
+                metaToken: document.querySelector('[name=metaToken]').value,
+                metaVerifyToken: document.querySelector('[name=metaVerifyToken]').value,
+                adminPhone: document.querySelector('[name=adminPhone]').value,
+                licenseKey: document.querySelector('[name=licenseKey]').value
+            };
+        } else if (stepNum === 3) {
+            payload.system = {
+                botName: document.querySelector('[name=botName]').value,
+                openMode: document.getElementById('checkOpenMode').checked,
+                strangersOnly: document.getElementById('checkStrangers').checked,
+                onlyGreet: document.getElementById('checkOnlyGreet').checked,
+                ignoreAudio: document.getElementById('checkIgnoreAudio').checked,
+                humanDelay: {
+                    min: parseInt(document.querySelector('[name=delayMin]').value) || 4,
+                    max: parseInt(document.querySelector('[name=delayMax]').value) || 7
+                }
+            };
+            payload.personality = {
+                tone: document.querySelector('[name=tone]').value,
+                baseInstructions: document.querySelector('[name=baseInstructions]').value,
+                globalGreeting: document.querySelector('[name=globalGreeting]').value,
+                initialQuestion: document.querySelector('[name=initialQuestion]').value
+            };
+        } else if (stepNum === 4) {
+            payload.paths = JSON.parse(document.getElementById('paths_json').value || '[]');
+        } else if (stepNum === 5) {
+            syncSynonymsFromDOM();
+            syncCatalogFromDOM();
+            payload.catalog = {
+                synonymRules: synonymRulesList.filter(r => r.category),
+                items: catalogItemsList.filter(i => i.nombre)
+            };
+        }
+
+        const btn = event.currentTarget;
+        const origHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
+
+        fetch('/crm/meta_ai/save_partial', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            if (data.status === 'ok') {
+                btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>¡Guardado!';
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-success');
+                setTimeout(() => {
+                    btn.innerHTML = origHTML;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-success');
+                }, 2000);
+            } else {
+                btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Error';
+                setTimeout(() => { btn.innerHTML = origHTML; }, 2000);
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Error conexión';
+            setTimeout(() => { btn.innerHTML = origHTML; }, 2000);
+        });
+    }
+
+    // --- CATALOG ITEMS EDITOR ---
+    function syncCatalogFromDOM() {
+        const rows = document.querySelectorAll('.catalog-row');
+        const synced = [];
+        rows.forEach(row => {
+            synced.push({
+                id: 'item_' + Math.random().toString(36).substr(2, 9),
+                nombre: row.querySelector('.cat-nombre').value.trim(),
+                precio: row.querySelector('.cat-precio').value.trim(),
+                descripcion: row.querySelector('.cat-desc').value.trim(),
+                link: row.querySelector('.cat-link').value.trim()
+            });
+        });
+        catalogItemsList = synced;
+    }
+
+    function renderCatalogItems() {
+        const tbody = document.getElementById('catalogTableBody');
+        tbody.innerHTML = '';
+        if (catalogItemsList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3 small"><i class="bi bi-inbox me-2"></i>No hay propiedades cargadas. Hacé click en "Agregar Propiedad".</td></tr>`;
+            return;
+        }
+        catalogItemsList.forEach((item, index) => {
+            const row = `
+                <tr class="catalog-row">
+                    <td><input type="text" class="form-control form-control-sm cat-nombre" value="${escapeAttr(item.nombre || '')}" placeholder="Ej: Casa en Palermo"></td>
+                    <td><input type="text" class="form-control form-control-sm cat-precio" value="${escapeAttr(item.precio || '')}" placeholder="USD 150.000"></td>
+                    <td><input type="text" class="form-control form-control-sm cat-desc" value="${escapeAttr(item.descripcion || '')}" placeholder="3 amb, 2 baños..."></td>
+                    <td><input type="url" class="form-control form-control-sm cat-link" value="${escapeAttr(item.link || '')}" placeholder="https://zonaprop.com.ar/..."></td>
+                    <td><button type="button" class="btn btn-outline-danger btn-sm border-0" onclick="removeCatalogItem(${index})"><i class="bi bi-trash"></i></button></td>
+                </tr>
+            `;
+            tbody.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    function addCatalogItem() {
+        syncCatalogFromDOM();
+        catalogItemsList.push({ id: 'item_' + Date.now(), nombre: '', precio: '', descripcion: '', link: '' });
+        renderCatalogItems();
+        // Focus on last nombre input
+        setTimeout(() => {
+            const rows = document.querySelectorAll('.catalog-row');
+            if (rows.length > 0) rows[rows.length - 1].querySelector('.cat-nombre').focus();
+        }, 50);
+    }
+
+    function removeCatalogItem(index) {
+        syncCatalogFromDOM();
+        catalogItemsList.splice(index, 1);
+        renderCatalogItems();
+    }
+
+    // --- SIMULATOR SCENARIO LOGIC ---
+    function onScenarioChange() {
+        const scenario = document.getElementById('simScenario').value;
+        const pathSelector = document.getElementById('simPathSelector');
+        if (scenario === 'meta') {
+            pathSelector.classList.remove('d-none');
+        } else {
+            pathSelector.classList.add('d-none');
+        }
+    }
+
+    function populateSimPathSelector() {
+        const select = document.getElementById('simPathId');
+        // Keep first default option, remove the rest
+        while (select.options.length > 1) select.remove(1);
+        pathsList.forEach(path => {
+            const opt = document.createElement('option');
+            opt.value = path.id;
+            opt.textContent = path.name || path.id;
+            select.appendChild(opt);
+        });
+    }
+
+    // --- LIVE SIMULATOR LOGIC ---
+    function addChatBubble(text, sender) {
+        const chatBox = document.getElementById('chatBoxContainer');
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble ${sender}`;
+        bubble.innerText = text;
+        chatBox.appendChild(bubble);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function resetSimulationChat() {
+        const leadName = document.getElementById('simLeadName').value.trim() || 'Cliente de Prueba';
+        const scenario = document.getElementById('simScenario').value;
+        const pathId = scenario === 'meta' ? (document.getElementById('simPathId').value || '') : '';
+        const chatBox = document.getElementById('chatBoxContainer');
+        chatBox.innerHTML = '';
+        
+        addChatBubble('[SISTEMA: Iniciando simulación...]', 'bot');
+
+        // Compile & save current config so simulator uses the latest edits
+        compileJSONFields();
+        
+        // Build scenario-aware label for the system message
+        const scenarioLabels = {
+            unknown: '👤 Modo: cliente desconocido escribe primero (Modo Abierto)',
+            meta: '📢 Modo: lead entró por anuncio de Meta Ads',
+            scheduled: '✅ Modo: cliente ya agendado escribe primero'
+        };
+        addChatBubble(scenarioLabels[scenario] || '', 'bot');
+
+        fetch('/crm/meta_ai/simulate/reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ leadName, scenario, pathId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            // Remove loading messages
+            chatBox.innerHTML = '';
+            if (data.systemNote) {
+                addChatBubble(data.systemNote, 'bot');
+            }
+            if (data.greeting) addChatBubble(data.greeting, 'bot');
+            if (data.question) addChatBubble(data.question, 'bot');
+            if (data.info) addChatBubble(data.info, 'bot');
+        })
+        .catch(err => {
+            addChatBubble('⚠️ Error al inicializar la simulación. Verificá que el motor del chatbot (Node.js) esté online y la API Key sea válida.', 'bot');
+        });
+    }
+
+    function sendSimulationMessage() {
+        const leadName = document.getElementById('simLeadName').value.trim();
+        const msgInput = document.getElementById('simMessageText');
+        const message = msgInput.value.trim();
+        const btnSend = document.getElementById('btnSendSim');
+        
+        if (!message) return;
+        
+        addChatBubble(message, 'user');
+        msgInput.value = '';
+        
+        btnSend.disabled = true;
+        btnSend.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        
+        fetch('/crm/meta_ai/simulate/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ leadName, message })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btnSend.disabled = false;
+            btnSend.innerHTML = 'Enviar <i class="bi bi-send-fill ms-1"></i>';
+            addChatBubble(data.reply, 'bot');
+        })
+        .catch(err => {
+            btnSend.disabled = false;
+            btnSend.innerHTML = 'Enviar <i class="bi bi-send-fill ms-1"></i>';
+            addChatBubble('Error al recibir respuesta de ClaudIA.', 'bot');
+        });
+    }
+
+    // --- WHATSAPP CONNECTION LOGIC ---
+    function updateStatusUI(status, qr) {
+        const dot = document.getElementById('statusDot');
+        const text = document.getElementById('statusText');
+        const btnConnect = document.getElementById('btnConnect');
+        const btnDisconnect = document.getElementById('btnDisconnect');
+        const qrWrapper = document.getElementById('qrWrapper');
+        const qrImage = document.getElementById('qrImage');
+        const qrPlaceholder = document.getElementById('qrPlaceholder');
+        const qrSpinner = document.getElementById('qrSpinner');
+        const successCheck = document.getElementById('successCheck');
+
+        dot.className = 'status-dot';
+        qrImage.classList.add('d-none');
+        qrPlaceholder.classList.add('d-none');
+        qrSpinner.classList.add('d-none');
+        successCheck.classList.add('d-none');
+
+        if (status === 'connected') {
+            dot.className = 'status-dot status-connected';
+            text.innerText = 'CONECTADO';
+            btnConnect.classList.add('d-none');
+            btnDisconnect.classList.remove('d-none');
+            successCheck.classList.remove('d-none');
+            clearInterval(pollInterval);
+        } else if (status === 'qr_ready') {
+            dot.className = 'status-dot status-qr';
+            text.innerText = 'ESCANEAR QR';
+            btnConnect.classList.add('d-none');
+            btnDisconnect.classList.remove('d-none');
+            
+            if (qr) {
+                QRCode.toDataURL(qr, { width: 220, margin: 1 }, function (err, url) {
+                    if (!err) {
+                        qrImage.src = url;
+                        qrImage.classList.remove('d-none');
+                    }
+                });
+            } else {
+                qrSpinner.classList.remove('d-none');
+            }
+        } else if (status === 'connecting') {
+            dot.className = 'status-dot status-connecting';
+            text.innerText = 'CONECTANDO...';
+            btnConnect.classList.add('d-none');
+            btnDisconnect.classList.remove('d-none');
+            qrSpinner.classList.remove('d-none');
+        } else {
+            dot.className = 'status-dot status-disconnected';
+            text.innerText = 'DESCONECTADO';
+            btnConnect.classList.remove('d-none');
+            btnDisconnect.classList.add('d-none');
+            qrPlaceholder.classList.remove('d-none');
+            clearInterval(pollInterval);
+        }
+    }
+
+    function checkSessionStatus() {
+        fetch('/crm/meta_ai/status')
+            .then(res => res.json())
+            .then(data => {
+                updateStatusUI(data.status, data.qr);
+            })
+            .catch(err => console.error("Error al consultar sesión:", err));
+    }
+
+    function startWhatsAppSession() {
+        const btn = document.getElementById('btnConnect');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Iniciando...';
+
+        fetch('/crm/meta_ai/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=start'
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Iniciar Vinculación';
+            checkSessionStatus();
+            clearInterval(pollInterval);
+            pollInterval = setInterval(checkSessionStatus, 3000);
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Iniciar Vinculación';
+            alert("No se pudo iniciar el proceso de vinculación.");
+        });
+    }
+
+    function logoutWhatsAppSession() {
+        if (!confirm("¿Estás seguro de que querés desvincular este WhatsApp y apagar el bot?")) return;
+
+        fetch('/crm/meta_ai/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=logout'
+        })
+        .then(res => res.json())
+        .then(data => {
+            checkSessionStatus();
+        });
+    }
+
+    // Run on page load
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById('metaCallbackUrl').innerText = window.location.origin + '/webhook/{{ username }}';
+        
+        renderPaths();
+        renderSynonyms();
+        renderCatalogItems();
+        populateSimPathSelector();
+        checkSessionStatus();
+
+        // Check once more for connecting state
+        setTimeout(() => {
+            fetch('/crm/meta_ai/status')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'qr_ready' || data.status === 'connecting') {
+                        pollInterval = setInterval(checkSessionStatus, 3000);
+                    }
+                });
+        }, 1000);
+    });
+</script>
+{% endblock %}

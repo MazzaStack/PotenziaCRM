@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Backups y Restauración - {{ agency.nombre }}{% endblock %}
+{% block header %}Backups y Restauración de Base de Datos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- KPI Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm bg-dark text-white p-3 h-100 border-start border-primary border-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Motor & Entorno</span>
+                        <h5 class="mb-0 fw-bold mt-1 text-primary">
+                            {{ db_info.type | upper }}
+                            <span class="badge bg-secondary ms-1 fs-6">{{ db_info.env | title if db_info.env else 'Local' }}</span>
+                        </h5>
+                        <small class="text-muted">{% if db_info.fallback_active %}<span class="text-danger">Fallback SQLite Activo</span>{% else %}Conexión Principal{% endif %}</small>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary fs-3">
+                        <i class="bi bi-database-fill-gear"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm bg-dark text-white p-3 h-100 border-start border-success border-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Backups Disponibles</span>
+                        <h5 class="mb-0 fw-bold mt-1 text-success">{{ total_backups }} Copias</h5>
+                        <small class="text-muted">Espacio total: <strong>{{ total_size_human }}</strong></small>
+                    </div>
+                    <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success fs-3">
+                        <i class="bi bi-archive-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm bg-dark text-white p-3 h-100 border-start border-info border-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Frecuencia Automática</span>
+                        <h5 class="mb-0 fw-bold mt-1 text-info">
+                            {% if auto_enabled %}
+                                Cada {{ interval_hours }}h
+                            {% else %}
+                                <span class="text-warning">Desactivado</span>
+                            {% endif %}
+                        </h5>
+                        <small class="text-muted">Próximo: {{ next_run }}</small>
+                    </div>
+                    <div class="bg-info bg-opacity-10 p-3 rounded-circle text-info fs-3">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm bg-dark text-white p-3 h-100 border-start border-warning border-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Último Backup</span>
+                        <h6 class="mb-0 fw-bold mt-1 text-warning">{{ last_run }}</h6>
+                        <small class="text-muted">Retención máx: {{ max_keep }} archivos</small>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 p-3 rounded-circle text-warning fs-3">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Grid: Configuration & Quick Actions -->
+    <div class="row g-4 mb-4">
+        <!-- Configuration Card -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm bg-dark text-white p-4 h-100">
+                <h5 class="card-title text-primary d-flex align-items-center mb-3">
+                    <i class="bi bi-gear-fill me-2"></i> Programación Automática de Backups
+                </h5>
+                <p class="text-secondary small mb-4">
+                    Configura la frecuencia con la que el servidor generará copias de seguridad de forma totalmente autónoma en segundo plano.
+                </p>
+
+                <form action="{{ url_for('db_backup.save_schedule_config') }}" method="POST">
+                    <div class="form-check form-switch mb-4 p-3 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25">
+                        <input class="form-check-input ms-0 me-3" type="checkbox" role="switch" name="backup_auto_enabled" id="autoBackupSwitch" value="1" {% if auto_enabled %}checked{% endif %}>
+                        <label class="form-check-label fw-bold text-white" for="autoBackupSwitch">
+                            Habilitar Copias Automáticas Periódicas
+                        </label>
+                        <small class="d-block text-secondary mt-1">El proceso se ejecutará en segundo plano según el intervalo configurado.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-white">Intervalo de Ejecución (Cada cuántas horas)</label>
+                        <select name="backup_interval_hours" class="form-select bg-dark text-white border-secondary">
+                            <option value="1" {% if interval_hours == 1 %}selected{% endif %}>Cada 1 hora (Alta frecuencia)</option>
+                            <option value="2" {% if interval_hours == 2 %}selected{% endif %}>Cada 2 horas</option>
+                            <option value="4" {% if interval_hours == 4 %}selected{% endif %}>Cada 4 horas</option>
+                            <option value="6" {% if interval_hours == 6 %}selected{% endif %}>Cada 6 horas (Recomendado)</option>
+                            <option value="8" {% if interval_hours == 8 %}selected{% endif %}>Cada 8 horas</option>
+                            <option value="12" {% if interval_hours == 12 %}selected{% endif %}>Cada 12 horas</option>
+                            <option value="24" {% if interval_hours == 24 %}selected{% endif %}>Cada 24 horas (Diario)</option>
+                            <option value="48" {% if interval_hours == 48 %}selected{% endif %}>Cada 48 horas (Cada 2 días)</option>
+                            <option value="72" {% if interval_hours == 72 %}selected{% endif %}>Cada 72 horas (Cada 3 días)</option>
+                            <option value="168" {% if interval_hours == 168 %}selected{% endif %}>Cada 168 horas (Semanal)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-white">Límite de Retención de Archivos</label>
+                        <input type="number" name="backup_max_keep" class="form-control bg-dark text-white border-secondary" value="{{ max_keep }}" min="5" max="200">
+                        <small class="text-secondary">Se conservarán como máximo esta cantidad de copias; las más antiguas se eliminarán automáticamente.</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+                        <i class="bi bi-save me-1"></i> Guardar Configuración de Frecuencia
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Immediate Actions Card -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm bg-dark text-white p-4 h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <h5 class="card-title text-success d-flex align-items-center mb-3">
+                        <i class="bi bi-lightning-charge-fill me-2"></i> Acciones Inmediatas
+                    </h5>
+                    <p class="text-secondary small mb-4">
+                        Genera un punto de restauración manual inmediatamente o sube un archivo de backup externo (.sql o .zip) para incorporarlo o restaurarlo.
+                    </p>
+
+                    <!-- Manual backup button -->
+                    <div class="p-3 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25 mb-4">
+                        <h6 class="text-white fw-bold mb-1"><i class="bi bi-cloud-arrow-down-fill text-primary me-2"></i>Crear Copia de Seguridad Instantánea</h6>
+                        <p class="text-secondary small mb-3">Genera un volcado completo de la base de datos activa en este preciso instante.</p>
+                        <form action="{{ url_for('db_backup.manual_backup') }}" method="POST" id="formManualBackup">
+                            <button type="submit" class="btn btn-success w-100 py-2 fw-bold" id="btnManualBackup">
+                                <i class="bi bi-plus-circle me-1"></i> Crear Backup Ahora
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Upload external backup -->
+                    <div class="p-3 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25">
+                        <h6 class="text-white fw-bold mb-1"><i class="bi bi-upload text-warning me-2"></i>Subir / Importar Backup Externo</h6>
+                        <p class="text-secondary small mb-3">Sube un archivo <code>.sql</code> (PostgreSQL) o <code>.zip</code> (SQLite) desde tu equipo.</p>
+                        <form action="{{ url_for('db_backup.upload_backup') }}" method="POST" enctype="multipart/form-data">
+                            <div class="input-group mb-2">
+                                <input type="file" name="backup_file" class="form-control bg-dark text-white border-secondary" accept=".sql,.zip,.db" required>
+                                <button type="submit" class="btn btn-warning fw-bold">
+                                    <i class="bi bi-cloud-upload-fill me-1"></i> Subir
+                                </button>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="restore_immediately" value="1" id="restoreImmediatelyCheck">
+                                <label class="form-check-label text-secondary small" for="restoreImmediatelyCheck">
+                                    Restaurar inmediatamente después de subir (Reemplazará los datos actuales)
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="mt-3 text-secondary small">
+                    <i class="bi bi-folder2-open me-1"></i> Ubicación del Repositorio: <code class="text-info">{{ backup_dir }}</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup History Table -->
+    <div class="card border-0 shadow-sm bg-dark text-white p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title text-white mb-0 d-flex align-items-center">
+                <i class="bi bi-clock-history text-info me-2"></i> Historial de Backups Disponibles
+            </h5>
+            <span class="badge bg-secondary">{{ backups | length }} archivos registrados</span>
+        </div>
+
+        {% if backups %}
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0">
+                <thead class="table-secondary text-uppercase small text-secondary">
+                    <tr>
+                        <th>Archivo</th>
+                        <th>Fecha y Hora</th>
+                        <th>Motor</th>
+                        <th>Entorno</th>
+                        <th>Tamaño</th>
+                        <th>Tipo / Origen</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in backups %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="bi {% if b.engine == 'PostgreSQL' %}bi-filetype-sql text-info{% else %}bi-file-earmark-zip text-warning{% endif %} fs-4 me-2"></i>
+                                <div>
+                                    <span class="fw-bold font-monospace text-light">{{ b.filename }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-secondary small">{{ b.created_at }}</td>
+                        <td>
+                            <span class="badge {% if b.engine == 'PostgreSQL' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                {{ b.engine }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-dark border border-secondary text-light">{{ b.env }}</span>
+                        </td>
+                        <td class="font-monospace text-success fw-bold">{{ b.size_human }}</td>
+                        <td>
+                            <span class="badge bg-{{ b.badge }}">{{ b.origin }}</span>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <!-- Download -->
+                                <a href="{{ url_for('db_backup.download_backup', filename=b.filename) }}" class="btn btn-outline-info" title="Descargar Backup">
+                                    <i class="bi bi-download"></i>
+                                </a>
+
+                                <!-- Restore Trigger (Modal) -->
+                                <button type="button" class="btn btn-outline-warning" title="Restaurar este Backup" onclick="openRestoreModal('{{ b.filename }}', '{{ b.created_at }}', '{{ b.engine }}')">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Restaurar
+                                </button>
+
+                                <!-- Delete -->
+                                <form action="{{ url_for('db_backup.delete_backup', filename=b.filename) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar permanentemente el backup {{ b.filename }}?');">
+                                    <button type="submit" class="btn btn-outline-danger" title="Eliminar Backup">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-secondary">
+            <i class="bi bi-archive display-3 d-block mb-3 opacity-50"></i>
+            <h5>No hay copias de seguridad generadas todavía</h5>
+            <p class="small">Haz clic en <strong>Crear Backup Ahora</strong> para generar la primera copia de seguridad.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Restore Confirmation Modal -->
+<div class="modal fade" id="restoreModal" tabindex="-1" aria-labelledby="restoreModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-warning">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-warning" id="restoreModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Restauración
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="restoreForm" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-warning border-0 bg-warning bg-opacity-10 text-warning mb-3">
+                        <strong><i class="bi bi-shield-slash me-1"></i> RESTAURACIÓN LIMPIA / PURGA TOTAL CONTRA INYECCIONES</strong><br>
+                        Para garantizar que ningún dato corrupto, tabla fantasma o inyección de un ataque persista, el sistema <strong>vaciará y purgará por completo</strong> el esquema actual antes de reconstruir la base de datos a partir de esta copia exacta.
+                    </div>
+
+                    <div class="p-3 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25 mb-3">
+                        <div class="mb-1"><strong class="text-secondary">Punto de restauración a aplicar:</strong></div>
+                        <div class="font-monospace text-info fw-bold" id="restoreModalFilename">archivo.sql</div>
+                        <div class="text-secondary small mt-1">Fecha de la copia: <span id="restoreModalDate"></span> | Motor: <span id="restoreModalEngine"></span></div>
+                    </div>
+
+                    <div class="alert alert-info border-0 bg-info bg-opacity-10 text-info small mb-3">
+                        <i class="bi bi-shield-check me-1"></i> <strong>Snapshot Forense Automático:</strong> Antes de purgar y restaurar, el sistema guardará un archivo de snapshot con el estado previo para que puedas auditar cualquier ataque o anomalía sin perder evidencia.
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmCheckbox" required>
+                        <label class="form-check-label text-white small" for="confirmCheckbox">
+                            Entiendo que se sobreescribirán los datos actuales con esta copia.
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning fw-bold" id="btnConfirmRestore">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Iniciar Restauración
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openRestoreModal(filename, dateStr, engineStr) {
+    document.getElementById('restoreModalFilename').innerText = filename;
+    document.getElementById('restoreModalDate').innerText = dateStr;
+    document.getElementById('restoreModalEngine').innerText = engineStr;
+    
+    const form = document.getElementById('restoreForm');
+    form.action = "{{ url_for('db_backup.restore_backup_route', filename='') }}" + encodeURIComponent(filename);
+    
+    document.getElementById('confirmCheckbox').checked = false;
+    
+    const modal = new bootstrap.Modal(document.getElementById('restoreModal'));
+    modal.show();
+}
+
+document.getElementById('restoreForm').addEventListener('submit', function() {
+    const btn = document.getElementById('btnConfirmRestore');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Restaurando Base de Datos...';
+});
+
+document.getElementById('formManualBackup').addEventListener('submit', function() {
+    const btn = document.getElementById('btnManualBackup');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creando Backup...';
+});
+</script>
+{% endblock %}

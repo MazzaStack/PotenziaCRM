@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Comunicaciones{% endblock %}
+{% block header %}Centro de Comunicaciones{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Historial Reciente y Pendientes</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Propiedad</th>
+                        <th>Contacto</th>
+                        <th>Tipo</th>
+                        <th>Mensaje/Asunto</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in comms %}
+                    <tr>
+                        <td>
+                            <small class="text-muted d-block">{{ c.fecha_enviada or c.fecha_programada }}</small>
+                            <span class="badge bg-secondary opacity-75">Paso {{ c.paso }}</span>
+                        </td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 200px;">
+                                <a href="{{ url_for('propiedad_detalle', prop_id=c.propiedad_id) }}">{{ c.titulo }}</a>
+                            </div>
+                            <small class="text-muted">{{ c.direccion }}</small>
+                        </td>
+                        <td>{{ c.nombre_contacto or 'Desconocido' }}</td>
+                        <td>
+                            <i
+                                class="bi bi-{{ 'whatsapp text-success' if c.tipo == 'whatsapp' else 'envelope text-primary' }}"></i>
+                            {{ c.tipo|capitalize }}
+                        </td>
+                        <td>
+                            <div class="text-truncate small" style="max-width: 250px;">
+                                {% if c.tipo == 'email' %}<strong>{{ c.asunto }}</strong><br>{% endif %}
+                                {{ c.mensaje }}
+                            </div>
+                        </td>
+                        <td>
+                            <span
+                                class="badge bg-{{ 'success' if c.estado == 'enviada' else 'warning' if c.estado == 'pendiente' else 'info' }}">
+                                {{ c.estado|capitalize }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                {% if c.estado == 'pendiente' %}
+                                <a href="{{ url_for('marcar_enviada', cid=c.id) }}"
+                                    class="btn btn-sm btn-outline-success">Marcar Enviado</a>
+                                {% endif %}
+                                <form action="{{ url_for('borrar_comunicacion', cid=c.id) }}" method="POST" class="d-inline"
+                                      onsubmit="return confirm('¿Estás seguro de eliminar este mensaje de la cola?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Eliminar
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">No hay registros de comunicaciones.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Archivos Asignados{% endblock %}
+{% block header %}Gestión de Archivos{% endblock %}
+
+{% block actions %}
+{% if not is_solo_agent %}
+<div class="d-flex gap-2">
+    {% if current_user.rol in ['admin', 'broker', 'finanzas'] %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAsignar">
+        <i class="bi bi-person-plus me-1"></i> Asignar Archivo/Link
+    </button>
+    {% endif %}
+    <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalSubir">
+        <i class="bi bi-cloud-upload me-1"></i> Subir Mi Archivo
+    </button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if is_solo_agent %}
+<!-- Cartel de Bloqueo para Agentes Sueltos -->
+<div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="z-index: 1050; background: rgba(15, 23, 42, 0.80); backdrop-filter: blur(10px);">
+    <div class="card shadow-lg border-0 text-center p-5 mx-3" style="max-width: 560px; border-radius: 24px; background: #ffffff;">
+        <div class="mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10 text-danger" style="width: 86px; height: 86px;">
+                <i class="bi bi-shield-lock-fill fs-1"></i>
+            </div>
+        </div>
+        <h3 class="fw-bold text-dark mb-2">Acceso Restringido</h3>
+        <h5 class="text-muted fw-normal mb-3 fs-6">Módulo de Archivos y Almacenamiento</h5>
+        <p class="text-secondary mb-4 fs-6" style="line-height: 1.6;">
+            La sección de <strong>Archivos Asignados</strong> y carga de documentos está reservada exclusivamente para miembros pertenecientes a una <strong>Oficina</strong> autorizada.<br><br>
+            Tu usuario opera bajo la modalidad de <strong>Agente Suelto</strong> (sin oficina asignada) y no tiene permisos para subir archivos ni utilizar el servidor como gestor de archivos.
+        </p>
+        <div class="d-flex gap-2 justify-content-center">
+            <a href="{{ url_for('index') }}" class="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
+                <i class="bi bi-house-door me-2"></i>Volver al Panel Principal
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div {% if is_solo_agent %}style="filter: grayscale(100%) blur(4px) opacity(0.2); pointer-events: none; user-select: none;"{% endif %}>
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            {% if current_user.rol in ['admin', 'broker', 'finanzas'] %}
+                            <th>Agente</th>
+                            {% endif %}
+                            <th>Documento / Enlace</th>
+                            <th>Fecha</th>
+                            <th class="text-center">Leído</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file in archivos %}
+                        <tr>
+                            {% if current_user.rol in ['admin', 'broker', 'finanzas'] %}
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-soft-primary text-primary me-2 d-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px;">
+                                        {{ file.agente_nombre[0] | upper if file.agente_nombre else '?' }}
+                                    </div>
+                                    <span>{{ file.agente_nombre }}</span>
+                                </div>
+                            </td>
+                            {% endif %}
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi {{ 'bi-link-45deg' if file.ruta_archivo.startswith('http') else 'bi-file-earmark-pdf text-danger' if file.ruta_archivo.endswith('.pdf') else 'bi-image text-success' if file.ruta_archivo.split('.')[-1] in ['jpg','jpeg','png'] else 'bi-file-earmark-text' }} fs-4 me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ file.nombre_archivo }}</div>
+                                        <small class="text-muted">{{ 'Enlace Externo' if file.ruta_archivo.startswith('http') else 'Archivo Local' }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><small>{{ file.fecha_asignado[:10] if file.fecha_asignado else '-' }}</small></td>
+                            <td class="text-center">
+                                {% if file.leido %}
+                                <span class="badge bg-soft-success text-success"><i class="bi bi-check-all"></i> Leído</span>
+                                {% else %}
+                                <span class="badge bg-soft-warning text-warning"><i class="bi bi-envelope"></i> Pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('abrir_archivo_asignado', aid=file.id) }}" target="_blank" class="btn btn-outline-primary" title="Abrir/Ver">
+                                        <i class="bi {{ 'bi-box-arrow-up-right' if file.ruta_archivo.startswith('http') else 'bi-download' }}"></i>
+                                    </a>
+                                    <form action="{{ url_for('borrar_archivo_asignado', aid=file.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar esta asignación/archivo?')">
+                                        <button class="btn btn-outline-danger" title="Borrar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-folder2-open display-4 d-block mb-3 opacity-25"></i>
+                                No hay archivos asignados en este momento.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not is_solo_agent %}
+<!-- Modal Asignar (Admin/Broker) -->
+{% if current_user.rol in ['admin', 'broker', 'finanzas'] %}
+<div class="modal fade" id="modalAsignar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('asignar_archivo') }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Asignar Recurso</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Destinatario</label>
+                        <select name="user_id" class="form-select" required>
+                            <option value="todos" class="fw-bold text-primary">-- TODOS LOS AGENTES --</option>
+                            {% for u in usuarios if u.rol == 'agente' %}
+                            <option value="{{ u.id }}">{{ u.nombre_display }} ({{ u.usuario }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre del Documento/Link</label>
+                        <input type="text" name="nombre_archivo" class="form-control" placeholder="Ej: Manual de Ventas 2026" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">URL o Ruta</label>
+                        <input type="text" name="ruta_archivo" class="form-control" placeholder="https://drive.google.com/..." required>
+                        <small class="text-muted">Ingresá el link directo de Google Drive o Dropbox.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary w-100">Asignar Ahora</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal Subir (Cualquiera con oficina) -->
+<div class="modal fade" id="modalSubir" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('subir_archivo_personal') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title">Subir Archivo Personal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <i class="bi bi-cloud-arrow-up display-1 text-primary mb-3"></i>
+                    <p>Podés subir archivos para tu uso personal o para que el Broker los revise.</p>
+                    <input type="file" name="archivo" class="form-control mb-2" accept=".pdf,.txt,.jpg,.jpeg,.png" required>
+                    <div class="text-start mt-3">
+                        <ul class="small text-muted mb-0">
+                            <li>Formatos permitidos: PDF, JPG, PNG, TXT.</li>
+                            <li>Tamaño máximo: 5MB por archivo.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success w-100">Cargar Archivo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.bg-soft-primary { background-color: rgba(13, 110, 253, 0.1); }
+.bg-soft-success { background-color: rgba(25, 135, 84, 0.1); }
+.bg-soft-warning { background-color: rgba(255, 193, 7, 0.1); }
+.avatar-sm { font-size: 0.85rem; font-weight: bold; }
+</style>
+{% endblock %}

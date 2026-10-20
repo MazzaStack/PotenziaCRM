@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ p.titulo }} | {{ portal_agency_name or agency.nombre or 'Potenzia Real Estate' }}</title>
+    <!-- Bootstrap 5 CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet.js Interactive Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        :root {
+            --brand-primary: #1A365D;
+            --brand-accent: #2B6CB0;
+            --brand-gold: #D69E2E;
+            --bg-light: #F8FAFC;
+        }
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            max-width: 100vw;
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-light);
+            color: #2D3748;
+        }
+        .property-carousel img {
+            height: 480px;
+            object-fit: cover;
+            border-radius: 16px;
+        }
+        .spec-item {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            text-align: center;
+        }
+        .spec-item i {
+            font-size: 1.5rem;
+            color: var(--brand-accent);
+            display: block;
+            margin-bottom: 4px;
+        }
+        .spec-item .value {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--brand-primary);
+        }
+        .spec-item .label {
+            font-size: 0.8rem;
+            color: #718096;
+            text-transform: uppercase;
+        }
+        .sticky-action-card {
+            position: sticky;
+            top: 20px;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+        .carousel-control-prev-icon,
+        .carousel-control-next-icon {
+            background-color: rgba(0, 0, 0, 0.65);
+            background-size: 50% 50%;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .carousel-control-prev-icon:hover,
+        .carousel-control-next-icon:hover {
+            background-color: rgba(0, 0, 0, 0.85);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark py-3" style="background-color: var(--brand-primary);">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="/portal">
+                <i class="bi bi-arrow-left me-2"></i> 
+                <img src="{{ company_logo or '/static/img/potenzia_logo_transparent.png' }}" alt="{{ portal_agency_name or agency.nombre or 'Potenzia Real Estate' }}" class="me-2" style="height: 32px; max-width: 130px; object-fit: contain;">
+                <span>Volver al Portal | {{ portal_agency_name or agency.nombre or 'Potenzia Real Estate' }}</span>
+            </a>
+            <span class="navbar-text text-white opacity-75">
+                Ref: #{{ p.id }} | Red Exclusiva
+            </span>
+        </div>
+    </nav>
+            <span class="navbar-text text-white opacity-75">
+                Ref: #{{ p.id }} | Red Exclusiva
+            </span>
+        </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <div class="container py-4">
+        <div class="row g-4">
+            <!-- LEFT COLUMN: GALERÍA Y DETALLES -->
+            <div class="col-lg-8">
+                <!-- CARRUSEL DE FOTOS -->
+                <div id="propertyCarousel" class="carousel slide property-carousel mb-4 shadow-sm rounded-4 overflow-hidden" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for foto in p.lista_fotos %}
+                        <div class="carousel-item {% if loop.first %}active{% endif %}">
+                            <img src="{{ foto }}" class="d-block w-100" alt="Foto Propiedad" style="cursor: pointer;" onclick="openLightbox({{ loop.index0 }})" title="Hacé clic para ver en pantalla gigante 🔍" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600';">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if p.lista_fotos|length > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- TÍTULO Y PRECIO -->
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                        <div>
+                            <span class="badge bg-primary mb-2 px-3 py-2 rounded-pill">{{ (p.tipo_operacion or 'Venta')|upper }}</span>
+                            <span class="badge bg-secondary mb-2 px-3 py-2 rounded-pill">{{ (p.tipo_propiedad or 'Departamento')|replace('{','')|replace('}','')|capitalize }}</span>
+                            <h2 class="fw-bold text-dark mb-1">{{ p.titulo }}</h2>
+                            <p class="text-muted mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ p.direccion or 'Dirección reservada' }}, {{ p.barrio or 'CABA' }}</p>
+                        </div>
+                        <div class="text-lg-end">
+                            <h2 class="fw-bold text-success mb-0">{{ p.moneda or 'USD' }} {{ "{:,.0f}".format(p.precio or 0).replace(',', '.') }}</h2>
+                            {% if p.expensas %}
+                            <small class="text-muted">+ ${{ "{:,.0f}".format(p.expensas).replace(',', '.') }} expensas</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BULLETS DE INFORMACIÓN TÉCNICA (ESTILO ZONAPROP) -->
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-info-circle-fill text-primary me-2"></i>Características Principales</h5>
+                    <div class="row g-3">
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-door-open"></i>
+                                <div class="value">{{ p.ambientes or 1 }}</div>
+                                <div class="label">Ambientes</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-journal-album"></i>
+                                <div class="value">{{ p.dormitorios or 0 }}</div>
+                                <div class="label">Dormitorios</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-droplet-fill"></i>
+                                <div class="value">{{ p.banos or 1 }}</div>
+                                <div class="label">Baños</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-arrows-fullscreen"></i>
+                                <div class="value">{{ "{:,.0f}".format(p.m2_cubiertos or p.m2_total or 0).replace(',', '.') }} m²</div>
+                                <div class="label">Cubiertos</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-bounding-box-circles"></i>
+                                <div class="value">{{ "{:,.0f}".format(p.m2_total or p.m2_cubiertos or 0).replace(',', '.') }} m²</div>
+                                <div class="label">Totales</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-car-front"></i>
+                                <div class="value">{{ p.cocheras or 0 }}</div>
+                                <div class="label">Cocheras</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-compass"></i>
+                                <div class="value">{{ p.orientacion or 'N/A' }}</div>
+                                <div class="label">Orientación</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-hourglass-split"></i>
+                                <div class="value">{{ p.antiguedad or 'A consultar' }}</div>
+                                <div class="label">Antigüedad</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DESCRIPCIÓN EXTENDIDA -->
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-text-paragraph text-primary me-2"></i>Descripción de la Propiedad</h5>
+                    <div style="white-space: pre-line; color: #4A5568; font-size: 0.92rem; font-weight: 400; line-height: 1.75; letter-spacing: 0.01em;">
+                        {{ p.descripcion or 'Sin descripción detallada disponible.' }}
+                    </div>
+                </div>
+
+                <!-- UBICACIÓN Y MAPA INTERACTIVO -->
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-geo-alt-fill text-danger me-2"></i>Ubicación y Entorno</h5>
+                        <span class="text-muted small"><i class="bi bi-pin-map me-1"></i> {{ p.direccion or 'Dirección' }}, {{ p.barrio or 'CABA' }}</span>
+                    </div>
+                    <div id="propertyMap" style="height: 380px; width: 100%; border-radius: 16px; z-index: 1;" class="shadow-sm border"></div>
+                </div>
+
+                <!-- ANÁLISIS DE MERCADO & DIAGNÓSTICO -->
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-shield-check text-success me-2"></i>Diagnóstico Inteligente</h5>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3">
+                                <strong>Indicador de Calidez (Heat Score):</strong>
+                                <div class="d-flex align-items-center mt-2">
+                                    <div class="progress flex-grow-1 me-3" style="height: 12px;">
+                                        <div class="progress-bar bg-fire" role="progressbar" style="width: {{ p.heat_score }}%;"></div>
+                                    </div>
+                                    <span class="badge {{ p.heat_badge.class }}">{{ p.heat_badge.label }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3">
+                                <strong>Red Flags / Advertencias:</strong>
+                                <ul class="mb-0 ps-3 small text-muted mt-1">
+                                    {% for flag in p.red_flags %}
+                                    <li>{{ flag }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3">
+                        <strong class="text-primary"><i class="bi bi-check2-square me-1"></i> Checklist Sugerido para tu Visita:</strong>
+                        <ul class="mb-0 ps-3 text-secondary small mt-1">
+                            {% for item in p.checklist %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: STICKY LEAD CALL TO ACTION -->
+            <div class="col-lg-4">
+                <div class="card sticky-action-card p-4 bg-white">
+                    <div class="text-center mb-3">
+                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 fw-semibold">
+                            <i class="bi bi-shield-lock-fill me-1"></i> Asignación Inmediata de Agente
+                        </span>
+                        <h4 class="fw-bold mt-3 text-dark">¿Te interesa esta propiedad?</h4>
+                        <p class="text-muted small">Un agente de nuestro equipo coordinará la visita y verificará la disponibilidad en tiempo real.</p>
+                    </div>
+
+                    <!-- ESTADO AUTENTICADO: USUARIO LOGUEADO -->
+                    <div id="verifiedUserBlock" class="d-none text-center bg-light p-3 rounded-4 mb-3 border">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="bi bi-check-circle-fill text-success fs-4 me-2"></i>
+                            <span class="fw-bold text-dark fs-6" id="lblVerifiedUser">Cliente Validado</span>
+                        </div>
+                        <small class="text-muted d-block mb-3" id="lblVerifiedPhone"></small>
+                        <button type="button" class="btn btn-success btn-lg w-100 py-3 rounded-pill fw-bold shadow-sm" onclick="enviarLeadDetalleDirecto(this)">
+                            <i class="bi bi-whatsapp me-2"></i> Solicitar Visita Ahora
+                        </button>
+                    </div>
+
+                    <!-- ESTADO NO AUTENTICADO: FORMULARIO MANUAL -->
+                    <form id="detailLeadForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Tu Nombre</label>
+                            <input type="text" class="form-control" id="detNombre" placeholder="Ej: Maria Gonzalez" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">WhatsApp de Contacto</label>
+                            <input type="tel" class="form-control" id="detTelefono" placeholder="Ej: +54 9 11 9876 5432" required>
+                        </div>
+                        <button type="button" class="btn btn-success btn-lg w-100 py-3 rounded-pill fw-bold" onclick="enviarLeadDetalle(this)">
+                            <i class="bi bi-whatsapp me-2"></i> Solicitar Visita Ahora
+                        </button>
+                    </form>
+
+                    <div class="mt-4 pt-3 border-top text-center text-muted small">
+                        <i class="bi bi-lock me-1"></i> Tus datos están protegidos y solo se utilizarán para la coordinación de esta propiedad.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER POWERED BY POTENZIA CRM -->
+    <footer class="py-3 text-center mt-5" style="background-color: #0b1329; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <div class="container d-flex justify-content-center align-items-center gap-3 text-white-50">
+            <span style="font-size: 0.88rem; font-weight: 400; letter-spacing: 0.3px;">Powered by</span>
+            <span class="text-white fw-bold" style="font-size: 0.95rem; letter-spacing: 0.5px;">Potenzia CRM</span>
+            <span class="bg-white rounded-2 shadow-sm d-inline-flex align-items-center justify-content-center ms-2" style="background-color: #ffffff !important; padding: 4px 8px;">
+                <img src="/static/img/potenzia_logo_sm.png" alt="Potenzia CRM" style="height: 22px; width: auto; object-fit: contain;">
+            </span>
+        </div>
+    </footer>
+
+    <!-- MODAL LIGHTBOX FOTOS EN GRANDE (PANTALLA GIGANTE CON ZOOM FULLSCREEN) -->
+    <div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-fullscreen p-0 m-0">
+            <div class="modal-content border-0 rounded-0 overflow-hidden shadow-lg position-relative" style="background-color: #0b0f19 !important;">
+                
+                <!-- HEADER DE LIGHTBOX (LIMPIO Y RESTRUCTURADO PARA MÓVILES) -->
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom border-secondary border-opacity-25 bg-dark" style="z-index: 2000; min-height: 60px;">
+                    <div class="d-flex align-items-center gap-2 overflow-hidden me-2" style="max-width: calc(100% - 65px);">
+                        <span id="lightboxCounter" class="badge bg-secondary bg-opacity-75 fs-6 px-3 py-2 rounded-pill fw-bold text-white flex-shrink-0">1 / 1</span>
+                        <span class="text-white-50 small text-truncate"><i class="bi bi-zoom-in me-1"></i> Tocá para Zoom</span>
+                    </div>
+                    <!-- BOTÓN CERRAR DESTACADO SIN SUPERPOSICIÓN -->
+                    <button type="button" class="btn btn-warning rounded-circle shadow-lg text-dark fw-bold border-0 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;" onclick="closeLightboxModal()" title="Cerrar">
+                        <i class="bi bi-x-lg fs-5"></i>
+                    </button>
+                </div>
+
+                <!-- BODY DE LA IMAGEN CON FLECHAS DE NAVEGACIÓN -->
+                <div class="modal-body p-0 d-flex align-items-center justify-content-center position-relative h-100 overflow-hidden" style="cursor: zoom-in;" onclick="toggleImageZoom(event)">
+                    
+                    {% if p.lista_fotos|length > 1 %}
+                    <!-- BOTÓN ANTERIOR -->
+                    <button class="btn border-0 position-absolute start-0 ms-2 ms-md-4 rounded-circle text-white d-flex align-items-center justify-content-center shadow-lg"
+                            onclick="prevLightboxPhoto(event)"
+                            style="background-color: rgba(0,0,0,0.75); width: 56px; height: 56px; z-index: 1055; transition: transform 0.2s;"
+                            onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
+                            title="Foto anterior (Flecha Izquierda)">
+                        <i class="bi bi-chevron-left fs-3"></i>
+                    </button>
+
+                    <!-- BOTÓN SIGUIENTE -->
+                    <button class="btn border-0 position-absolute end-0 me-2 me-md-4 rounded-circle text-white d-flex align-items-center justify-content-center shadow-lg"
+                            onclick="nextLightboxPhoto(event)"
+                            style="background-color: rgba(0,0,0,0.75); width: 56px; height: 56px; z-index: 1055; transition: transform 0.2s;"
+                            onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
+                            title="Siguiente foto (Flecha Derecha)">
+                        <i class="bi bi-chevron-right fs-3"></i>
+                    </button>
+                    {% endif %}
+
+                    <!-- IMAGEN GIGANTE SIN RECORTAR BORDES -->
+                    <img id="lightboxImg" src="" class="shadow-lg" style="max-height: 92vh; max-width: 96vw; width: auto; height: auto; object-fit: contain; border-radius: 8px; transition: transform 0.25s ease, opacity 0.15s ease-in-out;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPhotoIndex = 0;
+        let isPhotoZoomed = false;
+        const fotosPropiedad = {{ p.lista_fotos | tojson }};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initPropertyMap();
+        });
+
+        function cleanAddressJs(raw) {
+            if (!raw) return '';
+            let addr = String(raw).trim();
+            addr = addr.replace(/\([^)]*\)/g, '');
+            addr = addr.replace(/\b(?:piso|depto|departamento|dpto|dto|uf|unidad|torre|bloque|pb|ambientes|amb)\b.*/gi, '');
+            addr = addr.replace(/\b\d+(?:ro|do|to|er|mo|vo|no)?\s*["'A-Za-z]\b/gi, '');
+            addr = addr.replace(/\b(?:frente|contrafrente|lateral|interno)\b/gi, '');
+            addr = addr.replace(/\bal\s+(\d+)\b/gi, '$1');
+            addr = addr.replace(/\baltura\s+(\d+)\b/gi, '$1');
+            addr = addr.replace(/\b(?:nro|n°|num|numero)\.?\s*(\d+)\b/gi, '$1');
+            addr = addr.replace(/\b(?:avda|av)\.?\s*/gi, 'Av. ');
+            addr = addr.replace(/\s+/g, ' ');
+            return addr.replace(/^[\s,.-]+|[\s,.-]+$/g, '');
+        }
+
+        function isBogusCoord(lat, lng) {
+            if (isNaN(lat) || isNaN(lng) || (Math.abs(lat) < 0.001 && Math.abs(lng) < 0.001)) return true;
+            if (lat > -21.0 || lat < -56.0 || lng > -53.0 || lng < -74.0) return true;
+            // Detect Tandil (-37.32, -59.13) or Center of Argentina (-38.41, -63.61)
+            if (Math.hypot(lat - (-37.32), lng - (-59.13)) < 0.25) return true;
+            if (Math.hypot(lat - (-38.41), lng - (-63.61)) < 0.35) return true;
+            return false;
+        }
+
+        function initPropertyMap() {
+            const mapContainer = document.getElementById('propertyMap');
+            if (!mapContainer) return;
+
+            let lat = {{ p.lat or 'null' }};
+            let lng = {{ p.lng or 'null' }};
+            const rawBarrio = "{{ p.barrio or 'CABA' }}";
+            const rawDireccion = "{{ p.direccion or '' }}";
+            const cleanDir = cleanAddressJs(rawDireccion);
+            const titulo = "{{ p.titulo|replace('\'', '')|replace('\"', '') }}";
+
+            function renderMap(l1, l2) {
+                const map = L.map('propertyMap').setView([l1, l2], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(map);
+
+                L.marker([l1, l2]).addTo(map)
+                    .bindPopup(`<strong>${titulo}</strong><br><small>${cleanDir || rawBarrio}</small>`)
+                    .openPopup();
+            }
+
+            // 1. Si tiene coordenadas válidas y no son defaults absurdos
+            if (lat && lng && !isBogusCoord(lat, lng)) {
+                renderMap(lat, lng);
+                return;
+            }
+
+            // 2. Geocodificación Inteligente
+            const isEscobar = (rawBarrio + ' ' + titulo).toLowerCase().includes('escobar');
+            const defaultCenterLat = isEscobar ? -34.3486 : -34.6037;
+            const defaultCenterLng = isEscobar ? -58.7908 : -58.3816;
+
+            // Paso A: Probar USIG GCBA si tiene calle y altura
+            if (cleanDir && /\d+/.test(cleanDir)) {
+                fetch(`http://servicios.usig.buenosaires.gob.ar/normalizar/?direccion=${encodeURIComponent(cleanDir)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.direccionesNormalizadas && data.direccionesNormalizadas.length > 0) {
+                            const coords = data.direccionesNormalizadas[0].coordenadas;
+                            if (coords && coords.x && coords.y) {
+                                const cLat = parseFloat(coords.y);
+                                const cLng = parseFloat(coords.x);
+                                if (!isBogusCoord(cLat, cLng)) {
+                                    renderMap(cLat, cLng);
+                                    return;
+                                }
+                            }
+                        }
+                        tryNominatim();
+                    })
+                    .catch(() => tryNominatim());
+            } else {
+                tryNominatim();
+            }
+
+            // Paso B: Nominatim multi-nivel
+            function tryNominatim() {
+                const queryFull = `${cleanDir ? (cleanDir + ', ') : ''}${rawBarrio}, Buenos Aires, Argentina`;
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryFull)}&countrycodes=ar&limit=1`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.length > 0) {
+                            renderMap(parseFloat(data[0].lat), parseFloat(data[0].lon));
+                        } else {
+                            // Nivel 2: Solo barrio
+                            const fallbackQuery = `${rawBarrio}, Buenos Aires, Argentina`;
+                            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&countrycodes=ar&limit=1`)
+                                .then(r => r.json())
+                                .then(d2 => {
+                                    if (d2 && d2.length > 0) {
+                                        renderMap(parseFloat(d2[0].lat), parseFloat(d2[0].lon));
+                                    } else {
+                                        renderMap(defaultCenterLat, defaultCenterLng);
+                                    }
+                                })
+                                .catch(() => renderMap(defaultCenterLat, defaultCenterLng));
+                        }
+                    })
+                    .catch(() => renderMap(defaultCenterLat, defaultCenterLng));
+            }
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const nombre = getCookie('portal_user_name') || localStorage.getItem('portal_user_name');
+            const telefono = getCookie('portal_user_phone') || localStorage.getItem('portal_user_phone');
+
+            if (nombre && telefono) {
+                const decNombre = decodeURIComponent(nombre);
+                const decTelefono = decodeURIComponent(telefono);
+
+                const inputNombre = document.getElementById('detNombre');
+                const inputTelefono = document.getElementById('detTelefono');
+                if (inputNombre) inputNombre.value = decNombre;
+                if (inputTelefono) inputTelefono.value = decTelefono;
+
+                const verifiedBlock = document.getElementById('verifiedUserBlock');
+                const formBlock = document.getElementById('detailLeadForm');
+                const lblUser = document.getElementById('lblVerifiedUser');
+                const lblPhone = document.getElementById('lblVerifiedPhone');
+
+                if (verifiedBlock && formBlock) {
+                    formBlock.classList.add('d-none');
+                    verifiedBlock.classList.remove('d-none');
+                    if (lblUser) lblUser.innerText = decNombre;
+                    if (lblPhone) lblPhone.innerText = `WhatsApp: ${decTelefono}`;
+                }
+            }
+        });
+
+        function _enviarLeadConVerificacion(payload, btnElement) {
+            const origText = btnElement ? btnElement.innerHTML : null;
+            if (btnElement) {
+                btnElement.disabled = true;
+                btnElement.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Verificando disponibilidad en tiempo real...';
+            }
+
+            fetch('/portal/api/solicitar_lead', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            }).then(async res => {
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    alert(data.error || 'Esta propiedad ya no se encuentra disponible en el portal original.');
+                } else {
+                    alert(data.message || '¡Solicitud recibida con éxito!');
+                }
+            }).catch(err => {
+                alert('Error al verificar la solicitud. Por favor reintentá.');
+            }).finally(() => {
+                if (btnElement) {
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = origText;
+                }
+            });
+        }
+
+        function enviarLeadDetalleDirecto(btnElement) {
+            const nombre = getCookie('portal_user_name') || localStorage.getItem('portal_user_name');
+            const telefono = getCookie('portal_user_phone') || localStorage.getItem('portal_user_phone');
+            if (!nombre || !telefono) { enviarLeadDetalle(); return; }
+            _enviarLeadConVerificacion({
+                nombre: decodeURIComponent(nombre),
+                telefono: decodeURIComponent(telefono),
+                tipo_lead: 'visita',
+                propiedad_id: '{{ p.id }}',
+                propiedad_url: '{{ p.url }}'
+            }, btnElement);
+        }
+
+        function enviarLeadDetalle(btnElement) {
+            const nombre = document.getElementById('detNombre').value;
+            const telefono = document.getElementById('detTelefono').value;
+            if(!nombre || !telefono) { alert('Por favor completá tu nombre y WhatsApp.'); return; }
+            _enviarLeadConVerificacion({
+                nombre: nombre,
+                telefono: telefono,
+                tipo_lead: 'visita',
+                propiedad_id: '{{ p.id }}',
+                propiedad_url: '{{ p.url }}'
+            }, btnElement);
+        }
+
+        function togglePhotoZoom(e) {
+            const img = document.getElementById('lightboxImg');
+            isPhotoZoomed = !isPhotoZoomed;
+            img.style.transform = isPhotoZoomed ? 'scale(1.5)' : 'scale(1.0)';
+            img.style.cursor = isPhotoZoomed ? 'zoom-out' : 'zoom-in';
+        }
+
+        function openLightbox(index) {
+            currentPhotoIndex = index;
+            document.getElementById('lightboxImg').src = fotosPropiedad[currentPhotoIndex];
+            document.getElementById('lightboxCounter').innerText = `${currentPhotoIndex + 1} / ${fotosPropiedad.length}`;
+            new bootstrap.Modal(document.getElementById('lightboxModal')).show();
+        }
+
+        function closeLightboxModal() { bootstrap.Modal.getInstance(document.getElementById('lightboxModal')).hide(); }
+        function nextLightboxPhoto(e) { e.stopPropagation(); currentPhotoIndex = (currentPhotoIndex + 1) % fotosPropiedad.length; document.getElementById('lightboxImg').src = fotosPropiedad[currentPhotoIndex]; }
+        function prevLightboxPhoto(e) { e.stopPropagation(); currentPhotoIndex = (currentPhotoIndex - 1 + fotosPropiedad.length) % fotosPropiedad.length; document.getElementById('lightboxImg').src = fotosPropiedad[currentPhotoIndex]; }
+    </script>
+</body>
+</html>

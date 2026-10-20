@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ p.titulo }} | {{ agency.nombre or 'Potenzia Real Estate' }}</title>
+    <!-- Bootstrap 5 CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --brand-primary: #1A365D;
+            --brand-accent: #2B6CB0;
+            --brand-gold: #D69E2E;
+            --bg-light: #F8FAFC;
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-light);
+            color: #2D3748;
+        }
+        .property-carousel img {
+            height: 480px;
+            object-fit: cover;
+            border-radius: 16px;
+        }
+        .spec-item {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            text-align: center;
+        }
+        .spec-item i {
+            font-size: 1.5rem;
+            color: var(--brand-accent);
+            display: block;
+            margin-bottom: 4px;
+        }
+        .spec-item .value {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--brand-primary);
+        }
+        .spec-item .label {
+            font-size: 0.8rem;
+            color: #718096;
+            text-transform: uppercase;
+        }
+        .sticky-action-card {
+            position: sticky;
+            top: 20px;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark py-3" style="background-color: var(--brand-primary);">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="/portal">
+                <i class="bi bi-arrow-left me-2"></i> Volver al Portal
+            </a>
+            <span class="navbar-text text-white opacity-75">
+                Ref: #{{ p.id }} | Red Exclusiva
+            </span>
+        </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <div class="container py-4">
+        <div class="row g-4">
+            <!-- LEFT COLUMN: GALERÍA Y DETALLES -->
+            <div class="col-lg-8">
+                <!-- CARRUSEL DE FOTOS -->
+                <div id="propertyCarousel" class="carousel slide property-carousel mb-4 shadow-sm rounded-4 overflow-hidden" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for foto in p.lista_fotos %}
+                        <div class="carousel-item {% if loop.first %}active{% endif %}">
+                            <img src="{{ foto }}" class="d-block w-100" alt="Foto Propiedad">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if p.lista_fotos|length > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- TÍTULO Y PRECIO -->
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                        <div>
+                            <span class="badge bg-primary mb-2 px-3 py-2 rounded-pill">{{ p.tipo_operacion|upper }}</span>
+                            <span class="badge bg-secondary mb-2 px-3 py-2 rounded-pill">{{ p.tipo_propiedad|capitalize }}</span>
+                            <h2 class="fw-bold text-dark mb-1">{{ p.titulo }}</h2>
+                            <p class="text-muted mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ p.direccion or 'Dirección reservada' }}, {{ p.barrio or 'CABA' }}</p>
+                        </div>
+                        <div class="text-lg-end">
+                            <h2 class="fw-bold text-success mb-0">{{ p.moneda }} {{ "{:,}".format(p.precio or 0) }}</h2>
+                            {% if p.expensas %}
+                            <small class="text-muted">+ ${{ "{:,}".format(p.expensas) }} expensas</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BULLETS DE INFORMACIÓN TÉCNICA (ESTILO ZONAPROP) -->
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-info-circle-fill text-primary me-2"></i>Características Principales</h5>
+                    <div class="row g-3">
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-door-open"></i>
+                                <div class="value">{{ p.ambientes or 1 }}</div>
+                                <div class="label">Ambientes</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-journal-album"></i>
+                                <div class="value">{{ p.dormitorios or 0 }}</div>
+                                <div class="label">Dormitorios</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-droplet-fill"></i>
+                                <div class="value">{{ p.banos or 1 }}</div>
+                                <div class="label">Baños</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-arrows-fullscreen"></i>
+                                <div class="value">{{ p.m2_cubiertos or p.m2_total or 0 }} m²</div>
+                                <div class="label">Cubiertos</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-bounding-box-circles"></i>
+                                <div class="value">{{ p.m2_total or p.m2_cubiertos or 0 }} m²</div>
+                                <div class="label">Totales</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-car-front"></i>
+                                <div class="value">{{ p.cocheras or 0 }}</div>
+                                <div class="label">Cocheras</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-compass"></i>
+                                <div class="value">{{ p.orientacion or 'N/A' }}</div>
+                                <div class="label">Orientación</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <div class="spec-item">
+                                <i class="bi bi-hourglass-split"></i>
+                                <div class="value">{{ p.antiguedad or 'A consultar' }}</div>
+                                <div class="label">Antigüedad</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DESCRIPCIÓN EXTENDIDA -->
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-text-paragraph text-primary me-2"></i>Descripción de la Propiedad</h5>
+                    <div class="text-secondary lh-lg" style="white-space: pre-line;">
+                        {{ p.descripcion or 'Sin descripción detallada disponible.' }}
+                    </div>
+                </div>
+
+                <!-- ANÁLISIS DE MERCADO & DIAGNÓSTICO -->
+                <div class="bg-white p-4 rounded-4 shadow-sm mb-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-shield-check text-success me-2"></i>Diagnóstico Inteligente</h5>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3">
+                                <strong>Indicador de Calidez (Heat Score):</strong>
+                                <div class="d-flex align-items-center mt-2">
+                                    <div class="progress flex-grow-1 me-3" style="height: 12px;">
+                                        <div class="progress-bar bg-fire" role="progressbar" style="width: {{ p.heat_score }}%;"></div>
+                                    </div>
+                                    <span class="badge {{ p.heat_badge.class }}">{{ p.heat_badge.label }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3">
+                                <strong>Red Flags / Advertencias:</strong>
+                                <ul class="mb-0 ps-3 small text-muted mt-1">
+                                    {% for flag in p.red_flags %}
+                                    <li>{{ flag }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3">
+                        <strong class="text-primary"><i class="bi bi-check2-square me-1"></i> Checklist Sugerido para tu Visita:</strong>
+                        <ul class="mb-0 ps-3 text-secondary small mt-1">
+                            {% for item in p.checklist %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: STICKY LEAD CALL TO ACTION -->
+            <div class="col-lg-4">
+                <div class="card sticky-action-card p-4 bg-white">
+                    <div class="text-center mb-3">
+                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 fw-semibold">
+                            <i class="bi bi-shield-lock-fill me-1"></i> Asignación Inmediata de Agente
+                        </span>
+                        <h4 class="fw-bold mt-3 text-dark">¿Te interesa esta propiedad?</h4>
+                        <p class="text-muted small">Un agente de nuestro equipo coordinará la visita y verificará la disponibilidad en tiempo real.</p>
+                    </div>
+
+                    <form id="detailLeadForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Tu Nombre</label>
+                            <input type="text" class="form-control" id="detNombre" placeholder="Ej: Maria Gonzalez" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">WhatsApp de Contacto</label>
+                            <input type="tel" class="form-control" id="detTelefono" placeholder="Ej: +54 9 11 9876 5432" required>
+                        </div>
+                        <button type="button" class="btn btn-success btn-lg w-100 py-3 rounded-pill fw-bold" onclick="enviarLeadDetalle()">
+                            <i class="bi bi-whatsapp me-2"></i> Solicitar Visita Ahora
+                        </button>
+                    </form>
+
+                    <div class="mt-4 pt-3 border-top text-center text-muted small">
+                        <i class="bi bi-lock me-1"></i> Tus datos están protegidos y solo se utilizarán para la coordinación de esta propiedad.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function enviarLeadDetalle() {
+            const nombre = document.getElementById('detNombre').value;
+            const telefono = document.getElementById('detTelefono').value;
+
+            if(!nombre || !telefono) {
+                alert('Por favor completá tu nombre y WhatsApp.');
+                return;
+            }
+
+            fetch('/portal/api/solicitar_lead', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    nombre: nombre,
+                    telefono: telefono,
+                    tipo_lead: 'visita',
+                    propiedad_id: {{ p.id }}
+                })
+            })
+            .then(res => res.json())
+            .then(res => {
+                alert(res.message || '¡Solicitud recibida! Te contactaremos a la brevedad.');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Propiedades - {{ zona }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: #f8f9fa;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .report-container {
+            max-width: 960px;
+            margin: 40px auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.05);
+            border-radius: 15px;
+        }
+
+        .header-brand {
+            border-bottom: 3px solid #0d6efd;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* ── Mapa de cabecera ── */
+        .map-header {
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 28px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+        }
+
+        .map-header img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .map-header .map-caption {
+            background: #f0f4ff;
+            padding: 8px 14px;
+            font-size: 0.8rem;
+            color: #555;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .property-item {
+            border-bottom: 1px solid #eee;
+            padding: 30px 0;
+            page-break-inside: avoid;
+        }
+
+        .property-item:last-child {
+            border-bottom: none;
+        }
+
+        .prop-price {
+            font-size: 1.8rem;
+            color: #0d6efd;
+            font-weight: 800;
+        }
+
+        .feature-badge {
+            background: #f0f7ff;
+            color: #0d6efd;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-right: 10px;
+        }
+
+        /* ── Grid de fotos 3 × 2 (máx 6 fotos) ── */
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .photo-grid img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s;
+        }
+
+        .photo-grid img:first-child {
+            /* Foto portada ocupa las 3 columnas de la primera fila */
+            grid-column: 1 / -1;
+            height: 200px;
+        }
+
+        .photo-grid img:hover {
+            transform: scale(1.03);
+        }
+
+        /* Si solo hay 1 foto, hacerla grande */
+        .photo-grid.single-photo {
+            grid-template-columns: 1fr;
+        }
+
+        .photo-grid.single-photo img {
+            height: 260px;
+        }
+
+        .photo-grid.single-photo img:first-child {
+            height: 260px;
+        }
+
+        .description-box {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #dee2e6;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        @media print {
+            body {
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .report-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+                border-radius: 0 !important;
+                padding: 10px !important;
+            }
+
+            .btn-print {
+                display: none !important;
+            }
+
+            .photo-grid img {
+                height: 110px !important;
+            }
+
+            .photo-grid img:first-child {
+                height: 160px !important;
+            }
+
+            .map-header {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            
+            .property-item {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                display: block !important;
+                border-bottom: 2px solid #ccc !important;
+                padding-bottom: 20px !important;
+                margin-bottom: 20px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="report-container">
+        <div class="d-flex justify-content-between align-items-center header-brand">
+            <div>
+                <h1 class="fw-bold mb-0">Selección de Propiedades</h1>
+                <p class="text-muted"><i class="bi bi-geo-alt me-1"></i> {{ zona }} | {{ tipo|capitalize }}
+                    {% if modalidad == 'alquiler' %}<span class="badge bg-success ms-2">Alquiler</span>
+                    {% else %}<span class="badge bg-primary ms-2">Venta</span>{% endif %}
+                </p>
+            </div>
+            <div class="text-end">
+                <h4 class="mb-0 fw-bold">German</h4>
+                <small class="text-muted">Asesor Inmobiliario</small>
+            </div>
+        </div>
+
+        <div class="alert alert-info border-0 shadow-sm mb-3 d-flex align-items-center">
+            <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+            <div>A continuación presento una pre-selección técnica basada en tus requerimientos de búsqueda.</div>
+        </div>
+
+        {% if map_url %}
+        <!-- Mapa de ubicaciones aproximadas -->
+        <div class="map-header mb-4">
+            <img src="{{ map_url }}" alt="Mapa de ubicaciones" loading="lazy"
+                 onerror="this.parentElement.style.display='none'">
+            <div class="map-caption">
+                <i class="bi bi-map me-1"></i>
+                Ubicaciones aproximadas de las propiedades seleccionadas en <strong>{{ zona }}</strong>
+            </div>
+        </div>
+        {% endif %}
+
+        {% for p in props %}
+        <div class="property-item">
+            <h3 class="fw-bold mb-3">{{ p.titulo }}</h3>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <!-- Grid de fotos 3×2 (portada ocupa fila entera) -->
+                    {% set fotos = p.fotos if p.fotos else ([p.foto] if p.foto else []) %}
+                    <div class="photo-grid {% if fotos|length <= 1 %}single-photo{% endif %}">
+                        {% for foto in fotos[:6] %}
+                        <img src="{{ foto }}" alt="Foto {{ loop.index }}" onerror="this.style.display='none'">
+                        {% endfor %}
+                        {% if fotos|length == 0 %}
+                        <div class="d-flex align-items-center justify-content-center bg-light"
+                            style="height:200px;border-radius:6px;grid-column:1/-1;">
+                            <i class="bi bi-image text-muted" style="font-size:3rem;"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="prop-price mb-3">{{ p.moneda if p.moneda else 'ARS' }} {{ "{:,.0f}".format(p.precio) }}</div>
+
+                    <ul class="list-unstyled mb-4" style="font-size: 0.95rem; line-height: 1.6; color: #475569; padding-left: 0;">
+                        {% if p.tipo_propiedad %}<li style="margin-bottom: 4px;"><i class="bi bi-building me-2 text-primary"></i>{{ p.tipo_propiedad }}</li>{% endif %}
+                        {% if p.m2_total or p.m2 %}<li style="margin-bottom: 4px;"><i class="bi bi-aspect-ratio me-2 text-primary"></i>{{ p.m2_total or p.m2 }} m² Totales</li>{% endif %}
+                        {% if p.m2_cubiertos %}<li style="margin-bottom: 4px;"><i class="bi bi-aspect-ratio-fill me-2 text-primary"></i>{{ p.m2_cubiertos }} m² Cubierta</li>{% endif %}
+                        {% if p.ambientes %}<li style="margin-bottom: 4px;"><i class="bi bi-door-open me-2 text-primary"></i>{{ p.ambientes }} ambientes</li>{% endif %}
+                        {% if p.dormitorios %}<li style="margin-bottom: 4px;"><i class="bi bi-house me-2 text-primary"></i>{{ p.dormitorios }} dormitorios</li>{% endif %}
+                        {% if p.banos %}<li style="margin-bottom: 4px;"><i class="bi bi-droplet me-2 text-primary"></i>{{ p.banos }} baños</li>{% endif %}
+                        {% if p.toilettes %}<li style="margin-bottom: 4px;"><i class="bi bi-droplet-half me-2 text-primary"></i>{{ p.toilettes }} toilettes</li>{% endif %}
+                        {% if p.cocheras %}<li style="margin-bottom: 4px;"><i class="bi bi-car-front me-2 text-primary"></i>{{ p.cocheras }} cocheras</li>{% endif %}
+                        {% if p.antiguedad is not none %}<li style="margin-bottom: 4px;"><i class="bi bi-calendar-event me-2 text-primary"></i>{{ p.antiguedad }} años</li>{% endif %}
+                        {% if p.disposicion %}<li style="margin-bottom: 4px;"><i class="bi bi-compass me-2 text-primary"></i>{{ p.disposicion }}</li>{% endif %}
+                        {% if p.orientacion %}<li style="margin-bottom: 4px;"><i class="bi bi-compass-fill me-2 text-primary"></i>{{ p.orientacion }} (Orientación)</li>{% endif %}
+                        {% if p.estado_conservacion %}<li style="margin-bottom: 4px;"><i class="bi bi-stars me-2 text-primary"></i>{{ p.estado_conservacion }}</li>{% endif %}
+                        {% if p.barrio %}<li style="margin-bottom: 4px;"><i class="bi bi-geo-alt me-2 text-primary"></i>{{ p.barrio }}</li>{% endif %}
+                        {% if p.direccion %}<li style="margin-bottom: 4px;"><i class="bi bi-pin-map me-2 text-primary"></i>{{ p.direccion }}</li>{% endif %}
+                    </ul>
+
+                    <div class="description-box mb-3">
+                        {% set is_disabled = get_config('ia_provider_primario', 'gemini') == 'desactivada' %}
+                        {% if p.resumen_ia and not is_disabled %}
+                        <div class="small fw-bold text-primary mb-2"><i class="bi bi-robot me-1"></i> Análisis de IA
+                        </div>
+                        <div style="white-space: pre-line;">{{ p.resumen_ia }}</div>
+                        {% else %}
+                        <div class="small fw-bold text-secondary mb-2"><i class="bi bi-file-text me-1"></i> Descripción de la Propiedad</div>
+                        <p class="mb-0" style="white-space: pre-line;">{{ p.resumen_ia or p.descripcion }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="mt-5 text-center">
+            <hr class="mb-5">
+            <p class="text-muted mb-4">Si alguna de estas opciones te interesa, contactame para coordinar una visita o
+                pedir más detalles técnicos.</p>
+            <button onclick="window.print()" class="btn btn-primary btn-lg px-5 fw-bold shadow btn-print me-2">
+                <i class="bi bi-printer me-2"></i> Descargar / Imprimir
+            </button>
+            <button id="copy-btn" onclick="copyShareLink()" class="btn btn-outline-success btn-lg px-5 fw-bold shadow btn-print">
+                <i class="bi bi-share me-2"></i> Copiar Enlace Compartible
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function copyShareLink() {
+            var url = window.location.href;
+            navigator.clipboard.writeText(url).then(function() {
+                var btn = document.getElementById('copy-btn');
+                var oldText = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check2 me-2"></i> ¡Enlace Copiado!';
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-success');
+                setTimeout(function() {
+                    btn.innerHTML = oldText;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-success');
+                }, 2500);
+            }, function(err) {
+                alert('Por favor, copia la dirección del navegador manualmente.');
+            });
+        }
+    </script>
+    </div>
+
+</body>
+
+</html>

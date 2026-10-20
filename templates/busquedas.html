@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Búsquedas{% endblock %}
+{% block header %}Configuración de Scrapers{% endblock %}
+
+{% block actions %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevaBusquedaModal">
+    <i class="bi bi-plus-circle"></i> Nueva Búsqueda
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    {% for b in searches %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 {% if not b.activa %}opacity-50{% endif %}">
+            <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                <span class="badge portal-{{ b.portal }} portal-badge">{{ b.portal }}</span>
+                <div class="form-check form-switch">
+                    <a href="{{ url_for('activar_desactivar_busqueda', bid=b.id) }}" class="form-check-input"
+                        style="cursor: pointer; appearance: checkbox;" {% if b.activa %}checked{% endif %}></a>
+                </div>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ b.nombre }}</h5>
+                <p class="text-muted small text-truncate">{{ b.url_busqueda }}</p>
+                <div class="d-flex justify-content-between mb-3">
+                    <span><i class="bi bi-clock"></i> {{ b.frecuencia_minutos }} min</span>
+                    <span><i class="bi bi-houses"></i> {{ b.propiedades_encontradas }} total</span>
+                </div>
+                <div class="alert alert-light py-2 small mb-0">
+                    Última ejecución: {{ b.ultima_ejecucion or 'Nunca' }}
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0 d-flex flex-wrap gap-2">
+                <a href="{{ url_for('ejecutar_scraper', bid=b.id) }}" class="btn btn-sm btn-success flex-grow-1"
+                    onclick="if(window.CRMLoading) window.CRMLoading.show('🕷️ Ejecutando scraper de propiedades...')">
+                    <i class="bi bi-play-fill"></i> Ejecutar
+                </a>
+                <button type="button" class="btn btn-sm btn-info text-white btn-mas" data-bid="{{ b.id }}"
+                    onclick="ejecutarMas(this)">
+                    Más
+                </button>
+                <a href="{{ url_for('limpiar_inactivas', bid=b.id) }}" class="btn btn-sm btn-outline-info"
+                    onclick="this.innerHTML='<span class=\'spinner-border spinner-border-sm\'></span>'; this.classList.add('disabled');"
+                    title="Detectar propiedades publicadas archivadas o vendidas">
+                    <i class="bi bi-shield-check"></i> Activas
+                </a>
+                <form action="{{ url_for('limpiar_busqueda', bid=b.id) }}" method="POST" class="d-inline"
+                    onsubmit="return confirm('¿Borrar todos los resultados de esta búsqueda? No se borrará la configuración de la búsqueda.');">
+                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Limpiar Resultados">
+                        <i class="bi bi-eraser"></i>
+                    </button>
+                </form>
+                <form action="{{ url_for('borrar_busqueda', bid=b.id) }}" method="POST" class="d-inline"
+                    onsubmit="return confirm('¿Borrar esta búsqueda completa?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Borrar búsqueda">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <p class="text-muted">Aún no has configurado ninguna búsqueda de propiedades.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+    function ejecutarMas(btn) {
+        const bid = btn.getAttribute('data-bid');
+        // Get current page from localStorage or default to 5
+        let currentPage = parseInt(localStorage.getItem('scraper_page_' + bid) || '5');
+
+        // Disable button and start 20s cooldown
+        btn.disabled = true;
+        let counter = 20;
+        const originalText = btn.innerText;
+
+        const timer = setInterval(() => {
+            btn.innerText = counter + "s";
+            counter--;
+            if (counter < 0) {
+                clearInterval(timer);
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }, 1000);
+
+        // Increment page and save for next time
+        localStorage.setItem('scraper_page_' + bid, currentPage + 1);
+
+        // Redirect to execute that specific page
+        window.location.href = `/ejecutar_scraper/${bid}?page=${currentPage}`;
+    }
+</script>
+
+<!-- Modal Nueva Búsqueda -->
+<div class="modal fade" id="nuevaBusquedaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('nueva_busqueda') }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Configurar Nuevo Scraper</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre descriptivo</label>
+                        <input type="text" name="nombre" class="form-control"
+                            placeholder="Ej: Deptos Dueño Directo CABA" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Portal</label>
+                        <select name="portal" class="form-select">
+                            <option value="zonaprop">Zonaprop</option>
+                            <option value="argenprop">Argenprop</option>
+                            <option value="mercadolibre">Mercado Libre</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">URL de búsqueda (con filtros aplicados)</label>
+                        <input type="url" name="url_busqueda" class="form-control"
+                            placeholder="Copiá la URL del portal aquí" required>
+                        <div class="form-text">Asegurate de aplicar los filtros de "Dueño Directo" en el portal antes de
+                            copiar la URL.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Frecuencia (minutos)</label>
+                        <input type="number" name="frecuencia" class="form-control" value="60" min="15">
+                    </div>
+                </div>
+                <div class="modal-header">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Búsqueda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

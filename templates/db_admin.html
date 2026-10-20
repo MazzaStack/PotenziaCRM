@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Administración de Base de Datos{% endblock %}
+{% block header %}Configuración y Migración de Base de Datos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row g-4">
+        <!-- Status & Environment Connection Switch -->
+        <div class="col-lg-6">
+            <div class="card p-4 h-100 shadow-sm border-0">
+                <h5 class="card-title mb-4 text-primary d-flex align-items-center">
+                    <i class="bi bi-cpu me-2"></i> Estado de Conectividad
+                </h5>
+                
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Entorno Activo</label>
+                    <form action="{{ url_for('admin_database_toggle') }}" method="POST" class="d-flex align-items-center gap-3">
+                        <select name="active_env" class="form-select border-2" style="max-width: 200px;">
+                            <option value="development" {% if db_config.active_env == 'development' %}selected{% endif %}>Desarrollo (Local)</option>
+                            <option value="production" {% if db_config.active_env == 'production' %}selected{% endif %}>Producción (Web)</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-save me-1"></i> Guardar Entorno
+                        </button>
+                    </form>
+                </div>
+
+                <div class="list-group">
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3 border-0 bg-light rounded mb-2">
+                        <div>
+                            <strong class="d-block">Motor Configurado actualmente</strong>
+                            <small class="text-muted">Especificado en db_config.json</small>
+                        </div>
+                        <span class="badge bg-dark fs-6">{{ db_config.db_type | upper }}</span>
+                    </div>
+
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3 border-0 bg-light rounded mb-2">
+                        <div>
+                            <strong class="d-block">Modo Fallback SQLite</strong>
+                            <small class="text-muted">Si PostgreSQL falla, usa SQLite</small>
+                        </div>
+                        <span class="badge {% if db_config.sqlite_fallback_enabled %}bg-success{% else %}bg-secondary{% endif %} fs-6">
+                            {% if db_config.sqlite_fallback_enabled %}Habilitado{% else %}Deshabilitado{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3 border-0 bg-light rounded">
+                        <div>
+                            <strong class="d-block">Estado de Ejecución en Tiempo Real</strong>
+                            <small class="text-muted">Base de datos que está respondiendo las consultas ahora</small>
+                        </div>
+                        {% if sqlite_fallback_active %}
+                        <span class="badge bg-danger fs-6 animate-pulse">EMERGENCIA (SQLite)</span>
+                        {% else %}
+                        <span class="badge bg-success fs-6">POSTGRESQL ACTIVO</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection String Configurations -->
+        <div class="col-lg-6">
+            <div class="card p-4 shadow-sm border-0">
+                <h5 class="card-title mb-4 text-primary d-flex align-items-center">
+                    <i class="bi bi-link-45deg me-2"></i> Configuración de Cadenas de Conexión
+                </h5>
+
+                <form action="{{ url_for('admin_database_save_config') }}" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tipo de Base de Datos Principal</label>
+                        <select name="db_type" class="form-select border-2">
+                            <option value="sqlite" {% if db_config.db_type == 'sqlite' %}selected{% endif %}>SQLite (Local independiente)</option>
+                            <option value="postgresql" {% if db_config.db_type == 'postgresql' %}selected{% endif %}>PostgreSQL (Centralizado / Alta Concurrencia)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="sqlite_fallback_enabled" id="fallbackSwitch" value="true" {% if db_config.sqlite_fallback_enabled %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold" for="fallbackSwitch">Habilitar Fallback a SQLite en caso de error de red</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted">PostgreSQL URL - Desarrollo (Local)</label>
+                        <input type="text" name="pg_local" class="form-control font-monospace border-2" value="{{ db_config.postgres.local }}" placeholder="postgresql://usuario:password@localhost:5432/crm_db">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-muted">PostgreSQL URL - Producción (Web / Servidor Linux)</label>
+                        <input type="text" name="pg_prod" class="form-control font-monospace border-2" value="{{ db_config.postgres.production }}" placeholder="postgresql://usuario:password@ip:5432/crm_db">
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
+                        <i class="bi bi-check-circle me-1"></i> Probar y Guardar Configuración
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Data Migrator Tool (SQLite -> PostgreSQL) -->
+        <div class="col-12">
+            <div class="card p-4 shadow-sm border-0 bg-dark text-light">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="card-title mb-0 text-warning d-flex align-items-center">
+                        <i class="bi bi-database-fill-up me-2"></i> Herramienta de Migración Controlada
+                    </h5>
+                    <span class="badge bg-warning text-dark fw-bold">ADMIN ONLY</span>
+                </div>
+
+                <div class="row align-items-center g-4">
+                    <div class="col-lg-6">
+                        <p class="text-secondary">
+                            Esta herramienta permite copiar todos los datos existentes de las bases de datos locales **SQLite** 
+                            (incluyendo contactos, comunicaciones, propiedades e historiales) hacia la base de datos **PostgreSQL** configurada según el entorno seleccionado arriba.
+                        </p>
+                        <div class="alert alert-warning border-0 bg-opacity-10 text-warning d-flex align-items-start mb-0">
+                            <i class="bi bi-exclamation-triangle-fill fs-4 me-3 mt-1"></i>
+                            <div>
+                                <strong>¡ADVERTENCIA DE SOBRESCRITURA!</strong><br>
+                                Al iniciar la migración se limpiará la base de datos PostgreSQL de destino para garantizar que los IDs de claves primarias coincidan exactamente. Asegúrate de hacer un backup previo si la base de destino posee información útil.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="p-3 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25 mb-3">
+                            <strong class="d-block mb-2">Parámetros de la Migración:</strong>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Origen (SQLite Local):</span>
+                                <span class="text-warning font-monospace">captador.db + usuarios/</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Destino (Postgres Activo):</span>
+                                <span class="text-success font-monospace">{{ active_env | upper }}</span>
+                            </div>
+                        </div>
+
+                        <button id="btnStartMigration" class="btn btn-warning w-100 py-3 fw-bold text-dark fs-5">
+                            <i class="bi bi-lightning-fill me-1"></i> Iniciar Copia de SQLite a PostgreSQL
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Log Terminal -->
+                <div id="migrationTerminalWrapper" class="mt-4" style="display: none;">
+                    <label class="form-label text-secondary fw-semibold">Consola de progreso de migración:</label>
+                    <div id="migrationTerminal" class="font-monospace p-3 rounded" style="background-color: #0d0d0d; border: 1px solid #333; height: 250px; overflow-y: auto; font-size: 0.85rem; color: #39ff14; line-height: 1.5;">
+                        [Iniciando canal de migración...]
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('btnStartMigration').addEventListener('click', function() {
+    if (!confirm('¿Estás seguro de que deseas iniciar la migración? Esto vaciará las tablas en la base de datos PostgreSQL para reescribir con la información de SQLite.')) {
+        return;
+    }
+
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Migrando datos...';
+
+    const terminalWrapper = document.getElementById('migrationTerminalWrapper');
+    const terminal = document.getElementById('migrationTerminal');
+    terminalWrapper.style.display = 'block';
+    terminal.innerHTML = '[PROCESO] Iniciando migración de datos...\n';
+
+    // Open connection to execution endpoint via Server-Sent Events (SSE) or simple post
+    // For simplicity, we trigger a fetch and append logs as they arrive.
+    const eventSource = new EventSource("{{ url_for('admin_database_migrate_stream') }}");
+
+    eventSource.onmessage = function(event) {
+        if (event.data === '[DONE]') {
+            terminal.innerHTML += '\n[COMPLETO] Migración finalizada exitosamente! 🎉\n';
+            btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Migración Completa';
+            eventSource.close();
+        } else if (event.data.startsWith('[ERROR]')) {
+            terminal.innerHTML += '\n' + event.data + '\n';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Reintentar Migración';
+            eventSource.close();
+        } else {
+            terminal.innerHTML += event.data + '\n';
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+    };
+
+    eventSource.onerror = function() {
+        terminal.innerHTML += '\n[ERROR] Conexión perdida con el servidor.\n';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Reintentar Migración';
+        eventSource.close();
+    };
+});
+</script>
+
+<style>
+.animate-pulse {
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+</style>
+{% endblock %}

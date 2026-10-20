@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ agency.nombre }} - {{ agency.slogan }}{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" crossorigin="anonymous">
+    {% if agency.favicon_url %}
+    <link rel="shortcut icon" href="{{ agency.favicon_url }}" type="image/x-icon">
+    {% endif %}
+    <style>
+        :root {
+            --primary-color: {{ agency.color_secundario or '#1a1a2e' }};
+            --secondary-color: #2c3e50;
+            --accent-color: {{ agency.color_primario or '#0d6efd' }};
+            --success-color: #27ae60;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+            --bg-light: #f8f9fa;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .sidebar {
+            background-color: var(--primary-color);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: white;
+            background-color: var(--accent-color);
+        }
+
+        .sidebar-heading {
+            color: #DFBA73 !important; /* Refined champagne gold */
+            font-size: 0.82rem !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.02em !important;
+            text-transform: none !important; /* Sin mayúsculas forzadas */
+            opacity: 0.95;
+            margin-top: 1.1rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .sidebar hr {
+            border-color: rgba(255, 255, 255, 0.12) !important;
+            margin: 0.75rem 0;
+        }
+
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 2rem;
+        }
+
+        .navbar-brand img {
+            height: 40px;
+        }
+
+        .main-content {
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .portal-badge {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 767.98px) {
+            .sidebar {
+                height: 100vh;
+                overflow-y: auto;
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 1045;
+                width: 280px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                padding: 1rem;
+                padding-top: 5rem;
+            }
+        }
+
+        .avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+        }
+
+        .text-truncate {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <!-- Mobile Navbar -->
+    <nav class="navbar navbar-dark bg-dark d-md-none fixed-top shadow">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" onclick="document.querySelector('.sidebar').classList.toggle('show')">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            {% if agency.logo_url and agency.logo_url != '/static/img/logo.png' %}
+            <span class="navbar-brand mb-0 h1 fw-bold d-flex align-items-center">
+                <img src="{{ agency.logo_url }}" alt="{{ agency.nombre }}" style="max-height: 40px; max-width: 170px; object-fit: contain; width: auto; height: auto;">
+            </span>
+            {% else %}
+            <span class="navbar-brand mb-0 h1 fw-bold d-flex align-items-center">
+                <img src="{{ url_for('static', filename='img/potenzia_logo_sm.png') }}" alt="Potenzia CRM" style="max-height: 36px; max-width: 150px; object-fit: contain; width: auto; height: auto;">
+            </span>
+            {% endif %}
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i></a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            {% if current_user.is_authenticated %}
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse shadow">
+                <div class="position-sticky pt-3">
+                    <div class="mb-4 d-none d-md-block px-2 text-center">
+                        <div class="bg-white p-2 rounded-3 shadow-sm d-flex align-items-center justify-content-center" style="min-height: 64px;">
+                            <img src="{{ agency.logo_url or url_for('static', filename='img/potenzia_logo.png') }}" alt="{{ agency.nombre }}" class="img-fluid logo-sidebar" style="max-height: 54px; max-width: 100%; object-fit: contain;">
+                        </div>
+                    </div>
+                    
+                    <!-- Perfil de Usuario -->
+                    {% if current_user.is_authenticated %}
+                    <div class="user-profile mb-4 p-3 mx-2 rounded bg-secondary bg-opacity-25">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle me-2 bg-primary text-white d-flex align-items-center justify-content-center">
+                                <span class="fw-bold">{{ current_user.nombre_display[0] | upper if current_user.nombre_display else current_user.usuario[0] | upper }}</span>
+                            </div>
+                            <div class="overflow-hidden flex-grow-1">
+                                <h6 class="mb-0 text-white text-truncate">{{ current_user.nombre_display or current_user.usuario }}</h6>
+                                <div class="mt-1 d-flex gap-1 flex-wrap align-items-center">
+                                    <span class="badge bg-{{ 'danger' if current_user.rol == 'admin' else 'primary' }} small" style="font-size: 0.65rem;">{{ current_user.rol | upper }}</span>
+                                    {% if current_user.usuario == 'GermanMazza' %}
+                                    <span class="badge bg-warning text-dark small" style="font-size: 0.65rem;">SuperAdmin</span>
+                                    {% elif current_user.oficina_nombre %}
+                                    <span class="badge bg-dark border border-secondary text-info small" style="font-size: 0.65rem;" title="Oficina"><i class="fas fa-building me-1"></i>{{ current_user.oficina_nombre }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary text-light small" style="font-size: 0.65rem;" title="Sin oficina asociada"><i class="fas fa-user-tag me-1 text-warning"></i>Suelto</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <ul class="nav flex-column px-2">
+                        {% if current_user.is_authenticated %}
+                            {% if user_can('menu_item', 'dashboard') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% if current_user.usuario == 'GermanMazza' %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'growth_canvas' %}active{% endif %}" href="{{ url_for('growth_canvas') }}">
+                                    <i class="bi bi-kanban me-2 text-danger"></i> Growth Canvas
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'propiedades_view' %}active{% endif %}" href="{{ url_for('propiedades_view') }}">
+                                    <i class="bi bi-houses me-2"></i> Propiedades (Captación)
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'comunicaciones' %}active{% endif %}" href="{{ url_for('comunicaciones') }}">
+                                    <i class="bi bi-chat-dots me-2"></i> Seguimiento Auto
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'busquedas' %}active{% endif %}" href="{{ url_for('busquedas') }}">
+                                    <i class="bi bi-search me-2"></i> Robots de Búsqueda
+                                </a>
+                            </li>
+                            {% endif %}
+    
+                            {% if user_can('menu_item', 'crm_contactos') or user_can('menu_item', 'tasador') or user_can('menu_item', 'seguimiento_prop') or user_can('menu_item', 'archivos_asignados') or user_can('menu_item', 'finanzas_oficina') or user_can('menu_item', 'libro_finanzas') or user_can('menu_item', 'lotes_excel') %}
+                            <hr class="border-secondary opacity-25">
+                            <h6 class="sidebar-heading px-3">Herramientas CRM</h6>
+
+                            {% if current_user.rol in ('admin', 'broker') or current_user.usuario == 'GermanMazza' %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if 'analitica' in request.endpoint %}active{% endif %}" href="{{ url_for('analitica.dashboard') }}">
+                                    <i class="bi bi-graph-up-arrow me-2 text-info"></i> Analítica & KPIs
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% if user_can('menu_item', 'crm_contactos') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'crm_contactos' %}active{% endif %}" href="{{ url_for('crm_contactos') }}">
+                                    <i class="bi bi-people me-2"></i> Contactos CRM
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% if user_can('menu_item', 'tasador') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'tasador' %}active{% endif %}" href="{{ url_for('tasador') }}">
+                                    <i class="bi bi-calculator me-2"></i> Tasador Express
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'seguimiento_prop') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'seguimiento_prop' %}active{% endif %}" href="{{ url_for('seguimiento_prop') }}">
+                                    <i class="bi bi-file-earmark-excel me-2"></i> Seguimiento Prop
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'archivos_asignados') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'archivos_asignados' %}active{% endif %}" href="{{ url_for('archivos_asignados') }}">
+                                    <i class="bi bi-folder-check me-2"></i> Archivos Asignados
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'finanzas_oficina') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'finanzas_oficina' %}active{% endif %}" href="{{ url_for('finanzas_oficina') }}">
+                                    <i class="bi bi-bank me-2"></i> Finanzas Oficina
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'libro_finanzas') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'libro_finanzas' %}active{% endif %}" href="{{ url_for('libro_finanzas') }}">
+                                    <i class="bi bi-wallet2 me-2"></i> Libro de Finanzas
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'lotes_excel') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'lotes_excel.lotes' %}active{% endif %}" href="{{ url_for('lotes_excel.lotes') }}">
+                                    <i class="bi bi-database-fill-gear me-2"></i> Visor de Lotes
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% if current_user.rol == 'admin' or user_can('plugin', 'modelado_3d') or user_can('menu_item', 'modelado_3d') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'modelado_3d.index' %}active{% endif %}" href="{{ url_for('modelado_3d.index') }}">
+                                    <i class="bi bi-box-perspective me-2"></i> Modelado 3D
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'meta_ai') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'meta_ai.panel' %}active{% endif %}" href="{{ url_for('meta_ai.panel') }}">
+                                    <i class="bi bi-robot me-2"></i> Mi ClaudIA
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% endif %}
+    
+                            {% if user_can('menu_item', 'buscador_ventas') or user_can('menu_item', 'buscador_alquileres') or user_can('menu_item', 'busquedas_clientes') or user_can('menu_item', 'panel_fichas') or user_can('menu_item', 'portales_temporales') %}
+                            <hr class="border-secondary opacity-25">
+                            <h6 class="sidebar-heading px-3">Explorar Mercado</h6>
+                            {% if user_can('menu_item', 'buscador_ventas') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.path == url_for('buscador_compradores') %}active{% endif %}" href="{{ url_for('buscador_compradores') }}">
+                                    <i class="bi bi-geo-fill me-2"></i> Buscador Propiedades
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'buscador_alquileres') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.path == url_for('buscador_alquileres') %}active{% endif %}" href="{{ url_for('buscador_alquileres') }}">
+                                    <i class="bi bi-key-fill me-2"></i> Buscador Alquileres
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'busquedas_clientes') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if 'busquedas_clientes' in request.endpoint or '/busquedas/clientes' in request.path %}active{% endif %}" href="{{ url_for('captacion_outreach.busquedas_clientes') }}">
+                                    <i class="bi bi-bookmark-heart me-2"></i> Búsquedas Clientes
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'portales_temporales') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if 'portaltemp' in request.path %}active{% endif %}" href="{{ url_for('captacion_outreach.panel_portales_temporales') }}">
+                                    <i class="bi bi-globe-americas me-2 text-warning"></i> Portales Temporales Live
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'panel_fichas') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if 'panel_fichas' in request.endpoint or 'fichas' in request.endpoint %}active{% endif %}" href="/fichas/panel">
+                                    <i class="bi bi-link-45deg me-2 text-warning"></i> Publi a Fichas (PAF)
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% endif %}
+
+                            {% if user_can('plugin', 'tokko') %}
+                            <hr class="border-secondary opacity-25">
+                            <h6 class="sidebar-heading px-3">Cartera Tokko Broker</h6>
+                            {% if current_user.oficina_id or current_user.usuario == 'GermanMazza' %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'tokko.cartera' %}active{% endif %}" href="{{ url_for('tokko.cartera') }}">
+                                    <i class="bi bi-building-fill-check me-2"></i> Cartera Tokko Broker
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'tokko.mis_operaciones' %}active{% endif %}" href="{{ url_for('tokko.mis_operaciones') }}">
+                                    <i class="bi bi-person-lines-fill me-2"></i> Mis Operaciones
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% if user_can('menu_item', 'historias') or user_can('menu_item', 'pap') or current_user.usuario == 'GermanMazza' %}
+                            <hr class="border-secondary opacity-25">
+                            <h6 class="sidebar-heading px-3">Marketing & Contenido</h6>
+                            {% if user_can('menu_item', 'pap') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'publicacion_placa.index' %}active{% endif %}" href="{{ url_for('publicacion_placa.index') }}">
+                                    <i class="bi bi-card-image me-2"></i> PAP
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if user_can('menu_item', 'historias') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'historias_view' %}active{% endif %}" href="{{ url_for('historias_view') }}">
+                                    <i class="bi bi-images me-2"></i> Publicar Historias
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if current_user.usuario == 'GermanMazza' %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.path == url_for('planificador') %}active{% endif %}" href="{{ url_for('planificador') }}">
+                                    <i class="bi bi-calendar3-event me-2"></i> Planificador 10 Sem
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% endif %}
+    
+                            {% if user_can('menu_item', 'gestion_usuarios') %}
+                            <hr class="border-secondary-subtle">
+                            <h6 class="sidebar-heading px-3 text-warning">Administración</h6>
+                            {% if current_user.usuario == 'GermanMazza' %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'admin_oficinas' or request.endpoint == 'auth.admin_oficinas' %}active{% endif %}" href="{{ url_for('admin_oficinas') }}">
+                                    <i class="bi bi-building me-2 text-primary"></i> Gestión Oficinas
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'admin_usuarios' %}active{% endif %}" href="{{ url_for('admin_usuarios') }}">
+                                    <i class="bi bi-person-badge-fill me-2"></i> Gestión Usuarios
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'admin_privilegios' %}active{% endif %}" href="{{ url_for('admin_privilegios') }}">
+                                    <i class="bi bi-shield-lock-fill me-2"></i> Matriz Privilegios
+                                </a>
+                            </li>
+
+                            {% if current_user.rol == 'admin' %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'admin_database' %}active{% endif %}" href="{{ url_for('admin_database') }}">
+                                    <i class="bi bi-database-fill me-2"></i> Base de Datos
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'db_backup.admin_backups' or request.endpoint == 'admin_backups' %}active{% endif %}" href="{{ url_for('db_backup.admin_backups') }}">
+                                    <i class="bi bi-cloud-arrow-down-fill me-2 text-info"></i> Backups y Restore
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if current_user.rol in ['admin', 'broker'] or current_user.usuario == 'GermanMazza' %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'papelera.index' %}active{% endif %}" href="{{ url_for('papelera.index') }}">
+                                    <i class="bi bi-trash3-fill me-2 text-danger"></i> Papelera de Reciclaje
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if current_user.usuario == 'GermanMazza' %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'plugin_control.manage_plugins' %}active{% endif %}" href="{{ url_for('admin_plugin_control') }}">
+                                    <i class="bi bi-plugin me-2"></i> Activación Plugins
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% endif %}
+    
+                            <hr class="border-secondary opacity-25">
+                            {% if user_can('menu_item', 'configuracion') %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'configuracion' %}active{% endif %}" href="{{ url_for('configuracion') }}">
+                                    <i class="bi bi-gear me-2"></i> Configuración
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li class="nav-item mt-auto">
+                                <a class="nav-link text-danger" href="{{ url_for('logout') }}">
+                                    <i class="bi bi-box-arrow-left me-2"></i> Cerrar Sesión
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('login') }}">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i> Iniciar Sesión
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </nav>
+            {% endif %}
+
+            <!-- Main Content -->
+            <main class="{% if current_user.is_authenticated %}col-md-9 ms-sm-auto col-lg-10{% else %}col-12{% endif %} px-md-4 main-content">
+                {% if sqlite_fallback_active %}
+                <div class="alert alert-danger d-flex align-items-center justify-content-between py-3 px-4 border-2 border-danger shadow-lg mb-4" style="background-color: #ffeef0; animation: crmPulse 2s infinite;" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill text-danger fs-3 me-3"></i>
+                        <div>
+                            <strong class="fs-5 d-block text-danger">¡MODO DE EMERGENCIA ACTIVO (SQLite Local)!</strong>
+                            <span class="text-dark">La base de datos centralizada PostgreSQL no responde. Las modificaciones que realices <strong>NO se guardarán en el servidor central</strong> y podrían perderse. Contacta a soporte técnico de inmediato.</span>
+                        </div>
+                    </div>
+                    {% if current_user.is_authenticated and current_user.rol == 'admin' %}
+                    <a href="/admin/database" class="btn btn-danger btn-sm px-3 ms-3">
+                        <i class="bi bi-gear-fill me-1"></i> Configurar DB
+                    </a>
+                    {% endif %}
+                </div>
+                <style>
+                    @keyframes crmPulse {
+                        0% { box-shadow: 0 0.5rem 1rem rgba(220, 53, 69, 0.15); border-color: #dc3545; }
+                        50% { box-shadow: 0 0.5rem 2rem rgba(220, 53, 69, 0.4); border-color: #bd2130; }
+                        100% { box-shadow: 0 0.5rem 1rem rgba(220, 53, 69, 0.15); border-color: #dc3545; }
+                    }
+                </style>
+                {% endif %}
+
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">{% block header %}{% endblock %}</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        {% block actions %}{% endblock %}
+                    </div>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+
+    <!-- ====== LOADING OVERLAY PLUGIN ====== -->
+    <div id="crmLoadingOverlay" style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: rgba(10, 10, 20, 0.88);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    ">
+        <div style="
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border: 1px solid rgba(100, 160, 255, 0.25);
+            border-radius: 1.5rem;
+            padding: 2.5rem 3rem;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6), 0 0 40px rgba(52, 152, 219, 0.15);
+        ">
+            <!-- Header -->
+            <div style="display:flex; align-items:center; gap: 1rem; margin-bottom: 1.5rem;">
+                <div id="crmLoadingSpinner" style="
+                    width: 48px; height: 48px;
+                    border: 4px solid rgba(52, 152, 219, 0.2);
+                    border-top-color: #3498db;
+                    border-radius: 50%;
+                    animation: crmSpin 0.8s linear infinite;
+                    flex-shrink: 0;
+                "></div>
+                <div>
+                    <div id="crmLoadingTitle" style="
+                        color: #fff;
+                        font-size: 1.1rem;
+                        font-weight: 700;
+                        font-family: 'Segoe UI', sans-serif;
+                    ">Procesando...</div>
+                    <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 2px;">
+                        Por favor no cierres esta ventana
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal Log Window -->
+            <div style="
+                background: #0a0a0a;
+                border: 1px solid rgba(52,152,219,0.3);
+                border-radius: 0.75rem;
+                padding: 1rem;
+                height: 200px;
+                overflow-y: auto;
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 0.78rem;
+                position: relative;
+            " id="crmLogTerminal">
+                <div id="crmLogLines" style="color: #00ff88;"></div>
+                <div id="crmLogCursor" style="
+                    display: inline-block;
+                    width: 8px; height: 14px;
+                    background: #00ff88;
+                    animation: crmBlink 1s step-end infinite;
+                    vertical-align: middle;
+                    margin-left: 2px;
+                "></div>
+            </div>
+
+            <!-- Status bar -->
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin-top: 1rem;
+                color: rgba(255,255,255,0.4);
+                font-size: 0.75rem;
+                font-family: 'Segoe UI', sans-serif;
+            ">
+                <div style="
+                    width: 8px; height: 8px;
+                    background: #00ff88;
+                    border-radius: 50%;
+                    box-shadow: 0 0 6px #00ff88;
+                    animation: crmBlink 1.5s ease-in-out infinite;
+                "></div>
+                <span id="crmLogCount">Iniciando...</span>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    @keyframes crmSpin {
+        to { transform: rotate(360deg); }
+    }
+    @keyframes crmBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+    }
+    </style>
+
+    <script>
+    (function() {
+        'use strict';
+
+        window.CRMLoading = {
+            _sse: null,
+            _lineCount: 0,
+            _maxLines: 80,
+
+            show: function(title) {
+                const overlay = document.getElementById('crmLoadingOverlay');
+                const titleEl = document.getElementById('crmLoadingTitle');
+                const logLines = document.getElementById('crmLogLines');
+                const countEl = document.getElementById('crmLogCount');
+
+                if (!overlay) return;
+
+                // Reset
+                this._lineCount = 0;
+                if (logLines) logLines.innerHTML = '';
+                if (countEl) countEl.textContent = 'Conectando...';
+                if (titleEl) titleEl.textContent = title || 'Procesando...';
+
+                overlay.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+
+                // Start SSE log stream
+                this._startStream();
+            },
+
+            hide: function() {
+                const overlay = document.getElementById('crmLoadingOverlay');
+                if (overlay) overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                this._stopStream();
+
+                // Clear server-side buffer
+                fetch('/loading/log-clear', { method: 'POST' }).catch(() => {});
+            },
+
+            _startStream: function() {
+                this._stopStream();
+                const self = this;
+
+                try {
+                    this._sse = new EventSource('/loading/log-stream');
+                    this._sse.onmessage = function(e) {
+                        if (e.data && e.data.trim()) {
+                            self._appendLine(e.data);
+                        }
+                    };
+                    this._sse.onerror = function() {
+                        // On SSE error, fall back to polling
+                        self._stopStream();
+                        self._startPolling();
+                    };
+                } catch(err) {
+                    this._startPolling();
+                }
+            },
+
+            _stopStream: function() {
+                if (this._sse) {
+                    this._sse.close();
+                    this._sse = null;
+                }
+                if (this._pollTimer) {
+                    clearInterval(this._pollTimer);
+                    this._pollTimer = null;
+                }
+            },
+
+            _startPolling: function() {
+                const self = this;
+                this._pollTimer = setInterval(function() {
+                    fetch('/loading/log-snapshot')
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.logs) {
+                                const logLines = document.getElementById('crmLogLines');
+                                if (logLines && data.logs.length > self._lineCount) {
+                                    const newLines = data.logs.slice(self._lineCount);
+                                    newLines.forEach(line => self._appendLine(line));
+                                }
+                            }
+                        }).catch(() => {});
+                }, 800);
+            },
+
+            _appendLine: function(text) {
+                const logLines = document.getElementById('crmLogLines');
+                const terminal = document.getElementById('crmLogTerminal');
+                const countEl = document.getElementById('crmLogCount');
+                if (!logLines) return;
+
+                // Color coding
+                let color = '#00ff88';
+                const tl = text.toLowerCase();
+                if (tl.includes('error') || tl.includes('fail') || tl.includes('blocked')) color = '#ff6b6b';
+                else if (tl.includes('warning') || tl.includes('advertencia')) color = '#ffd166';
+                else if (tl.includes('buscando') || tl.includes('scraping') || tl.includes('probe')) color = '#74b9ff';
+                else if (tl.includes('ok') || tl.includes('guardado') || tl.includes('success') || tl.includes('encontrado')) color = '#55efc4';
+                else if (tl.includes('[sistema]') || tl.includes('[tokko]') || tl.includes('[tasador]')) color = '#a29bfe';
+
+                const line = document.createElement('div');
+                line.style.color = color;
+                line.style.lineHeight = '1.5';
+                line.style.whiteSpace = 'pre-wrap';
+                line.style.wordBreak = 'break-all';
+                line.textContent = '> ' + text;
+                logLines.appendChild(line);
+                this._lineCount++;
+
+                // Remove oldest lines if too many
+                while (logLines.children.length > this._maxLines) {
+                    logLines.removeChild(logLines.firstChild);
+                }
+
+                // Auto-scroll to bottom
+                if (terminal) terminal.scrollTop = terminal.scrollHeight;
+
+                // Update count
+                if (countEl) countEl.textContent = `${this._lineCount} mensajes recibidos`;
+            }
+        };
+
+        window.toggleIAProvider = function(buttonEl) {
+            const spanEl = buttonEl.querySelector('.provider-name');
+            buttonEl.disabled = true;
+            fetch("{{ url_for('toggle_ia_provider') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                buttonEl.disabled = false;
+                if (data.success) {
+                    // Update all toggles on the page
+                    document.querySelectorAll('.toggle-ia-btn .provider-name').forEach(el => {
+                        el.textContent = data.new_provider.toUpperCase();
+                    });
+                    // Change color scheme based on active provider
+                    document.querySelectorAll('.toggle-ia-btn').forEach(btn => {
+                        if (data.new_provider === 'gemini') {
+                            btn.className = 'btn btn-outline-primary fw-bold shadow-sm toggle-ia-btn me-2';
+                        } else if (data.new_provider === 'groq') {
+                            btn.className = 'btn btn-outline-warning fw-bold shadow-sm toggle-ia-btn me-2';
+                        } else {
+                            btn.className = 'btn btn-outline-secondary fw-bold shadow-sm toggle-ia-btn me-2';
+                        }
+                    });
+                }
+            })
+            .catch(err => {
+                buttonEl.disabled = false;
+                console.error("Error toggling IA:", err);
+            });
+        };
+
+        // ======================================================
+        // AUTO-TRIGGER: intercept forms and buttons that trigger
+        // long-running operations
+        // ======================================================
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // 1. Tasador form submit
+            const tasadorForm = document.getElementById('tasadorForm');
+            if (tasadorForm) {
+                tasadorForm.addEventListener('submit', function() {
+                    window.CRMLoading.show('🏠 Tasador Express — Calculando valor de mercado...');
+                });
+            }
+
+            // 2. Buscador compradores / alquileres (any form with class crm-loading-form)
+            document.querySelectorAll('form.crm-loading-form').forEach(function(form) {
+                form.addEventListener('submit', function() {
+                    const title = form.dataset.loadingTitle || '🔍 Buscando propiedades en el mercado...';
+                    window.CRMLoading.show(title);
+                });
+            });
+
+            // 3. Buttons with data-loading-title attribute (excluding forms to prevent overlay triggering on input focus/click)
+            document.querySelectorAll('[data-loading-title]').forEach(function(el) {
+                if (el.tagName === 'FORM') return;
+                el.addEventListener('click', function() {
+                    window.CRMLoading.show(el.dataset.loadingTitle);
+                });
+            });
+
+            // 4. Reporte ACM form (target blank still shows loading)
+            document.querySelectorAll('form[target="_blank"]').forEach(function(form) {
+                if (form.querySelector('input[name="comparables_json"]')) {
+                    form.addEventListener('submit', function() {
+                        window.CRMLoading.show('Generando Reporte ACM...');
+                        // Auto-hide after 8 seconds for new tab forms
+                        setTimeout(() => window.CRMLoading.hide(), 8000);
+                    });
+                }
+            });
+        });
+
+    })();
+    </script>
+    <!-- ====== END LOADING OVERLAY PLUGIN ====== -->
+
+</body>
+
+</html>

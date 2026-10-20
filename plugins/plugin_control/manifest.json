@@ -1,0 +1,7 @@
+{
+    "id": "plugin_control",
+    "nombre": "Control de Activación de Plugins",
+    "version": "1.0.0",
+    "description": "Permite al SuperAdmin activar o desactivar plugins globalmente por rol/tipo de usuario.",
+    "enabled": true
+}

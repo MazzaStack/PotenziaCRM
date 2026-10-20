@@ -1,0 +1,8 @@
+{
+  "id": "asistente_ia",
+  "name": "Asistente IA (Fidelización & Morning Briefing)",
+  "version": "1.0.0",
+  "description": "Generador de saludos inteligentes de cumpleaños y aniversario con Groq y Morning Briefing diario a las 8:30 AM vía WhatsApp del Portal.",
+  "author": "German Mazzaferro",
+  "enabled": true
+}

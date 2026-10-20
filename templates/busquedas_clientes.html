@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+
+{% block title %}Búsquedas de Clientes{% endblock %}
+{% block header %}Búsquedas Guardadas de Clientes{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-7">
+        <h2 class="fw-bold mb-1"><i class="bi bi-bookmark-heart text-primary me-2"></i>Búsquedas de Clientes</h2>
+        <p class="text-muted small mb-0">Gestioná los requerimientos de tus clientes, ejecutá búsquedas en tiempo real, descubrí nuevas propiedades ingresadas o colaborá con las búsquedas públicas de la oficina.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('captacion_outreach.buscador_compradores') }}" class="btn btn-sm btn-primary me-1 shadow-sm">
+            <i class="bi bi-house-add me-1"></i> Nueva Búsqueda Venta
+        </a>
+        <a href="{{ url_for('captacion_outreach.buscador_alquileres') }}" class="btn btn-sm btn-success shadow-sm">
+            <i class="bi bi-key me-1"></i> Nueva Búsqueda Alquiler
+        </a>
+    </div>
+</div>
+
+<!-- Tabs de Navegación -->
+<ul class="nav nav-pills mb-4" id="busquedasTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold px-4 py-2" id="mis-busquedas-tab" data-bs-toggle="pill" data-bs-target="#mis-busquedas" type="button" role="tab">
+            <i class="bi bi-person-fill me-1"></i> Mis Búsquedas 
+            <span class="badge bg-primary text-white ms-2">{{ busquedas|length }}</span>
+        </button>
+    </li>
+    {% if current_user.oficina_id or current_user.usuario == 'GermanMazza' %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold px-4 py-2" id="publicas-tab" data-bs-toggle="pill" data-bs-target="#publicas" type="button" role="tab">
+            <i class="bi bi-people-fill me-1"></i> Búsquedas Públicas de la Oficina 
+            <span class="badge bg-secondary text-white ms-2">{{ busquedas_publicas|length }}</span>
+        </button>
+    </li>
+    {% endif %}
+</ul>
+
+<div class="tab-content" id="busquedasTabsContent">
+    <!-- PESTAÑA 1: MIS BÚSQUEDAS -->
+    <div class="tab-pane fade show active" id="mis-busquedas" role="tabpanel">
+        <div class="row">
+            {% for b in busquedas %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-sm border-0 position-relative">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 pt-3">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge {% if b.tipo_operacion == 'alquiler' %}bg-success{% else %}bg-primary{% endif %} text-white text-uppercase" style="font-size: 0.75rem;">
+                                {{ b.tipo_operacion }}
+                            </span>
+                            {% if b.es_publica %}
+                            <span class="badge bg-info text-dark" style="font-size: 0.75rem;" title="Compartida con todos los agentes de la oficina">
+                                <i class="bi bi-people-fill me-1"></i>Pública
+                            </span>
+                            {% endif %}
+                        </div>
+                        <span class="text-muted small"><i class="bi bi-calendar3"></i> {{ b.fecha_creacion[:10] }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-1">{{ b.nombre }}</h5>
+                        
+                        <!-- Información del Cliente con opción de Reasignar -->
+                        <div class="d-flex justify-content-between align-items-start bg-light p-2.5 rounded-3 mb-3 border">
+                            <div class="small">
+                                <span class="text-muted d-block" style="font-size: 0.75rem;">CLIENTE ASIGNADO</span>
+                                <strong class="text-dark"><i class="bi bi-person-circle text-primary me-1"></i>{{ b.cliente_nombre }} {{ b.cliente_apellido }}</strong>
+                                {% if b.cliente_email %}
+                                <div class="text-muted small text-truncate" style="max-width: 180px;"><i class="bi bi-envelope me-1"></i>{{ b.cliente_email }}</div>
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 mt-1" 
+                                    onclick="abrirModalReasignar('{{ b.id }}', '{{ b.nombre|escape }}', '{{ b.cliente_id }}')"
+                                    title="Reasignar a otro cliente">
+                                <i class="bi bi-arrow-left-right me-1"></i>Cambiar
+                            </button>
+                        </div>
+                        
+                        <div class="bg-light p-3 rounded-3 mb-3 small border">
+                            <div class="row g-2">
+                                <div class="col-6"><strong>Zona:</strong> {{ b.zona }}</div>
+                                <div class="col-6"><strong>Tipo:</strong> {{ b.tipo_propiedad|replace('"', '')|replace('[', '')|replace(']', '')|capitalize }}</div>
+                                <div class="col-6"><strong>Ambientes:</strong> {{ b.ambientes|replace('"', '')|replace('[', '')|replace(']', '') or 'Cualquiera' }}</div>
+                                <div class="col-6"><strong>Dormitorios:</strong> {{ b.dormitorios or 'Cualquiera' }}</div>
+                                <div class="col-12">
+                                    <strong>Rango Precio:</strong> 
+                                    {% if b.min_precio or b.max_precio %}
+                                        {% if b.min_precio %}desde {{ "{:,.0f}".format(b.min_precio) }}{% endif %}
+                                        {% if b.max_precio %} hasta {{ "{:,.0f}".format(b.max_precio) }}{% endif %}
+                                    {% else %}
+                                        Sin límites
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-light border py-1.5 small mb-0 d-flex align-items-center text-muted">
+                            <i class="bi bi-clock-history me-2 text-warning"></i>
+                            <span>Última ejecución: <strong>{{ b.ultima_ejecucion or 'Nunca' }}</strong></span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-top-0 d-flex flex-column gap-2 pb-3">
+                        <!-- Botón 1: Ejecutar Búsqueda (Completa) -->
+                        <a href="{{ url_for('captacion_outreach.probar_busqueda_cliente', bid=b.id) }}" class="btn btn-sm btn-primary w-100 fw-bold shadow-sm"
+                           onclick="if(window.CRMLoading) window.CRMLoading.show('🕷️ Ejecutando búsqueda en portales y Tokko...')">
+                            <i class="bi bi-play-fill me-1 fs-6"></i> Ejecutar Búsqueda
+                        </a>
+                        
+                        <!-- Botón 2: Ejecutar Búsqueda con Nuevas Propiedades -->
+                        <a href="{{ url_for('captacion_outreach.probar_busqueda_cliente', bid=b.id, solo_nuevas=1) }}" class="btn btn-sm btn-outline-primary w-100 fw-semibold"
+                           onclick="if(window.CRMLoading) window.CRMLoading.show('✨ Filtrando solo propiedades nuevas captadas...')">
+                            <i class="bi bi-stars text-warning me-1"></i> Ejecutar con Nuevas Propiedades
+                        </a>
+
+                        <div class="d-flex gap-2 mt-1">
+                            <a href="{{ url_for('captacion_outreach.enviar_busqueda_agente', bid=b.id) }}" class="btn btn-sm btn-outline-info flex-grow-1"
+                               onclick="return confirm('¿Enviar reporte de prueba a tu correo (casilla del agente)?')">
+                                <i class="bi bi-envelope-at me-1"></i> Copia Agente
+                            </a>
+                            <a href="{{ url_for('captacion_outreach.enviar_busqueda_cliente', bid=b.id) }}" class="btn btn-sm btn-outline-success flex-grow-1"
+                               onclick="return confirm('¿Enviar novedades encontradas al correo del cliente?')">
+                                <i class="bi bi-send me-1"></i> A Cliente
+                            </a>
+                        </div>
+                        <form action="{{ url_for('captacion_outreach.borrar_busqueda_cliente', bid=b.id) }}" method="POST" class="text-center mt-1"
+                              onsubmit="return confirm('¿Estás seguro de borrar esta búsqueda guardada?');">
+                            <button type="submit" class="btn btn-sm btn-link text-danger text-decoration-none p-0 border-0 shadow-none">
+                                <i class="bi bi-trash me-1"></i> Eliminar Búsqueda
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12 text-center py-5">
+                <div class="p-5 bg-white rounded-4 shadow-sm border">
+                    <i class="bi bi-bookmark-x text-muted" style="font-size: 3.5rem;"></i>
+                    <h4 class="mt-3 fw-bold text-dark">No tenés búsquedas guardadas de clientes</h4>
+                    <p class="text-muted">Podés guardar una búsqueda realizando un filtro en el Buscador de Propiedades o de Alquileres.</p>
+                    <div class="mt-4 d-flex justify-content-center gap-2">
+                        <a href="{{ url_for('captacion_outreach.buscador_compradores') }}" class="btn btn-primary">Buscador Ventas</a>
+                        <a href="{{ url_for('captacion_outreach.buscador_alquileres') }}" class="btn btn-success">Buscador Alquileres</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- PESTAÑA 2: BÚSQUEDAS PÚBLICAS DE LA OFICINA -->
+    <div class="tab-pane fade" id="publicas" role="tabpanel">
+        <div class="row">
+            {% for b in busquedas_publicas %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-sm border-0 border-top border-4 border-info">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 pt-3">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge {% if b.tipo_operacion == 'alquiler' %}bg-success{% else %}bg-primary{% endif %} text-white text-uppercase" style="font-size: 0.75rem;">
+                                {{ b.tipo_operacion }}
+                            </span>
+                            <span class="badge bg-info text-dark" style="font-size: 0.75rem;">
+                                <i class="bi bi-people-fill me-1"></i>Pública
+                            </span>
+                        </div>
+                        <span class="text-muted small"><i class="bi bi-calendar3"></i> {{ b.fecha_creacion[:10] }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-1">{{ b.nombre }}</h5>
+                        
+                        <div class="bg-light p-2.5 rounded-3 mb-3 border">
+                            <span class="text-muted d-block small" style="font-size: 0.75rem;">COMPARTIDA POR AGENTE</span>
+                            <strong class="text-primary"><i class="bi bi-person-badge me-1"></i>{{ b.agente_nombre or b.agente_usuario or 'Colega' }}</strong>
+                        </div>
+                        
+                        <div class="bg-light p-3 rounded-3 mb-3 small border">
+                            <div class="row g-2">
+                                <div class="col-6"><strong>Zona:</strong> {{ b.zona }}</div>
+                                <div class="col-6"><strong>Tipo:</strong> {{ b.tipo_propiedad|replace('"', '')|replace('[', '')|replace(']', '')|capitalize }}</div>
+                                <div class="col-6"><strong>Ambientes:</strong> {{ b.ambientes|replace('"', '')|replace('[', '')|replace(']', '') or 'Cualquiera' }}</div>
+                                <div class="col-6"><strong>Dormitorios:</strong> {{ b.dormitorios or 'Cualquiera' }}</div>
+                                <div class="col-12">
+                                    <strong>Rango Precio:</strong> 
+                                    {% if b.min_precio or b.max_precio %}
+                                        {% if b.min_precio %}desde {{ "{:,.0f}".format(b.min_precio) }}{% endif %}
+                                        {% if b.max_precio %} hasta {{ "{:,.0f}".format(b.max_precio) }}{% endif %}
+                                    {% else %}
+                                        Sin límites
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-top-0 pb-3">
+                        <!-- Único botón permitido en búsquedas públicas -->
+                        <a href="{{ url_for('captacion_outreach.probar_busqueda_cliente', bid=b.id) }}" class="btn btn-sm btn-primary w-100 fw-bold shadow-sm"
+                           onclick="if(window.CRMLoading) window.CRMLoading.show('🕷️ Ejecutando búsqueda compartida en portales y Tokko...')">
+                            <i class="bi bi-play-fill me-1 fs-6"></i> Ejecutar Búsqueda
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12 text-center py-5">
+                <div class="p-5 bg-white rounded-4 shadow-sm border">
+                    <i class="bi bi-people text-muted" style="font-size: 3.5rem;"></i>
+                    <h4 class="mt-3 fw-bold text-dark">No hay búsquedas públicas compartidas por otros agentes</h4>
+                    <p class="text-muted">Cuando un colega marque una búsqueda como "Pública", aparecerá acá para que todos puedan colaborar en encontrar la propiedad indicada.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Reasignar Cliente -->
+<div class="modal fade" id="modalReasignarCliente" tabindex="-1" aria-labelledby="modalReasignarClienteLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content text-start">
+            <form id="formReasignarCliente" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalReasignarClienteLabel"><i class="bi bi-person-gear text-primary me-2"></i>Reasignar Cliente de la Búsqueda</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">Búsqueda: <strong id="modalReasignarBusquedaNombre" class="text-dark"></strong></p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Seleccionar Nuevo Cliente</label>
+                        <select name="cliente_id" id="modalReasignarClienteSelect" class="form-select" required>
+                            <option value="">Seleccioná un cliente de la lista...</option>
+                            {% for c in contactos %}
+                            <option value="{{ c.id }}">{{ c.nombre }} {{ c.apellido }} ({{ c.email or 'sin email' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Guardar Reasignación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalReasignar(bid, nombreBusqueda, clienteIdActual) {
+    const form = document.getElementById('formReasignarCliente');
+    form.action = `/busquedas/clientes/${bid}/reasignar_cliente`;
+    
+    document.getElementById('modalReasignarBusquedaNombre').innerText = nombreBusqueda;
+    
+    const select = document.getElementById('modalReasignarClienteSelect');
+    if (select) {
+        select.value = clienteIdActual || '';
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalReasignarCliente'));
+    modal.show();
+}
+</script>
+{% endblock %}

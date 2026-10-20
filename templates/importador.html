@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block header %}Importador de Contactos Excel{% endblock %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col-md-8 mx-auto">
+        <div class="card bg-dark border-secondary shadow">
+            <div class="card-body p-4 text-center">
+                <i class="bi bi-file-earmark-arrow-up fs-1 text-primary mb-3"></i>
+                <h2 class="h4 text-white">Subí tu planilla de agentes</h2>
+                <p class="text-muted">El sistema detectará automáticamente las columnas y te permitirá asignarlas a los campos del CRM.</p>
+                
+                <form action="{{ url_for('importar_paso_1') }}" method="POST" enctype="multipart/form-data" class="mt-4">
+                    <div class="input-group mb-3">
+                        <input type="file" name="excel_file" class="form-control bg-secondary text-white border-0" accept=".xlsx, .xls, .csv" required>
+                        <button class="btn btn-primary px-4" type="submit">Analizar Archivo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if headers %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card bg-dark border-secondary shadow-lg">
+            <div class="card-header border-secondary bg-secondary-subtle">
+                <h5 class="mb-0 text-white"><i class="bi bi-shuffle me-2"></i>Mapeo de Columnas</h5>
+                <p class="text-muted small mb-0">Elegí qué columna de tu Excel corresponde a cada campo de nuestra base de datos.</p>
+            </div>
+            <form action="{{ url_for('importar_paso_2') }}" method="POST">
+                <input type="hidden" name="temp_filename" value="{{ temp_filename }}">
+                <div class="card-body">
+                    <div class="row g-4">
+                        {% set fields = [
+                            ('nombre', 'Nombre', 'bi-person'), 
+                            ('apellido', 'Apellido', 'bi-person-badge'), 
+                            ('telefono', 'Teléfono / WhatsApp', 'bi-whatsapp'),
+                            ('email', 'Correo Electrónico', 'bi-envelope'),
+                            ('rol', 'Rol / Etiquetas', 'bi-tag'),
+                            ('categoria', 'Categoría (A, B, C)', 'bi-list-stars'),
+                            ('calificacion', 'Calificación (1-5)', 'bi-star'),
+                            ('ultimo_contacto', 'Último Contacto', 'bi-calendar-check'),
+                            ('fecha_nacimiento', 'Fecha de Nacimiento', 'bi-cake2'),
+                            ('referente', 'Referente / Asignado', 'bi-person-check'),
+                            ('notas', 'Notas / Comentarios', 'bi-sticky')
+                        ] %}
+                        
+                        {% for field_id, field_name, icon in fields %}
+                        <div class="col-md-6">
+                            <label class="form-label text-white small"><i class="bi {{ icon }} me-2 text-info"></i>{{ field_name }}</label>
+                            <select name="mapping_{{ field_id }}" class="form-select bg-secondary text-white border-0">
+                                <option value="">-- Ignorar este campo --</option>
+                                {% for h in headers %}
+                                <option value="{{ h }}" {% if h.lower() in [field_id, field_name.lower()] %}selected{% endif %}>{{ h }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if custom_cols %}
+                    <div class="row g-4 mt-2">
+                        <div class="col-12 mt-4">
+                            <h6 class="text-info small text-uppercase fw-bold border-bottom border-info border-opacity-25 pb-2">
+                                <i class="bi bi-star-fill me-2"></i>Mis Columnas Personalizadas
+                            </h6>
+                        </div>
+                        {% for col in custom_cols %}
+                        <div class="col-md-6">
+                            <label class="form-label text-white small"><i class="bi bi-plus-circle me-2 text-warning"></i>{{ col }}</label>
+                            <select name="mapping_custom_{{ col }}" class="form-select bg-secondary text-white border-0">
+                                <option value="">-- Ignorar este campo --</option>
+                                {% for h in headers %}
+                                <option value="{{ h }}" {% if h.lower() == col.lower() %}selected{% endif %}>{{ h }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="alert alert-warning mt-4 py-2 border-0 bg-opacity-10 bg-warning text-warning small">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Los contactos duplicados por número de teléfono se actualizarán automáticamente.
+                    </div>
+                </div>
+                <div class="card-footer border-secondary d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('crm_contactos') }}" class="btn btn-outline-light">Cancelar</a>
+                    <button type="submit" class="btn btn-success px-5">Iniciar Importación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

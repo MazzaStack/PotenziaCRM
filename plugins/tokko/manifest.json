@@ -1,0 +1,16 @@
+{
+    "id": "tokko",
+    "name": "Cartera Tokko Broker",
+    "version": "1.0.0",
+    "description": "Integración con Tokko Broker: sincronización automática de cartera, buscador combinado y seguimiento de operaciones propias.",
+    "enabled": true,
+    "menu": {
+        "section": "Cartera Tokko Broker",
+        "icon": "bi-building-fill-check",
+        "items": [
+            {"label": "Cartera Tokko Broker", "route": "tokko.cartera"},
+            {"label": "Buscador", "route": "tokko.buscar"},
+            {"label": "Mis Operaciones", "route": "tokko.mis_operaciones"}
+        ]
+    }
+}

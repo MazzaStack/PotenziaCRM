@@ -1,0 +1,8 @@
+{
+    "id": "loading_overlay",
+    "name": "Loading Overlay",
+    "description": "Muestra un cartel de carga con logs en tiempo real durante operaciones largas.",
+    "version": "1.0.0",
+    "enabled": true,
+    "public_routes": ["loading_overlay.log_stream", "loading_overlay.push_log_endpoint"]
+}

@@ -1,0 +1,1342 @@
+{% extends 'base.html' %}
+
+{% block title %}Potenzia CRM - El CRM Inmobiliario que potencia tu negocio{% endblock %}
+{% block header %}Panel de Control{% endblock %}
+
+{% block content %}
+
+<!-- Header Resumen Agente & Quick Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm bg-white rounded-3 overflow-hidden">
+            <div class="card-body p-4 bg-gradient text-dark d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3"
+                 style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                <div>
+                    <h4 class="fw-bold mb-1">
+                        ¡Hola, {{ user.nombre_display or user.usuario }}! 👋
+                    </h4>
+                    <p class="text-muted mb-0 small">
+                        Panel de gestión diaria y prospección inmobiliaria personal.
+                    </p>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <!-- Status Mi ClaudIA -->
+                    <div class="bg-white px-3 py-2 rounded-3 shadow-sm border d-flex align-items-center gap-2">
+                        <div class="rounded-circle p-1 d-flex align-items-center justify-content-center {% if claudia_status.online %}bg-success text-white{% else %}bg-secondary text-white{% endif %}" 
+                             style="width:24px; height:24px; font-size: 0.75rem;">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <div>
+                            <div class="small text-muted" style="font-size: 0.7rem;">Mi ClaudIA (Bot)</div>
+                            <span class="badge {% if claudia_status.online %}bg-success-subtle text-success border border-success{% else %}bg-secondary-subtle text-secondary border border-secondary{% endif %} rounded-pill fw-bold" style="font-size:0.75rem;">
+                                <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i> {{ claudia_status.message }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Status Finanzas Oficina (Si está activado para el agente) -->
+                    {% if can_see_finanzas %}
+                    <div class="bg-white px-3 py-2 rounded-3 shadow-sm border d-flex align-items-center gap-2">
+                        <div class="rounded-circle p-1 d-flex align-items-center justify-content-center {% if deudas_oficina %}bg-danger text-white{% else %}bg-success text-white{% endif %}" 
+                             style="width:24px; height:24px; font-size: 0.75rem;">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+                        <div>
+                            <div class="small text-muted" style="font-size: 0.7rem;">Finanzas Oficina</div>
+                            {% if deudas_oficina %}
+                            <a href="{{ url_for('finanzas_plugin.finanzas_oficina') }}" class="badge bg-danger-subtle text-danger border border-danger rounded-pill fw-bold text-decoration-none" style="font-size:0.75rem;">
+                                ⚠️ {{ deudas_oficina|length }} deuda(s) pendiente(s)
+                            </a>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success rounded-pill fw-bold" style="font-size:0.75rem;">
+                                <i class="bi bi-check-circle-fill me-1"></i> Al día / Sin deudas
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas de Fidelización -->
+{% if fidelity.cumples or fidelity.aniversarios %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info border-0 shadow-sm py-3 d-flex align-items-center"
+            style="border-left: 5px solid #0dcaf0 !important;">
+            <div class="fs-3 me-3">🎉</div>
+            <div>
+                <h6 class="mb-0 fw-bold">¡Eventos de Fidelización Hoy!</h6>
+                {% for c in fidelity.cumples %}
+                <span class="badge bg-white text-info border border-info me-2">🎂 {{ c.nombre }} cumple años!</span>
+                {% endfor %}
+                {% for a in fidelity.aniversarios %}
+                <span class="badge bg-white text-primary border border-primary me-2">🏠 {{ a.nombre }}: Aniversario de su casa!</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Alertas de Recordatorios (Meta AI Chatbot) -->
+{% if recordatorios %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert border-0 shadow-sm py-3 d-flex flex-column"
+            style="background: #fff3cd; border-left: 5px solid #ffc107 !important;">
+            <div class="d-flex align-items-center mb-2">
+                <div class="fs-3 me-3">🔔</div>
+                <h6 class="mb-0 fw-bold text-dark">Recordatorios Pendientes</h6>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                {% for r in recordatorios %}
+                <div class="bg-white p-2 rounded shadow-sm border border-warning d-flex align-items-center" id="recordatorio-{{ r.id }}">
+                    <div class="me-3">
+                        <strong class="text-dark">{{ r.nombre }} {{ r.apellido }}</strong><br>
+                        <small class="text-muted"><i class="bi bi-telephone"></i> {{ r.telefono or 'Sin tel' }}</small>
+                        {% if r.notas %}
+                        <div class="small text-muted fst-italic" style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.notas }}</div>
+                        {% endif %}
+                    </div>
+                    <button class="btn btn-sm btn-outline-success" onclick="completarRecordatorio({{ r.id }})" title="Marcar como contactado">
+                        <i class="bi bi-check-lg"></i> Listo
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- FILA 1: Agenda del Día (Izquierda) + Propuestas IA para Prospectar (Derecha) -->
+<div class="row mb-4">
+    <!-- Agenda del Día -->
+    <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+        <div class="card h-100 shadow-sm border-0 bg-light">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2 text-primary"></i>Agenda del Día</h5>
+                    <span class="text-muted small">{{ now.strftime('%d/%m/%Y') }}</span>
+                </div>
+
+                {% if current_user.usuario == 'GermanMazza' %}
+                <div class="form-check mb-3 p-3 bg-white rounded shadow-sm border-start border-4 border-info">
+                    <input class="form-check-input ms-0 me-3" type="checkbox" id="task-stories" {% if daily_tasks.historias_ig_wa %}checked{% endif %}
+                        onchange="updateTask('historias_ig_wa', this.checked)">
+                    <label class="form-check-label fw-bold" for="task-stories">
+                        Postear historias (IG / WA) 📱
+                    </label>
+                    <div class="small text-muted ms-4">Mantener presencia en redes sociales</div>
+                </div>
+
+                <div class="form-check mb-3 p-3 bg-white rounded shadow-sm border-start border-4 border-primary">
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="flex-grow-1">
+                            <input class="form-check-input ms-0 me-3" type="checkbox" id="task-lote" {% if daily_tasks.lanzar_lote_5_5 %}checked{% endif %}
+                                onchange="updateTask('lanzar_lote_5_5', this.checked)">
+                            <label class="form-check-label fw-bold" for="task-lote">
+                                Lanzar Lote 5+5 (Captador) 🚀
+                            </label>
+                            <div class="small text-muted ms-4">Captación activa de portales</div>
+                        </div>
+                        <a href="{{ url_for('enviar_lote_5') }}"
+                            class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm border-0"
+                            style="background: linear-gradient(45deg, #0d6efd, #6610f2); min-width: 100px;"
+                            onclick="this.innerHTML='<span class=\'spinner-border spinner-border-sm\'></span>'; this.classList.add('disabled');">
+                            Lanzar Lote
+                        </a>
+                    </div>
+                </div>
+
+                <div class="form-check mb-3 p-3 bg-white rounded shadow-sm border-start border-4 border-success">
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="flex-grow-1">
+                            <input class="form-check-input ms-0 me-3" type="checkbox" id="task-auto" {% if daily_tasks.automatizacion_diaria %}checked{% endif %}
+                                onchange="updateTask('automatizacion_diaria', this.checked)">
+                            <label class="form-check-label fw-bold" for="task-auto">
+                                Automatización Inteligente ⚡
+                            </label>
+                            <div class="small text-muted ms-4">Seguimiento automático semana a semana (10 semanas)</div>
+                        </div>
+                        <a href="{{ url_for('lanzar_automatizacion') }}"
+                            class="btn btn-success btn-sm rounded-pill px-3 shadow-sm border-0"
+                            style="background: linear-gradient(45deg, #198754, #20c997); min-width: 100px;"
+                            onclick="this.innerHTML='<span class=\'spinner-border spinner-border-sm\'></span>'; this.classList.add('disabled');">
+                            Lanzar
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="form-check p-3 bg-white rounded shadow-sm border-start border-4 border-secondary">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <input class="form-check-input ms-0 me-3" type="checkbox" id="task-base" {% if daily_tasks.mantenimiento_base %}checked{% endif %}
+                                onchange="updateTask('mantenimiento_base', this.checked)">
+                            <label class="form-check-label fw-bold" for="task-base">
+                                Mantenimiento Base de Clientes 🏠
+                            </label>
+                            <div class="small text-muted ms-4">Contactar 5 prospectos del Excel</div>
+                        </div>
+                        {% if cold_contacts_count > 0 %}
+                        <a href="{{ url_for('crm_contactos', cold=1) }}"
+                            class="badge rounded-pill bg-danger text-decoration-none">
+                            {{ cold_contacts_count }} pendientes <i class="bi bi-arrow-right-short"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Recuadro de Eventos Próximos (Efemérides Arg + Clientes CRM) -->
+                <div class="card mt-3 border-0 shadow-sm bg-white rounded-3 overflow-hidden">
+                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="p-2 rounded-3 me-2 text-warning bg-warning bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                <i class="bi bi-calendar-event-fill fs-6"></i>
+                            </div>
+                            <h6 class="mb-0 fw-bold text-dark">Eventos Próximos</h6>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill" style="font-size: 0.72rem;">
+                            <i class="bi bi-clock-history me-1"></i> Próximos 6
+                        </span>
+                    </div>
+                    <div class="card-body p-3">
+                        {% set eventos_hoy = proximos_eventos|selectattr('es_hoy', 'equalto', true)|list %}
+                        <!-- Destacado del Día Actual (¡HOY!) Container -->
+                        <div id="proximosEventosHoyContainer">
+                        {% if eventos_hoy %}
+                        <div class="p-3 mb-3 rounded-3 border border-warning shadow-sm" style="background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="badge bg-danger text-white fw-bold px-2 py-1 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-star-fill text-warning"></i> ¡HOY EN AGENDA!
+                                </span>
+                                <span class="small text-muted fw-semibold">{{ now.strftime('%d/%m/%Y') }}</span>
+                            </div>
+                            {% for ev in eventos_hoy %}
+                            <div class="{% if not loop.first %}mt-2 pt-2 border-top border-warning-subtle{% endif %}">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold text-dark" style="font-size: 0.9rem;">
+                                            <span class="me-1 fs-6">{{ ev.icono }}</span> {{ ev.titulo }}
+                                        </div>
+                                        <div class="small text-muted" style="font-size: 0.78rem;">
+                                            {{ ev.subtitulo }}
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-1 align-items-center flex-shrink-0">
+                                        {% if ev.accion_tipo == 'placa' %}
+                                        <a href="{{ url_for('pap') }}" class="btn btn-warning btn-sm text-dark fw-bold rounded-pill px-3 shadow-sm border-0 d-flex align-items-center gap-1" style="font-size: 0.75rem;" title="Crear placa gráfica conmemorativa">
+                                            <i class="bi bi-palette-fill"></i> Crear Placa
+                                        </a>
+                                        {% elif ev.accion_tipo == 'saludo_cumple' %}
+                                        <button class="btn btn-success btn-sm fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.75rem;"
+                                                onclick="abrirSaludoDashboard({{ ev.contacto_id }}, 'cumpleanios', '{{ ev.titulo|replace('\'', '\\\'') }}', '{{ ev.telefono or '' }}')"
+                                                title="Generar saludo de cumpleaños con IA">
+                                            <i class="bi bi-cake2"></i> Saludo IA
+                                        </button>
+                                        {% elif ev.accion_tipo == 'saludo_aniv' %}
+                                        <button class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.75rem;"
+                                                onclick="abrirSaludoDashboard({{ ev.contacto_id }}, 'aniversario', '{{ ev.titulo|replace('\'', '\\\'') }}', '{{ ev.telefono or '' }}')"
+                                                title="Generar saludo de aniversario con IA">
+                                            <i class="bi bi-house-heart"></i> Saludo IA
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        </div>
+
+                        <!-- Lista de los Próximos Eventos -->
+                        <div class="d-flex flex-column gap-2" id="proximosEventosListContainer">
+                            {% for ev in proximos_eventos %}
+                            <div class="evento-item p-2 rounded-3 border d-flex align-items-center justify-content-between gap-2 {% if ev.es_hoy %}bg-warning bg-opacity-10 border-warning{% else %}bg-white{% endif %}"
+                                 style="transition: all 0.2s ease;">
+                                <div class="d-flex align-items-center gap-2 overflow-hidden flex-grow-1">
+                                    <!-- Mini Date Pill -->
+                                    <div class="text-center rounded-2 p-1 border flex-shrink-0 {% if ev.es_hoy %}bg-warning text-dark border-warning fw-bold{% else %}bg-light text-secondary{% endif %}"
+                                         style="min-width: 44px; line-height: 1.1;">
+                                        <div class="fw-bold" style="font-size: 0.85rem;">{{ ev.fecha.day }}</div>
+                                        <div class="text-uppercase" style="font-size: 0.65rem;">{{ ev.dia_semana }}</div>
+                                    </div>
+                                    <!-- Content -->
+                                    <div class="overflow-hidden">
+                                        <div class="d-flex align-items-center gap-1 text-truncate">
+                                            <span class="flex-shrink-0" style="font-size: 0.85rem;">{{ ev.icono }}</span>
+                                            <strong class="text-dark text-truncate" style="font-size: 0.82rem;" title="{{ ev.titulo }}">{{ ev.titulo }}</strong>
+                                        </div>
+                                        <div class="text-muted text-truncate" style="font-size: 0.72rem;" title="{{ ev.subtitulo }}">
+                                            {{ ev.subtitulo }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Badge & Action -->
+                                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                    <span class="badge {{ ev.urgencia_badge }} rounded-pill" style="font-size: 0.68rem;">
+                                        {{ ev.tiempo_relativo }}
+                                    </span>
+                                    {% if ev.accion_tipo == 'placa' %}
+                                    <a href="{{ url_for('pap') }}" class="btn btn-xs btn-outline-warning rounded-circle p-1 text-dark d-flex align-items-center justify-content-center"
+                                       style="width: 26px; height: 26px;" title="Diseñar Placa con PAP">
+                                        <i class="bi bi-brush fs-7"></i>
+                                    </a>
+                                    {% elif ev.accion_tipo in ['saludo_cumple', 'saludo_aniv'] %}
+                                    <button class="btn btn-xs btn-outline-success rounded-circle p-1 d-flex align-items-center justify-content-center"
+                                            style="width: 26px; height: 26px;"
+                                            onclick="abrirSaludoDashboard({{ ev.contacto_id }}, '{{ 'aniversario' if ev.accion_tipo == 'saludo_aniv' else 'cumpleanios' }}', '{{ ev.titulo|replace('\'', '\\\'') }}', '{{ ev.telefono or '' }}')"
+                                            title="Generar saludo IA para WhatsApp">
+                                        <i class="bi bi-whatsapp fs-7"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-3 text-muted small" id="proximosEventosEmptyPlaceholder">
+                                <div class="spinner-border spinner-border-sm text-warning mb-1" role="status"></div>
+                                <div>Cargando fechas de Argentina y clientes...</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Widget Conector Instagram -->
+                <div class="card mt-3 border-0 shadow-sm bg-white rounded-3">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <div class="p-2 rounded-3 me-3 text-danger bg-danger bg-opacity-10" id="ig-dash-status-icon-container" style="transition: all 0.3s;">
+                                    <i class="bi bi-instagram fs-5"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">Instagram API</h6>
+                                    <span class="small text-muted" id="ig-dash-status-text">Iniciando widget...</span>
+                                </div>
+                            </div>
+                            <div id="ig-dash-action-container">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Login Fields (hidden by default) -->
+                        <div id="ig-dash-login-container" class="mt-3 p-3 border rounded bg-light d-none">
+                            <h6 class="small fw-bold mb-2 text-dark">Vincular Cuenta de Instagram:</h6>
+                            <div class="mb-2">
+                                <input type="text" id="ig-dash-username" class="form-control form-control-sm" placeholder="Usuario (sin @)">
+                            </div>
+                            <div class="mb-2">
+                                <input type="password" id="ig-dash-password" class="form-control form-control-sm" placeholder="Contraseña">
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-danger btn-sm flex-fill" onclick="connectInstagramDashboard()" id="btnDashConnectIG">Conectar</button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="toggleIGDashboardLogin(false)">Cancelar</button>
+                            </div>
+                        </div>
+
+                        <!-- Checkpoint Code (hidden by default) -->
+                        <div id="ig-dash-checkpoint-container" class="mt-3 p-3 border border-warning rounded bg-warning bg-opacity-10 d-none">
+                            <h6 class="small fw-bold text-warning mb-2"><i class="bi bi-shield-lock-fill"></i> Verificación requerida:</h6>
+                            <p class="small text-muted mb-2 text-dark" id="ig-dash-chk-msg">Ingresá el código enviado.</p>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" id="ig-dash-code" class="form-control text-center font-monospace" placeholder="123456" style="letter-spacing: 2px;">
+                                <button class="btn btn-warning" type="button" onclick="confirmInstagramDashboardCode()" id="btnDashConfirmIG">Validar</button>
+                            </div>
+                            <div class="text-end">
+                                <button class="btn btn-link btn-xs text-muted p-0 text-decoration-none" style="font-size:0.75rem;" onclick="disconnectInstagramDashboard(true)">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Widget Conector WhatsApp -->
+                <div class="card mt-3 border-0 shadow-sm bg-white rounded-3">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <div class="p-2 rounded-3 me-3 text-secondary bg-secondary bg-opacity-10" id="wa-status-icon-container" style="transition: all 0.3s;">
+                                    <i class="bi bi-whatsapp fs-5"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">WhatsApp Socket</h6>
+                                    <span class="small text-muted" id="wa-status-text">Cargando...</span>
+                                </div>
+                            </div>
+                            <div id="wa-status-action-container">
+                                <a href="{{ url_for('conectar_whatsapp') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    Conectar
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- QR Container -->
+                        <div id="wa-qr-container" class="text-center d-none mt-3 p-3 border rounded bg-light">
+                            <h6 class="small fw-bold mb-2">Escaneá el código QR:</h6>
+                            <img id="wa-qr-img" src="" alt="Código QR WhatsApp" class="img-fluid border rounded shadow-sm" style="max-width: 170px;">
+                            <div class="small text-muted mt-2" style="font-size: 0.75rem;">La pantalla se actualizará automáticamente al conectar.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Propuestas de la IA para Prospectar -->
+    <div class="col-lg-7 col-md-12">
+        <div class="card shadow-sm border-0 h-100 overflow-hidden" style="border-top: 4px solid #6f42c1 !important;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-stars me-2 text-primary"></i>Ideas de Prospección IA
+                </h5>
+                <div id="iaHeaderAction">
+                    <!-- Dinámico por JS -->
+                </div>
+            </div>
+            <div class="card-body p-4 bg-light">
+                <p class="small text-muted mb-3">
+                    Estrategias personalizadas por Gemini y Groq (se mantienen guardadas firmes por 24 hrs).
+                </p>
+                <div id="prospeccionIAContainer">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                        <div class="small text-muted mt-2">Cargando estado de prospección...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FILA 2: Propiedades en Seguimiento del Agente Logueado -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-pin-angle-fill me-2 text-warning"></i>Mis Propiedades en Seguimiento
+                </h5>
+                {% if user_can('menu_item', 'seguimiento_prop') %}
+                <a href="{{ url_for('finanzas_plugin.seguimiento_prop') }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                    <i class="bi bi-list-task me-1"></i> Ir al Tablero Completo
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                {% if seguimiento_operaciones %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Domicilio / Propiedad</th>
+                                <th>Jurisdicción</th>
+                                <th>Estado Trámite</th>
+                                <th>Puntas</th>
+                                <th>Comisión Bruta</th>
+                                <th>Fecha Cierre</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for op in seguimiento_operaciones %}
+                            <tr>
+                                <td class="fw-bold text-dark">
+                                    {{ op.domicilio or 'Sin domicilio registrado' }}
+                                    {% if op.particularidades %}
+                                    <div class="small text-muted text-truncate" style="max-width: 250px;">
+                                        {{ op.particularidades }}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ op.juris or 'N/A' }}</span></td>
+                                <td>
+                                    <span class="badge rounded-pill {% if op.estado == 'Cerrada' %}bg-success{% elif op.estado == 'En Trámite' %}bg-primary{% else %}bg-warning text-dark{% endif %}">
+                                        {{ op.estado or 'En seguimiento' }}
+                                    </span>
+                                </td>
+                                <td><small class="fw-bold">{{ op.puntas or '1' }} punta(s)</small></td>
+                                <td class="fw-bold text-success">
+                                    ${{ "{:,.2f}".format(op.bruto) if op.bruto else '0.00' }}
+                                </td>
+                                <td><small class="text-muted">{{ op.cierre or op.fecha_registro[:10] }}</small></td>
+                                <td>
+                                    {% if user_can('menu_item', 'seguimiento_prop') %}
+                                    <a href="{{ url_for('finanzas_plugin.seguimiento_prop') }}" class="btn btn-sm btn-light">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <div class="fs-1 mb-2">🏠</div>
+                    <h6 class="fw-bold">No tenés propiedades en seguimiento activo</h6>
+                    <p class="small mb-3">Registrá tus operaciones para llevar el control de comisión, documentación y escrituración.</p>
+                    {% if user_can('menu_item', 'seguimiento_prop') %}
+                    <a href="{{ url_for('finanzas_plugin.seguimiento_prop') }}" class="btn btn-sm btn-primary rounded-pill px-4">
+                        + Nueva Operación en Seguimiento
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FILA 3: Búsquedas de Clientes Abiertas (Izquierda) + Publicaciones Programadas IG/WP (Derecha) -->
+<div class="row mb-4">
+    <!-- Búsquedas de Clientes Abiertas -->
+    <div class="col-lg-7 col-md-12 mb-4 mb-lg-0">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-search me-2 text-info"></i>Mis Búsquedas de Clientes Abiertas
+                </h5>
+                {% if user_can('menu_item', 'busquedas_clientes') %}
+                <a href="{{ url_for('captacion_outreach.busquedas_clientes') if 'captacion_outreach.busquedas_clientes' in ENDPOINT_ALIASES or 'busquedas_clientes' in ENDPOINT_ALIASES else url_for('captacion_outreach.busquedas') }}" class="btn btn-sm btn-outline-info rounded-pill">
+                    Ver Todas
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-3 bg-light">
+                {% if busquedas_clientes_abiertas %}
+                <div class="row g-3">
+                    {% for b in busquedas_clientes_abiertas %}
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 shadow-sm rounded-3">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="fw-bold mb-0 text-truncate" style="max-width: 170px;">
+                                        👤 {{ b.cliente_nombre or b.nombre }} {{ b.cliente_apellido or '' }}
+                                    </h6>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary text-uppercase" style="font-size: 0.65rem;">
+                                        {{ b.tipo_operacion or 'Venta' }}
+                                    </span>
+                                </div>
+                                <div class="small text-muted mb-2">
+                                    <div><i class="bi bi-building me-1"></i> {{ (b.tipo_propiedad or 'Departamento')|capitalize }}</div>
+                                    <div><i class="bi bi-geo-alt me-1"></i> {{ b.zona or 'Zona no especificada' }}</div>
+                                    {% if b.ambientes %}
+                                    <div><i class="bi bi-door-open me-1"></i> {{ b.ambientes }} amb.</div>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <span class="fw-bold text-success small">
+                                        {% if b.max_precio %}
+                                        Hasta USD {{ "{:,.0f}".format(b.max_precio) }}
+                                        {% else %}
+                                        Presupuesto s/d
+                                        {% endif %}
+                                    </span>
+                                    {% if user_can('menu_item', 'busquedas_clientes') %}
+                                    <a href="{{ url_for('captacion_outreach.busquedas_clientes') if 'captacion_outreach.busquedas_clientes' in ENDPOINT_ALIASES else url_for('captacion_outreach.busquedas') }}" class="btn btn-xs btn-outline-secondary rounded-circle" title="Ver detalle">
+                                        <i class="bi bi-arrow-right"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted bg-white rounded-3 p-4">
+                    <div class="fs-2 mb-2">🔍</div>
+                    <h6 class="fw-bold">No tenés búsquedas activas cargadas</h6>
+                    <p class="small mb-3 text-muted">Cargá las búsquedas de tus clientes compradores para recibir coincidencias automáticas de propiedades.</p>
+                    {% if user_can('menu_item', 'busquedas_clientes') %}
+                    <a href="{{ url_for('captacion_outreach.busquedas_clientes') if 'captacion_outreach.busquedas_clientes' in ENDPOINT_ALIASES else url_for('captacion_outreach.busquedas') }}" class="btn btn-sm btn-info text-white rounded-pill px-3">
+                        + Crear Búsqueda de Cliente
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Publicaciones Programadas (historias IG y WP) -->
+    <div class="col-lg-5 col-md-12">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-clock-history me-2 text-danger"></i>Publicaciones Programadas
+                </h5>
+                {% if user_can('menu_item', 'historias') %}
+                <a href="{{ url_for('redes_sociales.historias_view') }}" class="btn btn-sm btn-outline-danger rounded-pill">
+                    <i class="bi bi-calendar3 me-1"></i> Agenda Redes
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-3 bg-light">
+                {% if publicaciones_programadas %}
+                <div class="d-flex flex-column gap-2">
+                    {% for p in publicaciones_programadas %}
+                    <div class="bg-white p-2 rounded-3 shadow-sm border d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            {% if p.archivo_path %}
+                            <img src="{{ p.archivo_path }}" class="rounded" width="48" height="48" style="object-fit: cover;">
+                            {% else %}
+                            <div class="bg-secondary bg-opacity-10 rounded d-flex align-items-center justify-content-center" width="48" height="48">
+                                <i class="bi bi-image text-muted"></i>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <h6 class="mb-0 fw-bold small">Placa {{ p.orden }}</h6>
+                                <div class="small text-muted" style="font-size: 0.75rem;">
+                                    📅 {{ p.fecha_programada }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-1">
+                            {% if p.instagram %}
+                            <span class="badge bg-danger rounded-circle p-2" title="Programado para Instagram Stories">
+                                <i class="bi bi-instagram"></i>
+                            </span>
+                            {% endif %}
+                            {% if p.whatsapp %}
+                            <span class="badge bg-success rounded-circle p-2" title="Programado para WhatsApp Status">
+                                <i class="bi bi-whatsapp"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted bg-white rounded-3 p-4">
+                    <div class="fs-2 mb-2">📱</div>
+                    <h6 class="fw-bold">Sin publicaciones programadas</h6>
+                    <p class="small mb-3 text-muted">Programá placas de tus propiedades para publicar automáticamente en Historias de IG y WhatsApp Status.</p>
+                    {% if user_can('menu_item', 'historias') %}
+                    <a href="{{ url_for('redes_sociales.historias_view') }}" class="btn btn-sm btn-danger rounded-pill px-3">
+                        + Programar Historias
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Saludo de Fidelización con IA (Dashboard) -->
+<div class="modal fade" id="modalSaludoIADashboard" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0" id="saludoIaDashTitulo"><i class="bi bi-stars me-2"></i>Saludo de Fidelización IA</h5>
+                    <small class="opacity-75" id="saludoIaDashSubtitulo">Generado en tiempo real con IA para WhatsApp</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <strong class="fs-6 text-dark" id="saludoIaDashNombre">Contacto</strong>
+                        <div class="small text-muted" id="saludoIaDashTel"><i class="bi bi-telephone me-1"></i>--</div>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary border border-primary fs-7" id="saludoIaDashTipoBadge">🎂 Cumpleaños</span>
+                </div>
+
+                <div id="saludoIaDashLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary mb-2" role="status" style="width: 2.2rem; height: 2.2rem;"></div>
+                    <p class="text-muted small mb-0">Redactando saludo personalizado...</p>
+                </div>
+
+                <div id="saludoIaDashContent" class="d-none">
+                    <label class="form-label small fw-bold text-muted d-flex justify-content-between">
+                        <span>Mensaje listo para WhatsApp:</span>
+                        <a href="javascript:void(0)" class="text-decoration-none text-primary small" onclick="regenerarSaludoDashboard()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Regenerar otra opción
+                        </a>
+                    </label>
+                    <textarea id="saludoIaDashTexto" class="form-control mb-3" rows="6" style="font-size: 0.95rem; line-height: 1.45;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-dark btn-sm fw-bold" onclick="copiarSaludoDashboard()" id="btnCopiarSaludoDash" disabled>
+                        <i class="bi bi-clipboard me-1"></i> Copiar
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm fw-bold px-3 shadow-sm" onclick="enviarWhatsAppSaludoDashboard()" id="btnEnviarSaludoDash" disabled style="background-color: #25d366; border-color: #25d366;">
+                        <i class="bi bi-whatsapp me-1"></i> Abrir en WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+<script>
+    // Lógica para propuestas de prospección IA (Desbloqueo de 2 en 2 hasta 6, con persistencia 24h)
+    function checkEstadoIA() {
+        const container = document.getElementById('prospeccionIAContainer');
+
+        if (!container) return;
+
+        fetch('/api/ia_propuestas_prospeccion')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.unlocked && Array.isArray(data.ideas) && data.ideas.length > 0) {
+                    renderIdeas(data);
+                } else {
+                    renderPlaceholder();
+                }
+            })
+            .catch(err => {
+                console.error("Error consultando estado IA:", err);
+                renderPlaceholder();
+            });
+    }
+
+    function renderPlaceholder() {
+        const container = document.getElementById('prospeccionIAContainer');
+        const headerAction = document.getElementById('iaHeaderAction');
+
+        if (headerAction) headerAction.innerHTML = '';
+        if (container) {
+            container.innerHTML = `
+                <div class="text-center py-4 bg-white rounded-3 p-4 border border-dashed shadow-sm">
+                    <div class="fs-1 text-primary mb-2">💡</div>
+                    <h6 class="fw-bold">Propuestas de Prospección del Día</h6>
+                    <p class="small text-muted mb-3" style="max-width: 460px; margin: 0 auto;">
+                        Hacé clic abajo para ver 2 ideas estratégicas personalizadas para tu jornada de hoy. 
+                        Podés revelar hasta 6 ideas en total, las cuales permanecerán firmes por 24 hrs.
+                    </p>
+                    <button class="btn btn-primary rounded-pill px-4 py-2 shadow-sm fw-bold" id="btnUnlockMain" onclick="desbloquearPropuestasIA()">
+                        <i class="bi bi-stars me-1"></i> Ver ideas de prospección para hoy
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    function desbloquearPropuestasIA() {
+        const container = document.getElementById('prospeccionIAContainer');
+        const headerAction = document.getElementById('iaHeaderAction');
+        const mainBtn = document.getElementById('btnUnlockMain');
+        const headerBtn = document.getElementById('btnUnlockHeader');
+        const moreBtn = document.getElementById('btnUnlockMore');
+
+        if (mainBtn) {
+            mainBtn.disabled = true;
+            mainBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Analizando oportunidades...';
+        }
+        if (headerBtn) {
+            headerBtn.disabled = true;
+            headerBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Cargar...';
+        }
+        if (moreBtn) {
+            moreBtn.disabled = true;
+            moreBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Obteniendo más ideas...';
+        }
+
+        const fd = new FormData();
+        fd.append('action', 'unlock');
+
+        fetch('/api/ia_propuestas_prospeccion', {
+            method: 'POST',
+            body: fd
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.unlocked && Array.isArray(data.ideas)) {
+                    renderIdeas(data);
+                } else {
+                    alert("No se pudieron generar o cargar las propuestas de IA.");
+                    checkEstadoIA();
+                }
+            })
+            .catch(err => {
+                console.error("Error desbloqueando IA:", err);
+                alert("Error de conexión con el servidor de IA.");
+                checkEstadoIA();
+            });
+    }
+
+    function renderIdeas(data) {
+        const container = document.getElementById('prospeccionIAContainer');
+        const headerAction = document.getElementById('iaHeaderAction');
+
+        const ideas = data.ideas || [];
+        const visibleCount = data.visible_count || ideas.length;
+        const maxReached = data.max_reached || visibleCount >= 6;
+
+        let html = '<div class="row g-3">';
+        ideas.forEach(idea => {
+            html += `
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-3 bg-white border-start border-4 border-primary">
+                        <div class="card-body p-3">
+                            <h6 class="fw-bold text-dark mb-1">${idea.titulo}</h6>
+                            <p class="small text-muted mb-2">${idea.descripcion}</p>
+                            <div class="bg-light p-2 rounded small border d-flex align-items-center gap-2">
+                                <span class="badge bg-primary rounded-pill">Acción</span>
+                                <span class="fw-semibold text-dark">${idea.accion}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        if (!maxReached) {
+            html += `
+                <div class="text-center mt-3 pt-2">
+                    <button class="btn btn-outline-primary rounded-pill px-4 fw-bold" id="btnUnlockMore" onclick="desbloquearPropuestasIA()">
+                        <i class="bi bi-plus-circle me-1"></i> Ver 2 ideas más de prospección (${visibleCount}/6)
+                    </button>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="text-center text-muted small mt-3 py-2 bg-white rounded border">
+                    <i class="bi bi-check-circle-fill text-success me-1"></i> Has revelado las 6 propuestas estratégicas de hoy (Guardadas por 24h).
+                </div>
+            `;
+        }
+
+        if (container) container.innerHTML = html;
+
+        if (headerAction) {
+            if (!maxReached) {
+                headerAction.innerHTML = `
+                    <button id="btnUnlockHeader" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" onclick="desbloquearPropuestasIA()">
+                        <i class="bi bi-plus-circle me-1"></i> Ver más (${visibleCount}/6)
+                    </button>
+                `;
+            } else {
+                headerAction.innerHTML = `
+                    <span class="badge bg-success-subtle text-success border border-success rounded-pill px-3 py-2">
+                        ✓ 6/6 Ideas Reveladas
+                    </span>
+                `;
+            }
+        }
+    }
+
+    // Inicializar propuestas al cargar la página
+    document.addEventListener("DOMContentLoaded", function () {
+        checkEstadoIA();
+    });
+
+    // Actualizar estado de tareas diarias vía AJAX
+    function updateTask(campo, valor) {
+        const intValor = valor ? 1 : 0;
+        fetch('/update_daily_task', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `campo=${campo}&valor=${intValor}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    alert('Error al actualizar tarea');
+                }
+            });
+    }
+
+    // Completar Recordatorio
+    function completarRecordatorio(id) {
+        if (!confirm("¿Marcar este recordatorio como completado?")) return;
+        
+        let fd = new FormData();
+        fd.append('id', id);
+
+        fetch('/crm/recordatorio/completar', {
+            method: 'POST',
+            body: fd
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const elem = document.getElementById(`recordatorio-${id}`);
+                if (elem) {
+                    elem.style.transition = 'opacity 0.3s';
+                    elem.style.opacity = '0';
+                    setTimeout(() => elem.remove(), 300);
+                }
+            } else {
+                alert("Error al completar el recordatorio");
+            }
+        });
+    }
+
+    // Call status check initially and schedule next check dynamically
+    let waPollTimer = null;
+    function scheduleWAPoll(delayMs = 30000) {
+        if (waPollTimer) clearTimeout(waPollTimer);
+        waPollTimer = setTimeout(() => {
+            checkWhatsAppStatus();
+        }, delayMs);
+    }
+
+    function checkWhatsAppStatus() {
+        fetch("{{ url_for('whatsapp_status') }}")
+            .then(r => r.json())
+            .then(data => {
+                const statusText = document.getElementById('wa-status-text');
+                const iconContainer = document.getElementById('wa-status-icon-container');
+                const actionContainer = document.getElementById('wa-status-action-container');
+                const qrContainer = document.getElementById('wa-qr-container');
+                const qrImg = document.getElementById('wa-qr-img');
+
+                if (!statusText || !iconContainer || !actionContainer) return;
+
+                let nextPoll = 35000;
+
+                if (data.status === 'connected') {
+                    statusText.innerText = "Conectado";
+                    statusText.className = "small text-success fw-bold";
+                    iconContainer.className = "p-2 rounded-3 me-3 text-success bg-success bg-opacity-10";
+                    actionContainer.innerHTML = `<a href="{{ url_for('logout_whatsapp') }}" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="return confirm('¿Desconectar WhatsApp?')">Desconectar</a>`;
+                    if (qrContainer) qrContainer.classList.add('d-none');
+                } else if (data.status === 'qr_ready' || data.status === 'qr') {
+                    nextPoll = 4000;
+                    statusText.innerText = "Esperando código QR";
+                    statusText.className = "small text-warning fw-bold";
+                    iconContainer.className = "p-2 rounded-3 me-3 text-warning bg-warning bg-opacity-10";
+                    actionContainer.innerHTML = `<a href="{{ url_for('conectar_whatsapp') }}" class="btn btn-sm btn-primary rounded-pill px-3">Re-iniciar</a>`;
+                    if (data.qr && typeof QRCode !== 'undefined') {
+                        QRCode.toDataURL(data.qr, { width: 170, margin: 1 }, function (err, url) {
+                            if (!err && qrImg) qrImg.src = url;
+                        });
+                    } else if (qrImg) {
+                        qrImg.src = `/static/uploads/qr_${data.usuario}.png?t=${new Date().getTime()}`;
+                    }
+                    if (qrContainer) qrContainer.classList.remove('d-none');
+                } else if (data.status === 'connecting') {
+                    nextPoll = 4000;
+                    statusText.innerText = "Conectando...";
+                    statusText.className = "small text-info fw-bold";
+                    iconContainer.className = "p-2 rounded-3 me-3 text-info bg-info bg-opacity-10";
+                    actionContainer.innerHTML = `
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="spinner-border spinner-border-sm text-info"></span>
+                            <a href="{{ url_for('logout_whatsapp') }}" class="btn btn-xs btn-outline-danger rounded-pill px-2" style="font-size: 0.7rem;">Cancelar</a>
+                        </div>
+                    `;
+                    if (qrContainer) qrContainer.classList.add('d-none');
+                } else {
+                    statusText.innerText = "Desconectado";
+                    statusText.className = "small text-muted";
+                    iconContainer.className = "p-2 rounded-3 me-3 text-secondary bg-secondary bg-opacity-10";
+                    actionContainer.innerHTML = `<a href="{{ url_for('conectar_whatsapp') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Conectar</a>`;
+                    if (qrContainer) qrContainer.classList.add('d-none');
+                }
+                scheduleWAPoll(nextPoll);
+            })
+            .catch(err => {
+                console.error("Error polling WA status:", err);
+                scheduleWAPoll(45000);
+            });
+    }
+
+    checkWhatsAppStatus();
+
+    // Instagram dashboard widget logic
+    let igDashStatus = null;
+    let igDashSavedUser = null;
+
+    function updateIGDashboardUI(status, user = '', challenge = '') {
+        const text = document.getElementById('ig-dash-status-text');
+        const icon = document.getElementById('ig-dash-status-icon-container');
+        const action = document.getElementById('ig-dash-action-container');
+        const chkContainer = document.getElementById('ig-dash-checkpoint-container');
+        const loginContainer = document.getElementById('ig-dash-login-container');
+
+        if (!text || !icon || !action) return;
+
+        igDashStatus = status;
+        igDashSavedUser = user;
+
+        if (status === 'connected') {
+            text.innerText = `@${user} (Conectado)`;
+            text.className = "small text-success fw-bold";
+            icon.className = "p-2 rounded-3 me-3 text-success bg-success bg-opacity-10";
+            action.innerHTML = `<button class="btn btn-xs btn-outline-danger rounded-pill px-3" style="font-size:0.75rem;" onclick="disconnectInstagramDashboard(false)">Desconectar</button>`;
+            if (chkContainer) chkContainer.classList.add('d-none');
+            if (loginContainer) loginContainer.classList.add('d-none');
+        } else if (status === 'checkpoint_required') {
+            text.innerText = "Verificación requerida";
+            text.className = "small text-warning fw-bold";
+            icon.className = "p-2 rounded-3 me-3 text-warning bg-warning bg-opacity-10";
+            action.innerHTML = `<span class="badge bg-warning text-dark rounded-pill" style="font-size:0.7rem;">Pendiente</span>`;
+            const msgEl = document.getElementById('ig-dash-chk-msg');
+            if (msgEl) msgEl.innerText = `Código enviado por ${challenge}.`;
+            if (chkContainer) chkContainer.classList.remove('d-none');
+            if (loginContainer) loginContainer.classList.add('d-none');
+        } else if (status === 'connecting') {
+            text.innerText = "Vinculando...";
+            text.className = "small text-info fw-bold";
+            icon.className = "p-2 rounded-3 me-3 text-info bg-info bg-opacity-10";
+            action.innerHTML = `<span class="spinner-border spinner-border-sm text-info"></span>`;
+            if (chkContainer) chkContainer.classList.add('d-none');
+            if (loginContainer) loginContainer.classList.add('d-none');
+        } else {
+            const needsRelink = (status === 'needs_relink');
+            text.innerText = needsRelink ? "Re-vincular cuenta" : "Desconectado";
+            text.className = needsRelink ? "small text-danger fw-bold" : "small text-muted";
+            icon.className = needsRelink
+                ? "p-2 rounded-3 me-3 text-danger bg-danger bg-opacity-10"
+                : "p-2 rounded-3 me-3 text-secondary bg-secondary bg-opacity-10";
+            action.innerHTML = `<button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="toggleIGDashboardLogin(true)">Conectar</button>`;
+            if (chkContainer) chkContainer.classList.add('d-none');
+        }
+    }
+
+    let igPollTimer = null;
+    function scheduleIGPoll(delayMs = 40000) {
+        if (igPollTimer) clearTimeout(igPollTimer);
+        igPollTimer = setTimeout(() => {
+            checkIGStatus();
+        }, delayMs);
+    }
+
+    function checkIGStatus() {
+        if (igDashStatus === 'connecting') {
+            scheduleIGPoll(3000);
+            return;
+        }
+        fetch('/api/instagram/status')
+            .then(r => r.json())
+            .then(data => {
+                let nextPoll = 40000;
+                if (data.status === 'connecting' || data.status === 'checkpoint_required') {
+                    nextPoll = 4000;
+                }
+                if (data.status !== igDashStatus || data.username !== igDashSavedUser) {
+                    updateIGDashboardUI(data.status, data.username, data.challenge_type);
+                }
+                scheduleIGPoll(nextPoll);
+            })
+            .catch((err) => {
+                console.error("IG Fetch Error:", err);
+                scheduleIGPoll(60000);
+            }); 
+    }
+
+    checkIGStatus();
+
+    // --- ASISTENTE IA: SALUDOS DE FIDELIZACIÓN EN DASHBOARD ---
+    let saludoIaDashModal = null;
+    let currentSaludoDashData = { contactoId: null, tipo: 'cumpleanios', nombre: '', telefono: '' };
+
+    function abrirSaludoDashboard(contactoId, tipo, nombre, telefono) {
+        if (!saludoIaDashModal) {
+            const modalEl = document.getElementById('modalSaludoIADashboard');
+            if (modalEl) saludoIaDashModal = new bootstrap.Modal(modalEl);
+        }
+        currentSaludoDashData = { contactoId, tipo, nombre, telefono };
+        
+        const nombreEl = document.getElementById('saludoIaDashNombre');
+        const telEl = document.getElementById('saludoIaDashTel');
+        const badge = document.getElementById('saludoIaDashTipoBadge');
+        
+        if (nombreEl) nombreEl.innerText = nombre;
+        if (telEl) telEl.innerHTML = telefono ? `<i class="bi bi-telephone me-1"></i>${telefono}` : '<span class="text-danger italic">Sin teléfono registrado</span>';
+        
+        if (badge) {
+            if (tipo === 'aniversario') {
+                badge.innerText = '🏡 Aniversario de Hogar';
+                badge.className = 'badge bg-primary-subtle text-primary border border-primary fs-7';
+            } else {
+                badge.innerText = '🎂 Cumpleaños';
+                badge.className = 'badge bg-info-subtle text-info border border-info fs-7';
+            }
+        }
+
+        const loadEl = document.getElementById('saludoIaDashLoading');
+        const contentEl = document.getElementById('saludoIaDashContent');
+        const btnCopy = document.getElementById('btnCopiarSaludoDash');
+        const btnSend = document.getElementById('btnEnviarSaludoDash');
+
+        if (loadEl) loadEl.classList.remove('d-none');
+        if (contentEl) contentEl.classList.add('d-none');
+        if (btnCopy) btnCopy.disabled = true;
+        if (btnSend) btnSend.disabled = true;
+
+        if (saludoIaDashModal) saludoIaDashModal.show();
+        ejecutarGeneracionSaludoDashboard();
+    }
+
+    function regenerarSaludoDashboard() {
+        const loadEl = document.getElementById('saludoIaDashLoading');
+        const contentEl = document.getElementById('saludoIaDashContent');
+        const btnCopy = document.getElementById('btnCopiarSaludoDash');
+        const btnSend = document.getElementById('btnEnviarSaludoDash');
+
+        if (loadEl) loadEl.classList.remove('d-none');
+        if (contentEl) contentEl.classList.add('d-none');
+        if (btnCopy) btnCopy.disabled = true;
+        if (btnSend) btnSend.disabled = true;
+
+        ejecutarGeneracionSaludoDashboard();
+    }
+
+    function ejecutarGeneracionSaludoDashboard() {
+        fetch('/api/asistente_ia/generar_saludo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contacto_id: currentSaludoDashData.contactoId,
+                tipo: currentSaludoDashData.tipo
+            })
+        })
+        .then(r => r.json())
+        .then(d => {
+            const loadEl = document.getElementById('saludoIaDashLoading');
+            const contentEl = document.getElementById('saludoIaDashContent');
+            const txtEl = document.getElementById('saludoIaDashTexto');
+            const btnCopy = document.getElementById('btnCopiarSaludoDash');
+            const btnSend = document.getElementById('btnEnviarSaludoDash');
+
+            if (loadEl) loadEl.classList.add('d-none');
+            if (contentEl) contentEl.classList.remove('d-none');
+            
+            if (d.status === 'success') {
+                if (txtEl) txtEl.value = d.mensaje;
+                if (btnCopy) btnCopy.disabled = false;
+                if (btnSend) btnSend.disabled = false;
+            } else {
+                if (txtEl) txtEl.value = `Error generando saludo: ${d.message || 'Error desconocido'}`;
+            }
+        })
+        .catch(err => {
+            const loadEl = document.getElementById('saludoIaDashLoading');
+            const contentEl = document.getElementById('saludoIaDashContent');
+            const txtEl = document.getElementById('saludoIaDashTexto');
+            if (loadEl) loadEl.classList.add('d-none');
+            if (contentEl) contentEl.classList.remove('d-none');
+            if (txtEl) txtEl.value = `No se pudo conectar con el Asistente IA.`;
+        });
+    }
+
+    function copiarSaludoDashboard() {
+        const txt = document.getElementById('saludoIaDashTexto').value;
+        if (!txt) return;
+        navigator.clipboard.writeText(txt).then(() => {
+            const btn = document.getElementById('btnCopiarSaludoDash');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> ¡Copiado!';
+            setTimeout(() => btn.innerHTML = orig, 1500);
+        });
+    }
+
+    function enviarWhatsAppSaludoDashboard() {
+        const txt = document.getElementById('saludoIaDashTexto').value;
+        const rawTel = currentSaludoDashData.telefono || '';
+        const cleanTel = rawTel.replace(/\D/g, '');
+        const encoded = encodeURIComponent(txt);
+        
+        let url = cleanTel ? `https://wa.me/${cleanTel}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+        window.open(url, '_blank');
+        if (saludoIaDashModal) saludoIaDashModal.hide();
+    }
+
+    // --- CARGA DINÁMICA DE EVENTOS PRÓXIMOS (FALLBACK RESILIENTE) ---
+    function cargarEventosProximosDinamicos() {
+        const listContainer = document.getElementById('proximosEventosListContainer');
+        const hoyContainer = document.getElementById('proximosEventosHoyContainer');
+        if (!listContainer) return;
+
+        if (listContainer.querySelectorAll('.evento-item').length > 0) return;
+
+        fetch('/api/proximos_eventos?limit=6')
+            .then(r => r.json())
+            .then(d => {
+                if (d.status === 'success' && Array.isArray(d.eventos) && d.eventos.length > 0) {
+                    renderizarEventosEnDashboard(d.eventos);
+                } else {
+                    renderizarEfemeredesLocalesFallback();
+                }
+            })
+            .catch(err => {
+                console.warn("Fallback a efemérides locales:", err);
+                renderizarEfemeredesLocalesFallback();
+            });
+    }
+
+    function renderizarEventosEnDashboard(eventos) {
+        const listContainer = document.getElementById('proximosEventosListContainer');
+        const hoyContainer = document.getElementById('proximosEventosHoyContainer');
+        if (!listContainer) return;
+
+        const eventosHoy = eventos.filter(e => e.es_hoy);
+        if (hoyContainer && eventosHoy.length > 0 && hoyContainer.children.length === 0) {
+            let hoyHtml = `
+                <div class="p-3 mb-3 rounded-3 border border-warning shadow-sm" style="background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="badge bg-danger text-white fw-bold px-2 py-1 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                            <i class="bi bi-star-fill text-warning"></i> ¡HOY EN AGENDA!
+                        </span>
+                        <span class="small text-muted fw-semibold">${new Date().toLocaleDateString('es-AR')}</span>
+                    </div>
+            `;
+            eventosHoy.forEach((ev, idx) => {
+                let borderClass = idx > 0 ? 'mt-2 pt-2 border-top border-warning-subtle' : '';
+                let actionBtn = '';
+                if (ev.accion_tipo === 'placa') {
+                    actionBtn = `<a href="/pap" class="btn btn-warning btn-sm text-dark fw-bold rounded-pill px-3 shadow-sm border-0 d-flex align-items-center gap-1" style="font-size: 0.75rem;" title="Crear placa gráfica conmemorativa"><i class="bi bi-palette-fill"></i> Crear Placa</a>`;
+                } else if (ev.accion_tipo === 'saludo_cumple') {
+                    actionBtn = `<button class="btn btn-success btn-sm fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.75rem;" onclick="abrirSaludoDashboard(${ev.contacto_id}, 'cumpleanios', '${(ev.titulo || '').replace(/'/g, "\\'")}', '${ev.telefono || ''}')"><i class="bi bi-cake2"></i> Saludo IA</button>`;
+                } else if (ev.accion_tipo === 'saludo_aniv') {
+                    actionBtn = `<button class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.75rem;" onclick="abrirSaludoDashboard(${ev.contacto_id}, 'aniversario', '${(ev.titulo || '').replace(/'/g, "\\'")}', '${ev.telefono || ''}')"><i class="bi bi-house-heart"></i> Saludo IA</button>`;
+                }
+                hoyHtml += `
+                    <div class="${borderClass}">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div class="flex-grow-1">
+                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">
+                                    <span class="me-1 fs-6">${ev.icono || '📅'}</span> ${ev.titulo}
+                                </div>
+                                <div class="small text-muted" style="font-size: 0.78rem;">
+                                    ${ev.subtitulo || ''}
+                                </div>
+                            </div>
+                            <div class="d-flex gap-1 align-items-center flex-shrink-0">
+                                ${actionBtn}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            hoyHtml += `</div>`;
+            hoyContainer.innerHTML = hoyHtml;
+        }
+
+        let listHtml = '';
+        eventos.forEach(ev => {
+            let bgClass = ev.es_hoy ? 'bg-warning bg-opacity-10 border-warning' : 'bg-white';
+            let pillClass = ev.es_hoy ? 'bg-warning text-dark border-warning fw-bold' : 'bg-light text-secondary';
+            let actionBtn = '';
+            if (ev.accion_tipo === 'placa') {
+                actionBtn = `<a href="/pap" class="btn btn-xs btn-outline-warning rounded-circle p-1 text-dark d-flex align-items-center justify-content-center" style="width: 26px; height: 26px;" title="Diseñar Placa con PAP"><i class="bi bi-brush fs-7"></i></a>`;
+            } else if (ev.accion_tipo === 'saludo_cumple' || ev.accion_tipo === 'saludo_aniv') {
+                let tipoArg = ev.accion_tipo === 'saludo_aniv' ? 'aniversario' : 'cumpleanios';
+                actionBtn = `<button class="btn btn-xs btn-outline-success rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 26px; height: 26px;" onclick="abrirSaludoDashboard(${ev.contacto_id}, '${tipoArg}', '${(ev.titulo || '').replace(/'/g, "\\'")}', '${ev.telefono || ''}')" title="Generar saludo IA para WhatsApp"><i class="bi bi-whatsapp fs-7"></i></button>`;
+            }
+
+            let dayNum = ev.fecha_formateada ? ev.fecha_formateada.split(' ')[0] : '';
+            listHtml += `
+                <div class="evento-item p-2 rounded-3 border d-flex align-items-center justify-content-between gap-2 ${bgClass}" style="transition: all 0.2s ease;">
+                    <div class="d-flex align-items-center gap-2 overflow-hidden flex-grow-1">
+                        <div class="text-center rounded-2 p-1 border flex-shrink-0 ${pillClass}" style="min-width: 44px; line-height: 1.1;">
+                            <div class="fw-bold" style="font-size: 0.85rem;">${dayNum}</div>
+                            <div class="text-uppercase" style="font-size: 0.65rem;">${ev.dia_semana || ''}</div>
+                        </div>
+                        <div class="overflow-hidden">
+                            <div class="d-flex align-items-center gap-1 text-truncate">
+                                <span class="flex-shrink-0" style="font-size: 0.85rem;">${ev.icono || '📅'}</span>
+                                <strong class="text-dark text-truncate" style="font-size: 0.82rem;" title="${ev.titulo}">${ev.titulo}</strong>
+                            </div>
+                            <div class="text-muted text-truncate" style="font-size: 0.72rem;" title="${ev.subtitulo || ''}">
+                                ${ev.subtitulo || ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                        <span class="badge ${ev.urgencia_badge || 'bg-secondary'} rounded-pill" style="font-size: 0.68rem;">
+                            ${ev.tiempo_relativo || ''}
+                        </span>
+                        ${actionBtn}
+                    </div>
+                </div>
+            `;
+        });
+        listContainer.innerHTML = listHtml;
+    }
+
+    function renderizarEfemeredesLocalesFallback() {
+        const fixedHolidays = [
+            { m: 1, d: 1, titulo: 'Año Nuevo', subtitulo: 'Feriado Nacional', icono: '🎆', tipo: 'feriado' },
+            { m: 1, d: 6, titulo: 'Día de Reyes', subtitulo: 'Festivo', icono: '👑', tipo: 'festivo' },
+            { m: 2, d: 14, titulo: 'Día de los Enamorados', subtitulo: 'Festivo', icono: '❤️', tipo: 'festivo' },
+            { m: 3, d: 8, titulo: 'Día de la Mujer', subtitulo: 'Festivo Internacional', icono: '💐', tipo: 'festivo' },
+            { m: 3, d: 24, titulo: 'Día de la Memoria por la Verdad y la Justicia', subtitulo: 'Feriado Nacional / Día Patrio', icono: '🕊️', tipo: 'patrio' },
+            { m: 4, d: 2, titulo: 'Día del Veterano y Caídos en Malvinas', subtitulo: 'Feriado Nacional / Día Patrio', icono: '🇦🇷', tipo: 'patrio' },
+            { m: 4, d: 23, titulo: 'Día del Agrimensor', subtitulo: 'Efeméride Inmobiliaria', icono: '📐', tipo: 'profesional' },
+            { m: 5, d: 1, titulo: 'Día del Trabajador', subtitulo: 'Feriado Nacional', icono: '👷', tipo: 'feriado' },
+            { m: 5, d: 25, titulo: 'Día de la Revolución de Mayo', subtitulo: 'Feriado Nacional / Día Patrio', icono: '🇦🇷', tipo: 'patrio' },
+            { m: 6, d: 20, titulo: 'Día de la Bandera (Belgrano)', subtitulo: 'Feriado Nacional / Día Patrio', icono: '🇦🇷', tipo: 'patrio' },
+            { m: 7, d: 1, titulo: 'Día del Arquitecto', subtitulo: 'Efeméride Inmobiliaria', icono: '🏛️', tipo: 'profesional' },
+            { m: 7, d: 9, titulo: 'Día de la Independencia Argentina', subtitulo: 'Feriado Nacional / Día Patrio', icono: '🇦🇷', tipo: 'patrio' },
+            { m: 7, d: 20, titulo: 'Día del Amigo', subtitulo: 'Festivo', icono: '🤝', tipo: 'festivo' },
+            { m: 8, d: 17, titulo: 'Paso a la Inmortalidad del Gral. San Martín', subtitulo: 'Feriado Nacional / Día Patrio', icono: '⚔️', tipo: 'patrio' },
+            { m: 8, d: 29, titulo: 'Día del Abogado en Argentina', subtitulo: 'Efeméride Profesional (Alberdi)', icono: '⚖️', tipo: 'profesional' },
+            { m: 9, d: 4, titulo: 'Día de la Secretaria y del Inmigrante', subtitulo: 'Efeméride Profesional', icono: '💼', tipo: 'profesional' },
+            { m: 9, d: 11, titulo: 'Día del Maestro (Sarmiento)', subtitulo: 'Efeméride Nacional', icono: '📚', tipo: 'patrio' },
+            { m: 9, d: 13, titulo: 'Día del Bibliotecario', subtitulo: 'Efeméride Profesional', icono: '📖', tipo: 'profesional' },
+            { m: 9, d: 17, titulo: 'Día del Profesor', subtitulo: 'Efeméride Profesional', icono: '👨‍🏫', tipo: 'profesional' },
+            { m: 9, d: 21, titulo: 'Día de la Primavera y del Estudiante', subtitulo: 'Festivo', icono: '🌸', tipo: 'festivo' },
+            { m: 9, d: 21, titulo: 'Día de la Sanidad', subtitulo: 'Efeméride Profesional', icono: '🩺', tipo: 'profesional' },
+            { m: 10, d: 2, titulo: 'Día del Escribano y Notariado', subtitulo: 'Efeméride Inmobiliaria', icono: '📜', tipo: 'profesional' },
+            { m: 10, d: 11, titulo: 'Día del Martillero y Corredor Inmobiliario', subtitulo: 'Efeméride Inmobiliaria Principal', icono: '🏢', tipo: 'profesional' },
+            { m: 10, d: 12, titulo: 'Día del Respeto a la Diversidad Cultural', subtitulo: 'Feriado Nacional', icono: '🌎', tipo: 'feriado' },
+            { m: 11, d: 10, titulo: 'Día de la Tradición (José Hernández)', subtitulo: 'Día Patrio', icono: '🧉', tipo: 'patrio' },
+            { m: 11, d: 20, titulo: 'Día de la Soberanía Nacional', subtitulo: 'Feriado Nacional / Día Patrio', icono: '🇦🇷', tipo: 'patrio' },
+            { m: 12, d: 8, titulo: 'Inmaculada Concepción', subtitulo: 'Feriado Nacional', icono: '✨', tipo: 'feriado' },
+            { m: 12, d: 25, titulo: 'Navidad', subtitulo: 'Feriado Nacional', icono: '🎄', tipo: 'feriado' },
+            { m: 12, d: 31, titulo: 'Fin de Año', subtitulo: 'Festivo', icono: '🥂', tipo: 'festivo' }
+        ];
+
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const diasSem = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+        const candidatos = [];
+        fixedHolidays.forEach(h => {
+            [curYear, curYear + 1].forEach(y => {
+                const target = new Date(y, h.m - 1, h.d);
+                target.setHours(0,0,0,0);
+                const hoy0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const diffTime = target.getTime() - hoy0.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+                if (diffDays >= 0) {
+                    candidatos.push({
+                        titulo: h.titulo,
+                        subtitulo: h.subtitulo,
+                        icono: h.icono,
+                        tipo: h.tipo,
+                        dias_faltantes: diffDays,
+                        es_hoy: (diffDays === 0),
+                        fecha_formateada: `${h.d} ${meses[h.m - 1]}`,
+                        dia_semana: diasSem[target.getDay()],
+                        tiempo_relativo: diffDays === 0 ? '¡Hoy!' : (diffDays === 1 ? 'Mañana' : `En ${diffDays} días`),
+                        urgencia_badge: diffDays === 0 ? 'bg-danger text-white fw-bold shadow-sm' : (diffDays === 1 ? 'bg-warning text-dark fw-bold' : (diffDays <= 7 ? 'bg-info-subtle text-info border border-info' : 'bg-secondary-subtle text-secondary border')),
+                        accion_tipo: 'placa'
+                    });
+                }
+            });
+        });
+
+        candidatos.sort((a, b) => a.dias_faltantes - b.dias_faltantes);
+        renderizarEventosEnDashboard(candidatos.slice(0, 6));
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', cargarEventosProximosDinamicos);
+    } else {
+        cargarEventosProximosDinamicos();
+    }
+</script>
+{% endblock %}

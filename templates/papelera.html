@@ -1,0 +1,491 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Papelera de Reciclaje — {{ agency.nombre }}{% endblock %}
+{% block header %}🗑️ Papelera de Reciclaje{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0 px-md-2">
+    <!-- ENCABEZADO Y FILTROS -->
+    <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, {{ agency.color_secundario or '#1a1a2e' }} 0%, #16213e 100%); color: white; border-radius: 16px;">
+        <div class="card-body p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-danger px-3 py-1 font-monospace">Soft-Delete Storage</span>
+                    {% if is_superadmin %}
+                    <span class="badge bg-warning text-dark">Vista Global SuperAdmin</span>
+                    {% elif is_admin %}
+                    <span class="badge bg-info text-dark">Vista Oficina + Agentes Sueltos</span>
+                    {% else %}
+                    <span class="badge bg-primary">Aislamiento Oficina</span>
+                    {% endif %}
+                </div>
+                <h3 class="fw-bold mb-1 text-white">Papelera de Reciclaje y Recuperación</h3>
+                <p class="text-white-50 mb-0 small">
+                    Elementos eliminados en los últimos 30 días. Podés <strong>restaurarlos al instante</strong> o eliminarlos de forma definitiva.
+                </p>
+            </div>
+            
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                {% if is_superadmin or is_admin %}
+                <form method="GET" action="{{ url_for('papelera.index') }}" class="d-flex align-items-center gap-2 m-0 bg-white bg-opacity-10 p-2 rounded-3 border border-white border-opacity-10">
+                    <i class="bi bi-funnel text-warning"></i>
+                    <select name="oficina_id" class="form-select form-select-sm bg-dark text-white border-secondary" onchange="this.form.submit()" style="min-width: 200px;">
+                        {% if is_superadmin %}
+                        <option value="all" {% if filtro_oficina == 'all' or not filtro_oficina %}selected{% endif %}>🏢 Todas las Oficinas (Global)</option>
+                        {% endif %}
+                        {% for ofi in oficinas %}
+                        <option value="{{ ofi.id }}" {% if filtro_oficina == ofi.id|string %}selected{% endif %}>
+                            📍 {{ ofi.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% endif %}
+
+                {% if items.total_count > 0 %}
+                <button type="button" class="btn btn-danger btn-sm px-3 py-2 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalVaciarPapelera">
+                    <i class="bi bi-trash3 me-1"></i> Vaciar Papelera
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TABS POR ENTIDAD -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white border-bottom pt-3 pb-0 px-4">
+            <ul class="nav nav-tabs card-header-tabs" id="papeleraTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-semibold" id="tab-contactos" data-bs-toggle="tab" data-bs-target="#content-contactos" type="button" role="tab">
+                        <i class="bi bi-people me-1"></i> Contactos 
+                        <span class="badge rounded-pill {% if items.contactos|length > 0 %}bg-danger{% else %}bg-secondary{% endif %} ms-1">{{ items.contactos|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-propiedades" data-bs-toggle="tab" data-bs-target="#content-propiedades" type="button" role="tab">
+                        <i class="bi bi-buildings me-1"></i> Propiedades 
+                        <span class="badge rounded-pill {% if items.propiedades|length > 0 %}bg-danger{% else %}bg-secondary{% endif %} ms-1">{{ items.propiedades|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-lotes" data-bs-toggle="tab" data-bs-target="#content-lotes" type="button" role="tab">
+                        <i class="bi bi-grid-3x3 me-1"></i> Lotes 
+                        <span class="badge rounded-pill {% if items.lotes|length > 0 %}bg-danger{% else %}bg-secondary{% endif %} ms-1">{{ items.lotes|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-operaciones" data-bs-toggle="tab" data-bs-target="#content-operaciones" type="button" role="tab">
+                        <i class="bi bi-wallet2 me-1"></i> Operaciones 
+                        <span class="badge rounded-pill {% if items.operaciones|length > 0 %}bg-danger{% else %}bg-secondary{% endif %} ms-1">{{ items.operaciones|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-busquedas" data-bs-toggle="tab" data-bs-target="#content-busquedas" type="button" role="tab">
+                        <i class="bi bi-bookmark-heart me-1"></i> Búsquedas 
+                        <span class="badge rounded-pill {% if items.busquedas|length > 0 %}bg-danger{% else %}bg-secondary{% endif %} ms-1">{{ items.busquedas|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-fichas" data-bs-toggle="tab" data-bs-target="#content-fichas" type="button" role="tab">
+                        <i class="bi bi-link-45deg me-1"></i> Fichas Clientes 
+                        <span class="badge rounded-pill {% if items.fichas|length > 0 %}bg-danger{% else %}bg-secondary{% endif %} ms-1">{{ items.fichas|length }}</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="tab-content" id="papeleraTabsContent">
+                
+                <!-- ──────────────── TAB 1: CONTACTOS ──────────────── -->
+                <div class="tab-pane fade show active p-0" id="content-contactos" role="tabpanel">
+                    {% if items.contactos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Contacto</th>
+                                    <th>Categoría / Teléfono</th>
+                                    <th>Asesor / Oficina</th>
+                                    <th>Fecha Eliminación</th>
+                                    <th>Eliminado Por</th>
+                                    <th class="text-end pe-4">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in items.contactos %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">{{ c.nombre }} {{ c.apellido }}</div>
+                                        <small class="text-muted">{{ c.email or 'Sin email' }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary me-1">{{ c.categoria or 'C' }}</span>
+                                        <span class="small font-monospace">{{ c.telefono or 'Sin teléfono' }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-semibold">{{ c.agente_nombre }}</div>
+                                        <span class="badge bg-light text-dark border">{{ c.oficina_nombre }}</span>
+                                    </td>
+                                    <td class="small text-muted">{{ c.eliminado_el }}</td>
+                                    <td class="small"><span class="badge bg-danger bg-opacity-10 text-danger fw-bold">{{ c.eliminado_por or 'Usuario' }}</span></td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-success" onclick="restaurarItem('contactos', {{ c.id }}, '{{ c.nombre|replace('\'', '') }}')" title="Restaurar a contactos activos">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" onclick="purgarItem('contactos', {{ c.id }}, '{{ c.nombre|replace('\'', '') }}')" title="Eliminar definitivamente">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-shield-check text-success fs-1 d-block mb-2"></i>
+                        <h6 class="fw-bold text-dark">No hay contactos en la papelera</h6>
+                        <p class="small mb-0">Los contactos eliminados aparecerán acá para su recuperación.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- ──────────────── TAB 2: PROPIEDADES ──────────────── -->
+                <div class="tab-pane fade p-0" id="content-propiedades" role="tabpanel">
+                    {% if items.propiedades %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Propiedad</th>
+                                    <th>Ubicación / Precio</th>
+                                    <th>Asesor / Oficina</th>
+                                    <th>Fecha Eliminación</th>
+                                    <th>Eliminado Por</th>
+                                    <th class="text-end pe-4">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in items.propiedades %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">{{ p.titulo }}</div>
+                                        <span class="badge bg-info text-dark">{{ p.tipo_propiedad|capitalize }}</span>
+                                        <span class="badge bg-primary">{{ p.tipo_operacion|capitalize }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-semibold">{{ p.direccion or p.barrio }}</div>
+                                        <span class="text-success fw-bold small">{{ p.moneda }} {{ "{:,.0f}".format(p.precio) if p.precio else '-' }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-semibold">{{ p.agente_nombre }}</div>
+                                        <span class="badge bg-light text-dark border">{{ p.oficina_nombre }}</span>
+                                    </td>
+                                    <td class="small text-muted">{{ p.eliminado_el }}</td>
+                                    <td class="small"><span class="badge bg-danger bg-opacity-10 text-danger fw-bold">{{ p.eliminado_por or 'Usuario' }}</span></td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-success" onclick="restaurarItem('propiedades', {{ p.id }}, '{{ p.titulo|replace('\'', '') }}')">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" onclick="purgarItem('propiedades', {{ p.id }}, '{{ p.titulo|replace('\'', '') }}')">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-shield-check text-success fs-1 d-block mb-2"></i>
+                        <h6 class="fw-bold text-dark">No hay propiedades en la papelera</h6>
+                        <p class="small mb-0">La cartera está limpia y activa.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- ──────────────── TAB 3: LOTES ──────────────── -->
+                <div class="tab-pane fade p-0" id="content-lotes" role="tabpanel">
+                    {% if items.lotes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Barrio / Lote</th>
+                                    <th>Medidas / Valor</th>
+                                    <th>Cargado Por / Oficina</th>
+                                    <th>Fecha Eliminación</th>
+                                    <th>Eliminado Por</th>
+                                    <th class="text-end pe-4">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for l in items.lotes %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">{{ l.barrio }}</div>
+                                        <small class="text-muted">Lote Nº {{ l.numero }} (Área: {{ l.area or '-' }})</small>
+                                    </td>
+                                    <td>
+                                        <div class="small">{{ l.metros }} m²</div>
+                                        <span class="text-success fw-bold small">USD {{ l.valor or '-' }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-semibold">{{ l.agente_nombre }}</div>
+                                        <span class="badge bg-light text-dark border">{{ l.oficina_nombre }}</span>
+                                    </td>
+                                    <td class="small text-muted">{{ l.eliminado_el }}</td>
+                                    <td class="small"><span class="badge bg-danger bg-opacity-10 text-danger fw-bold">{{ l.eliminado_por or 'Usuario' }}</span></td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-success" onclick="restaurarItem('lotes', {{ l.id }}, 'Lote Nº {{ l.numero }}')">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" onclick="purgarItem('lotes', {{ l.id }}, 'Lote Nº {{ l.numero }}')">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-shield-check text-success fs-1 d-block mb-2"></i>
+                        <h6 class="fw-bold text-dark">No hay lotes en la papelera</h6>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- ──────────────── TAB 4: OPERACIONES ──────────────── -->
+                <div class="tab-pane fade p-0" id="content-operaciones" role="tabpanel">
+                    {% if items.operaciones %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Domicilio / Operación</th>
+                                    <th>Estado / Monto</th>
+                                    <th>Asesor / Oficina</th>
+                                    <th>Fecha Eliminación</th>
+                                    <th>Eliminado Por</th>
+                                    <th class="text-end pe-4">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for op in items.operaciones %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">{{ op.domicilio }}</div>
+                                        <small class="text-muted">ID #{{ op.id }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ op.estado }}</span>
+                                        <div class="small text-success fw-bold mt-1">Bruto: ${{ op.bruto or '-' }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-semibold">{{ op.agente_nombre }}</div>
+                                        <span class="badge bg-light text-dark border">{{ op.oficina_nombre }}</span>
+                                    </td>
+                                    <td class="small text-muted">{{ op.eliminado_el }}</td>
+                                    <td class="small"><span class="badge bg-danger bg-opacity-10 text-danger fw-bold">{{ op.eliminado_por or 'Usuario' }}</span></td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-success" onclick="restaurarItem('seguimiento_operaciones', {{ op.id }}, '{{ op.domicilio|replace('\'', '') }}')">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" onclick="purgarItem('seguimiento_operaciones', {{ op.id }}, '{{ op.domicilio|replace('\'', '') }}')">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-shield-check text-success fs-1 d-block mb-2"></i>
+                        <h6 class="fw-bold text-dark">No hay operaciones en la papelera</h6>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- ──────────────── TAB 5: BÚSQUEDAS CLIENTES ──────────────── -->
+                <div class="tab-pane fade p-0" id="content-busquedas" role="tabpanel">
+                    {% if items.busquedas %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Nombre de Búsqueda</th>
+                                    <th>Criterios</th>
+                                    <th>Asesor / Oficina</th>
+                                    <th>Fecha Eliminación</th>
+                                    <th>Eliminado Por</th>
+                                    <th class="text-end pe-4">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b in items.busquedas %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">{{ b.nombre }}</div>
+                                        <span class="badge bg-primary">{{ b.tipo_operacion|capitalize }}</span>
+                                    </td>
+                                    <td class="small">
+                                        <div><strong>Zona:</strong> {{ b.zona or 'Todas' }}</div>
+                                        <div class="text-muted">Rango: {{ b.min_precio or 0 }} - {{ b.max_precio or 'Sin límite' }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-semibold">{{ b.agente_nombre }}</div>
+                                        <span class="badge bg-light text-dark border">{{ b.oficina_nombre }}</span>
+                                    </td>
+                                    <td class="small text-muted">{{ b.eliminado_el }}</td>
+                                    <td class="small"><span class="badge bg-danger bg-opacity-10 text-danger fw-bold">{{ b.eliminado_por or 'Usuario' }}</span></td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-success" onclick="restaurarItem('busquedas_clientes', {{ b.id }}, '{{ b.nombre|replace('\'', '') }}')">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" onclick="purgarItem('busquedas_clientes', {{ b.id }}, '{{ b.nombre|replace('\'', '') }}')">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-shield-check text-success fs-1 d-block mb-2"></i>
+                        <h6 class="fw-bold text-dark">No hay búsquedas de clientes en la papelera</h6>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- ──────────────── TAB 6: FICHAS CLIENTES ──────────────── -->
+                <div class="tab-pane fade p-0" id="content-fichas" role="tabpanel">
+                    {% if items.fichas %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Título de Ficha</th>
+                                    <th>Slug / Vistas</th>
+                                    <th>Asesor / Oficina</th>
+                                    <th>Fecha Eliminación</th>
+                                    <th>Eliminado Por</th>
+                                    <th class="text-end pe-4">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for f in items.fichas %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">{{ f.titulo }}</div>
+                                        <small class="text-muted">Creada: {{ f.created_at }}</small>
+                                    </td>
+                                    <td>
+                                        <code class="small">{{ f.codigo_slug }}</code>
+                                        <div class="small text-info"><i class="bi bi-eye me-1"></i>{{ f.vistas_count }} vistas</div>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-semibold">{{ f.agente_nombre }}</div>
+                                        <span class="badge bg-light text-dark border">{{ f.oficina_nombre }}</span>
+                                    </td>
+                                    <td class="small text-muted">{{ f.eliminado_el }}</td>
+                                    <td class="small"><span class="badge bg-danger bg-opacity-10 text-danger fw-bold">{{ f.eliminado_por or 'Usuario' }}</span></td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-success" onclick="restaurarItem('enlaces_fichas_clientes', {{ f.id }}, '{{ f.titulo|replace('\'', '') }}')">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" onclick="purgarItem('enlaces_fichas_clientes', {{ f.id }}, '{{ f.titulo|replace('\'', '') }}')">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-shield-check text-success fs-1 d-block mb-2"></i>
+                        <h6 class="fw-bold text-dark">No hay fichas de clientes en la papelera</h6>
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FORM OCULTO DE ACCIONES -->
+<form id="formAccionPapelera" method="POST" style="display:none;">
+    <input type="hidden" name="entidad" id="formEntidad">
+    <input type="hidden" name="id" id="formId">
+</form>
+
+<!-- MODAL VACIAR PAPELERA -->
+<div class="modal fade" id="modalVaciarPapelera" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Vaciar Papelera de Reciclaje</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('papelera.vaciar') }}" method="POST">
+                <div class="modal-body p-4 text-center">
+                    <i class="bi bi-trash3 text-danger display-4 d-block mb-3"></i>
+                    <h5 class="fw-bold text-dark">¿Confirmás que querés vaciar la papelera?</h5>
+                    <p class="text-muted small mb-3">
+                        Esta acción <strong>eliminará de forma permanente e irrecuperable</strong> todos los elementos que están en la papelera.
+                    </p>
+                    <input type="hidden" name="oficina_id" value="{{ filtro_oficina }}">
+                </div>
+                <div class="modal-footer border-0 bg-light rounded-bottom-4 py-3 justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger px-4 fw-bold">Sí, Vaciar Todo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function restaurarItem(entidad, id, nombre) {
+    if (confirm(`¿Restaurar "${nombre}" de nuevo al sistema activo?`)) {
+        const form = document.getElementById('formAccionPapelera');
+        form.action = "{{ url_for('papelera.restaurar') }}";
+        document.getElementById('formEntidad').value = entidad;
+        document.getElementById('formId').value = id;
+        form.submit();
+    }
+}
+
+function purgarItem(entidad, id, nombre) {
+    if (confirm(`⚠️ ATENCIÓN: ¿Eliminar DEFINITIVAMENTE "${nombre}"?\nEsta acción es irreversible y no se podrá recuperar.`)) {
+        const form = document.getElementById('formAccionPapelera');
+        form.action = "{{ url_for('papelera.purgar') }}";
+        document.getElementById('formEntidad').value = entidad;
+        document.getElementById('formId').value = id;
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

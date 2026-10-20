@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block header %}Seguimiento de Propiedades{% endblock %}
+
+{% block actions %}
+<a href="{{ url_for('abrir_excel_seguimiento') }}" class="btn btn-success">
+    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Abrir Excel Local
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-dark border-secondary shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title text-white"><i class="bi bi-link-45deg me-2 text-info"></i>Configuración de Archivo</h5>
+                <p class="text-muted small">Copiá y pegá la ruta completa de tu archivo Excel aquí para poder abrirlo directamente desde el sistema.</p>
+                <form action="{{ url_for('seguimiento_prop') }}" method="POST" class="row g-3">
+                    <div class="col-md-9">
+                        <input type="text" name="excel_path" class="form-control bg-secondary text-white border-0" 
+                               value="{{ excel_path }}" placeholder="Ej: C:\Users\Germa\OneDrive\Documentos\Seguimiento.xlsx">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">Guardar Ruta</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card bg-dark border-secondary shadow">
+    <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 text-white"><i class="bi bi-table me-2 text-primary"></i>Resumen de mi CRM</h5>
+        <span class="badge bg-secondary">{{ props|length }} Propiedades</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead class="table-secondary text-uppercase small">
+                    <tr>
+                        <th class="ps-4">Captación</th>
+                        <th>Propiedad</th>
+                        <th>Barrio</th>
+                        <th>Precio</th>
+                        <th>Estado</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in props %}
+                    <tr>
+                        <td class="ps-4 small text-muted">{{ p.fecha_captacion[:10] }}</td>
+                        <td>
+                            <div class="fw-bold text-truncate" style="max-width: 300px;">{{ p.titulo }}</div>
+                            <div class="small text-muted">{{ p.direccion }}</div>
+                        </td>
+                        <td><span class="badge bg-outline-info border border-info text-info">{{ p.barrio }}</span></td>
+                        <td class="fw-bold text-success">{{ p.moneda }} {{ "{:,.0f}".format(p.precio) if p.precio else "0" }}</td>
+                        <td>
+                            <span class="badge {% if p.estado == 'nueva' %}bg-info{% elif p.estado == 'contactada' %}bg-primary{% elif p.estado == 'captada' %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ p.estado | upper }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="{{ url_for('propiedad_detalle', prop_id=p.id) }}" class="btn btn-sm btn-outline-light">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not props %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                            No hay propiedades en tu base de datos personal todavía.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

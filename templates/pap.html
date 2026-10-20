@@ -1,0 +1,3007 @@
+{% extends "base.html" %}
+
+{% block title %}Publicación a Placa (PAP){% endblock %}
+
+{% block header %}Publicación a Placa (PAP) <span class="badge bg-info text-dark fs-6 align-middle ms-2">v1.6 (CORS Local Fix)</span>{% endblock %}
+
+{% block extra_head %}
+<!-- Google Fonts for Premium Typography -->
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Great+Vibes&family=Alex+Brush&family=Playball&family=Sacramento&family=Pinyon+Script&family=Clicker+Script&family=Mrs+Saint+Delafield&family=Arizonia&family=Rochester&family=Playfair+Display:ital,wght@1,400;1,700&display=swap" rel="stylesheet" crossorigin="anonymous">
+<!-- html2canvas and html-to-image for client-side PNG generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js" crossorigin="anonymous"></script>
+
+<style>
+    /* V1/V2/V3 conditional classes */
+    .placa-canvas.v1-active .v2-only,
+    .placa-canvas.v1-active .v3-only,
+    .placa-canvas.v1-active .v3-layout { display: none !important; }
+    
+    .placa-canvas.v2-active .v1-only,
+    .placa-canvas.v2-active .v3-only,
+    .placa-canvas.v2-active .v3-layout { display: none !important; }
+
+    .placa-canvas.v3-active .v1-v2-layout { display: none !important; }
+    .placa-canvas.v3-active .v3-layout { display: flex !important; flex-direction: column; width: 100%; height: 100%; }
+    
+    .placa-canvas:not(.v3-active) .v3-layout { display: none !important; }
+
+    .placa-canvas.v2-active .placa-middle-section {
+        grid-template-columns: 1.1fr 2.4fr;
+    }
+    .placa-canvas.v2-active .placa-col-center {
+        border-right: none;
+    }
+    .placa-canvas.v2-active .placa-grid-section {
+        height: 145px;
+        padding-bottom: 6px;
+    }
+    .placa-canvas.v2-active.v2-photos-3 .placa-grid-section {
+        grid-template-columns: 1fr 1fr !important;
+        grid-template-rows: 1fr !important;
+    }
+    .placa-canvas.v2-active.v2-photos-3 #placa-grid-item-3,
+    .placa-canvas.v2-active.v2-photos-3 #placa-grid-item-4 {
+        display: none !important;
+    }
+    .placa-canvas.v2-active .placa-title-section {
+        padding-top: 15px;
+    }
+    .placa-canvas.v2-active #placa-title-v2-val {
+        font-size: 24px;
+        letter-spacing: 0.05em;
+    }
+    .placa-footer {
+        border-top: 1px solid #eaeaea;
+        box-sizing: border-box;
+    }
+    .placa-canvas.v2-active .placa-footer {
+        padding: 20px 45px;
+    }
+
+    /* Placa V3 Specific Layout Styles */
+    .v3-layout {
+        width: 100%;
+        height: 100%;
+        background-color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-sizing: border-box;
+        overflow: hidden;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .v3-header {
+        height: 60px;
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #ffffff;
+        box-sizing: border-box;
+    }
+
+    .v3-header-logo-img {
+        max-height: 42px;
+        max-width: 230px;
+        object-fit: contain;
+    }
+
+    .v3-hero-container {
+        position: relative;
+        width: 100%;
+        height: 490px;
+        background-color: #f1f5f9;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+
+    .v3-hero-bg {
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center;
+    }
+
+    .v3-badge-title {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: #522cb8;
+        clip-path: polygon(0 0, 100% 0, 84% 100%, 0 100%);
+        padding: 12px 35px 12px 18px;
+        min-width: 200px;
+        max-width: 300px;
+        box-sizing: border-box;
+        color: #ffffff;
+    }
+
+    .v3-badge-title-main {
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #ffffff;
+        margin: 0;
+        line-height: 1.15;
+    }
+
+    .v3-badge-title-sub {
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #e0d8ff;
+        margin-top: 3px;
+        margin-bottom: 0;
+        line-height: 1.15;
+    }
+
+    .v3-badge-title-line {
+        width: 36px;
+        height: 2px;
+        background-color: #ffffff;
+        margin-top: 5px;
+    }
+
+    .v3-badge-location {
+        position: absolute;
+        top: 130px;
+        left: 14px;
+        background-color: #ffffff;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(82, 44, 184, 0.2);
+        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-sizing: border-box;
+        max-width: 260px;
+    }
+
+    .v3-badge-location i {
+        color: #522cb8;
+        font-size: 16px;
+    }
+
+    .v3-badge-location-text {
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #522cb8;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .v3-badge-price {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        background-color: #522cb8;
+        clip-path: polygon(0 0, 84% 0, 100% 100%, 0 100%);
+        padding: 10px 38px 10px 18px;
+        min-width: 240px;
+        max-width: 310px;
+        box-sizing: border-box;
+        color: #ffffff;
+    }
+
+    .v3-badge-price-label {
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #e0d8ff;
+        margin: 0;
+        line-height: 1.1;
+    }
+
+    .v3-badge-price-val {
+        font-size: 23px;
+        font-weight: 800;
+        color: #ffffff;
+        margin-top: 2px;
+        margin-bottom: 0;
+        line-height: 1.1;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .v3-opportunity-banner {
+        height: 52px;
+        background-color: #ffffff;
+        border-bottom: 1px solid #f1f5f9;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-sizing: border-box;
+    }
+
+    .v3-opportunity-text {
+        font-size: 13.5px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #111111; /* Negro */
+        margin: 0;
+        line-height: 1.2;
+        text-align: center;
+        width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .v3-features-grid {
+        height: 80px;
+        background-color: #ffffff;
+        border-bottom: 1px solid #f1f5f9;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        align-items: center;
+        box-sizing: border-box;
+    }
+
+    .v3-feature-col {
+        height: 80%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        border-right: 1px solid #f1f5f9;
+        padding: 0 4px;
+        box-sizing: border-box;
+    }
+
+    .v3-feature-col:last-child {
+        border-right: none;
+    }
+
+    .v3-feature-col i {
+        font-size: 17px;
+        color: #522cb8;
+    }
+
+    .v3-feature-col span {
+        font-size: 7.5px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #1e293b;
+        text-align: center;
+        line-height: 1.15;
+    }
+
+    .v3-desc-box {
+        height: 80px;
+        background-color: #ffffff;
+        border-bottom: 1px solid #f1f5f9;
+        padding: 8px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .v3-desc-text {
+        font-size: 9.5px;
+        font-weight: 500;
+        color: #334155;
+        line-height: 1.35;
+        margin: 0;
+        text-align: center;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .v3-agent-row {
+        height: 56px;
+        background-color: #ffffff;
+        padding: 0 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        box-sizing: border-box;
+    }
+
+    .v3-agent-name {
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #0f172a;
+        margin: 0;
+        line-height: 1.15;
+    }
+
+    .v3-agent-divider {
+        width: 1px;
+        height: 32px;
+        background-color: #cbd5e1;
+        flex-shrink: 0;
+    }
+
+    .v3-agent-cred {
+        text-align: right;
+    }
+
+    .v3-agent-cred-title {
+        font-size: 9.5px;
+        font-weight: 700;
+        color: #522cb8;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .v3-agent-cred-detail {
+        font-size: 7px;
+        font-weight: 500;
+        color: #64748b;
+        margin: 0;
+        line-height: 1.15;
+    }
+
+    .v3-contact-footer {
+        height: 42px;
+        background-color: #522cb8;
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-sizing: border-box;
+        color: #ffffff;
+        overflow: hidden;
+    }
+
+    .v3-contact-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 7.5px;
+        font-weight: 600;
+        color: #ffffff;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 48%;
+        flex-shrink: 1;
+    }
+
+    .v3-contact-item i {
+        font-size: 10px;
+        color: #d1d1e6;
+        flex-shrink: 0;
+    }
+
+    .v3-contact-item span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Main Layout */
+    .editor-container {
+        display: grid;
+        grid-template-columns: 1fr 450px;
+        gap: 2rem;
+        align-items: start;
+    }
+
+    @media (max-width: 991.98px) {
+        .editor-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Placa Canvas Frame */
+    .placa-frame-wrapper {
+        position: sticky;
+        top: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* 9:16 Aspect Ratio Canvas (Fixed constraints to ensure 100% layout integrity) */
+    .placa-canvas {
+        width: 450px;
+        height: 800px;
+        background-color: #ffffff;
+        overflow: hidden;
+        position: relative;
+        display: block; /* Standard block layout for html2canvas compatibility */
+        user-select: none;
+        color: #111111;
+        font-family: 'Montserrat', sans-serif;
+        box-sizing: border-box;
+    }
+
+    /* Placa Design Styles - STRICTLY FIXED HEIGHTS to prevent overflow changes */
+    .placa-header {
+        padding: 20px 25px 5px 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        height: 60px;
+        box-sizing: border-box;
+    }
+
+    .placa-brand {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        color: #111111;
+        text-transform: uppercase;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .placa-price-box {
+        text-align: right;
+        line-height: 1.1;
+    }
+
+    .placa-price {
+        font-size: 16px;
+        font-weight: 800;
+        color: #111111;
+        margin: 0;
+    }
+
+    .placa-price-label {
+        font-size: 8px;
+        font-weight: 500;
+        letter-spacing: 0.2em;
+        color: #666666;
+        text-transform: uppercase;
+        margin: 0;
+    }
+
+    /* Placa Main Title "HOME FOR Sale" - PERFECTLY CENTERED & CONSTANT */
+    .placa-title-section {
+        padding: 0 25px 12px 25px;
+        display: flex;
+        justify-content: center;
+        align-items: baseline;
+        height: 55px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .placa-title-main {
+        font-size: 34px;
+        font-weight: 300;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #111111;
+        margin: 0;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .placa-title-script {
+        font-family: 'Arizonia', cursive; /* Premium modern script with gorgeous 'S' loop */
+        font-size: 45px;
+        color: #111111;
+        margin-left: 10px;
+        position: relative;
+        top: 2px;
+        font-weight: 400;
+    }
+
+    /* Placa Banner Photo - RIGID HEIGHT */
+    .placa-banner-img-container {
+        width: 100%;
+        height: 290px;
+        overflow: hidden;
+        background-color: #f0f0f0;
+        box-sizing: border-box;
+    }
+
+    .placa-banner-img {
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center;
+    }
+
+    /* Placa Middle Columns Section - RIGID HEIGHT */
+    .placa-middle-section {
+        display: grid;
+        grid-template-columns: 1.1fr 1.3fr 1.1fr;
+        height: 135px;
+        border-bottom: 1px solid #eaeaea;
+        align-items: center;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .placa-col {
+        height: 85%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0 10px;
+        box-sizing: border-box;
+    }
+
+    .placa-col-left {
+        border-right: 1px solid #eaeaea;
+        padding-left: 20px;
+    }
+
+    .placa-col-center {
+        border-right: 1px solid #eaeaea;
+        text-align: center;
+        padding: 0 12px;
+    }
+
+    .placa-col-right {
+        align-items: center;
+        text-align: center;
+        padding-right: 15px;
+    }
+
+    /* Left Column: Features */
+    .placa-feature-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #2c3e50;
+    }
+
+    .placa-feature-item i {
+        font-size: 13px;
+        margin-right: 8px;
+        color: #111111;
+        width: 16px;
+        text-align: center;
+    }
+
+    /* Center Column: Text */
+    .placa-middle-title {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        line-height: 1.3;
+        color: #111111;
+    }
+
+    .placa-middle-desc {
+        font-size: 8px;
+        font-weight: 400;
+        color: #555555;
+        line-height: 1.4;
+        margin: 0;
+        max-height: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 6;
+        -webkit-box-orient: vertical;
+    }
+
+    /* Right Column: Company Logo (background-size: contain to preserve logo proportion) */
+    .placa-agent-img-box {
+        width: 65px;
+        height: 60px;
+        background-color: transparent;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .placa-agent-img {
+        width: 100%;
+        height: 100%;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    .placa-agent-name {
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .placa-agent-phone {
+        font-size: 9px; /* Increased 2 points (from 7px to 9px) */
+        font-weight: 600;
+        color: #444444;
+        margin-top: 2px;
+        margin-bottom: 0;
+    }
+
+    .placa-grid-section {
+        height: 260px; /* Fixed height adds up to exactly 800px canvas height */
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 6px;
+        padding: 6px 25px 25px 25px;
+        background-color: #ffffff;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .placa-grid-item {
+        background-color: #f5f5f5;
+        overflow: hidden;
+        position: relative;
+        box-sizing: border-box;
+    }
+
+    .placa-grid-img {
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center;
+    }
+
+    /* Photo Selector Cards */
+    .photo-thumbnail {
+        width: 100%;
+        height: 90px;
+        object-fit: cover;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+
+    .photo-thumbnail:hover {
+        transform: scale(1.03);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .photo-wrapper {
+        position: relative;
+    }
+
+    .photo-badge {
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid pb-5">
+    <div class="editor-container">
+        <!-- Editor Controls (Left) -->
+        <div class="card p-4 shadow-sm">
+            <h4 class="mb-4 fw-bold"><i class="bi bi-gear-fill me-2"></i> Configuración de la Placa</h4>
+            
+            <!-- Quick Import -->
+            <div class="mb-4 p-3 bg-light rounded border">
+                <h5 class="fw-bold mb-2 small text-uppercase text-secondary">Cargar Propiedad</h5>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-9">
+                        <select id="select-property" class="form-select">
+                            <option value="">-- Seleccionar de mis Propiedades del CRM{% if tokko_props %} o Tokko{% endif %} --</option>
+                            <!-- Tokko Properties Group -->
+                            {% if tokko_props %}
+                            <optgroup label="🏠 Cartera Inmobiliaria (Tokko Broker)">
+                                {% for p in tokko_props %}
+                                    <option value="{{ p.id }}" 
+                                            data-portal="tokko"
+                                            data-titulo="{{ p.titulo | forceescape }}" 
+                                            data-precio="{{ p.precio }}" 
+                                            data-moneda="{{ p.moneda }}"
+                                            data-dormitorios="{{ p.dormitorios }}"
+                                            data-banos="{{ p.banos }}"
+                                            data-cocheras="{{ p.cocheras }}"
+                                            data-m2="{{ p.m2_total }}"
+                                            data-foto="{{ p.foto_url }}"
+                                            data-fotos='{{ p.fotos_json | safe }}'
+                                            data-desc="{{ p.descripcion | forceescape }}">
+                                        [TOKKO #{{ p.id.replace('tokko_','') }}] {{ p.titulo | truncate(55) }} - {{ p.moneda }} {{ p.precio }}
+                                    </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
+                            <!-- Scraped Properties Group (Last 5 days) -->
+                            {% if props %}
+                            <optgroup label="🔍 Historial de Portales (Scraping - Últimos 5 días)">
+                                {% for p in props %}
+                                    <option value="{{ p.id }}" 
+                                            data-portal="scraped"
+                                            data-titulo="{{ p.titulo | forceescape }}" 
+                                            data-precio="{{ p.precio }}" 
+                                            data-moneda="{{ p.moneda }}"
+                                            data-ambientes="{{ p.ambientes }}"
+                                            data-dormitorios="{{ p.dormitorios }}"
+                                            data-banos="{{ p.banos }}"
+                                            data-m2="{{ p.m2_total }}"
+                                            data-foto="{{ p.foto_url }}"
+                                            data-desc="{{ p.descripcion | forceescape }}">
+                                        [{{ p.portal | upper }}] {{ p.titulo | truncate(55) }} - {{ p.moneda }} {{ p.precio }}
+                                    </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
+                            {% if not tokko_props and not props %}
+                            <option value="" disabled>-- No hay propiedades disponibles en tu oficina / cuenta --</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-grid">
+                        <button class="btn btn-warning fw-bold text-dark" type="button" id="btn-load-property">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i> Cargar Ficha
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- URL Import and HTML copy fallback -->
+                <div class="row g-2">
+                    <div class="col-md-9">
+                        <input type="text" id="import-url" class="form-control" placeholder="Pega URL de ZonaProp / MercadoLibre / ArgenProp">
+                    </div>
+                    <div class="col-md-3 d-grid">
+                        <button class="btn btn-primary" type="button" id="btn-import-url">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" id="import-spinner"></span>
+                            Auto-Scrape
+                        </button>
+                    </div>
+                    <div class="col-md-12 d-flex justify-content-between mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-paste-html-modal" data-bs-toggle="modal" data-bs-target="#htmlModal">
+                            <i class="bi bi-filetype-html me-1"></i> Si falla el scrape, pega código HTML aquí
+                        </button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none text-muted" id="btn-open-browser-help" onclick="window.open(document.getElementById('import-url').value || 'https://www.mercadolibre.com.ar')">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Abrir en Chrome
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Content -->
+            <form id="placa-form">
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Diseño de la Placa</label>
+                    <select id="form-design-version" class="form-select">
+                        <option value="v2" selected>Diseño V2 (Nuevo)</option>
+                        <option value="v3">Diseño V3 (1 Foto - Estilo Moderno)</option>
+                        <option value="v1">Diseño V1 (Original)</option>
+                    </select>
+                </div>
+
+                <div class="mb-4 p-3 bg-light rounded border" id="form-v2-photo-count-wrapper">
+                    <label class="form-label fw-bold text-primary mb-2">
+                        <i class="bi bi-grid-fill me-1"></i> [Solo V2] Cantidad de Fotos en la Placa
+                    </label>
+                    <select id="form-v2-photo-count" class="form-select">
+                        <option value="5" selected>5 Fotos (1 Principal + 4 Abajo) [Por Defecto]</option>
+                        <option value="3">3 Fotos (1 Principal + 2 Abajo)</option>
+                    </select>
+                    <div class="form-text mt-1 text-muted small">
+                        Permite alternar en la Placa V2 entre 5 fotos (4 abajo) o 3 fotos (2 abajo más grandes).
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Ubicación / Barrio (Badge V3)</label>
+                        <input type="text" id="form-v3-location" class="form-control" value="VIVÍ EN OLIVOS">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Subtítulo / Destacado (Badge Sup. V3)</label>
+                        <input type="text" id="form-v3-subtitle" class="form-control" value="EXCELENTE UBICACIÓN">
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">Título de la Publicación (V3)</label>
+                        <input type="text" id="form-v3-callout" class="form-control" value="MODERNA CASA EN OLIVOS">
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Título de la Propiedad</label>
+                        <input type="text" id="form-title" class="form-control" value="MODERNA CASA EN OLIVOS">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Valor</label>
+                        <div class="input-group">
+                            <select id="form-currency" class="form-select" style="max-width: 90px;">
+                                <option value="USD" selected>USD</option>
+                                <option value="ARS">ARS</option>
+                            </select>
+                            <input type="text" id="form-price" class="form-control" value="385000">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Texto de Cursiva (Script)</label>
+                        <select id="form-sale-text-select" class="form-select">
+                            <option value="Sale">Sale</option>
+                            <option value="Rent">Rent</option>
+                            <option value="Venta" selected>Venta</option>
+                            <option value="Alquiler">Alquiler</option>
+                            <option value="custom">-- Personalizado --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6" id="form-sale-text-custom-wrapper" style="display: none;">
+                        <label class="form-label fw-bold">Texto Personalizado</label>
+                        <input type="text" id="form-sale-text-custom" class="form-control" value="Sale">
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Tipografía de Cursiva</label>
+                        <select id="form-font-sale" class="form-select">
+                            <option value="'Arizonia', cursive" selected>Arizonia (Premium Caligráfica, Excelente "S")</option>
+                            <option value="'Mrs Saint Delafield', cursive">Mrs Saint Delafield (Ornada / Artística)</option>
+                            <option value="'Clicker Script', cursive">Clicker Script (Fina y Elegante)</option>
+                            <option value="'Rochester', cursive">Rochester (Estilo Victoriano)</option>
+                            <option value="'Great Vibes', cursive">Great Vibes (Loop Clásico)</option>
+                            <option value="'Alex Brush', cursive">Alex Brush (Cursive Suave)</option>
+                            <option value="'Playball', cursive">Playball (Estilo Atlético)</option>
+                            <option value="'Sacramento', cursive">Sacramento (Fino)</option>
+                            <option value="'Pinyon Script', cursive">Pinyon Script (Original)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Tamaño de Cursiva</label>
+                        <input type="range" class="form-range" id="form-font-sale-size" min="45" max="80" value="45"> <!-- Defaulted to Minimum as requested -->
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Descripción Corta (Centro de la Placa)</label>
+                    <textarea id="form-description" class="form-control" rows="3" placeholder="Descripción resumida de la propiedad...">Hermosa casa de diseño moderno en excelente ubicación. Luminosa, amplios ambientes, jardín con piscina y cochera.</textarea>
+                    <div class="form-text">Mantén el texto breve para que quepa en el diseño original.</div>
+                </div>
+
+                <div class="mb-4 p-3 bg-light rounded border">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="form-v3-use-desc">
+                        <label class="form-check-label fw-bold text-primary" for="form-v3-use-desc">
+                            <i class="bi bi-card-text me-1"></i> [Solo V3] Desactivar los 4 íconos y mostrar Descripción Corta en su lugar
+                        </label>
+                    </div>
+                    <div class="form-text mt-1 text-muted small">
+                        Si está activado, en la Placa V3 se reemplazarán los 4 íconos de ambientes por el texto de la descripción corta.
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mb-3 pb-2 border-bottom text-secondary">Características</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-3 col-6">
+                        <label class="form-label">Habitaciones</label>
+                        <input type="text" id="form-beds" class="form-control" value="4">
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <label class="form-label">Baños</label>
+                        <input type="text" id="form-baths" class="form-control" value="2">
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <label class="form-label">Cochera</label>
+                        <input type="text" id="form-garage" class="form-control" value="1">
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <label class="form-label">Superficie M2</label>
+                        <input type="text" id="form-area" class="form-control" value="1000">
+                    </div>
+                </div>
+
+                <!-- Agent Setup & Logos Manager Card -->
+                <div class="card shadow-sm border-0 mb-4" style="background-color: #f8fafc; border-radius: 10px;">
+                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0 text-primary">
+                            <i class="bi bi-person-gear me-2"></i> Configuración del Agente y Logos (PAP)
+                        </h6>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small">
+                            <i class="bi bi-shield-lock me-1"></i> Aislado por Usuario
+                        </span>
+                    </div>
+                    <div class="card-body p-3">
+                        <!-- 1. Datos Personales -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">Nombre del Agente</label>
+                                <input type="text" id="form-agent-name" class="form-control" value="{{ default_agent_name }}" placeholder="Tu Nombre Completo">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">Teléfono del Agente</label>
+                                <input type="text" id="form-agent-phone" class="form-control" value="{{ default_agent_phone }}" placeholder="+54 11 ...">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">Email de Contacto</label>
+                                <input type="text" id="form-agent-email" class="form-control" value="{{ default_agent_email }}" placeholder="tuemail@ejemplo.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">Sitio Web</label>
+                                <input type="text" id="form-agent-web" class="form-control" value="{{ default_agent_web }}" placeholder="www.tuweb.com">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small text-secondary">Matrícula / Credencial Legal</label>
+                                <input type="text" id="form-agent-matricula" class="form-control" value="{{ default_matricula }}" placeholder="Ej: Martillero y Corredor Público Colegiado...">
+                            </div>
+                        </div>
+
+                        <!-- 2. Gestor de Logos por Versión (V1, V2, V3) -->
+                        <div class="border rounded p-3 bg-white mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-dark small"><i class="bi bi-image me-1 text-primary"></i> Logos de la Placa (por Versión)</span>
+                                <span class="text-muted small" style="font-size: 11px;">Sube tu logo desde tu PC o selecciona "Sin Logo"</span>
+                            </div>
+                            
+                            <!-- Hidden inputs to store the logo URLs per version -->
+                            <input type="hidden" id="form-logo-v1" value="{{ default_logo_v1 }}">
+                            <input type="hidden" id="form-logo-v2" value="{{ default_logo_v2 }}">
+                            <input type="hidden" id="form-logo-v3" value="{{ default_logo_v3 }}">
+
+                            <!-- Nav tabs for V1, V2, V3 logo configuration -->
+                            <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded" id="logoTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link py-1 px-2 active fw-bold small" id="tab-logo-v3" data-bs-toggle="pill" data-bs-target="#logo-v3-panel" type="button" role="tab">
+                                        Logo Placa V3 <span class="badge bg-secondary ms-1">Cabecera</span>
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link py-1 px-2 fw-bold small" id="tab-logo-v2" data-bs-toggle="pill" data-bs-target="#logo-v2-panel" type="button" role="tab">
+                                        Logo Placa V2 <span class="badge bg-secondary ms-1">Pie</span>
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link py-1 px-2 fw-bold small" id="tab-logo-v1" data-bs-toggle="pill" data-bs-target="#logo-v1-panel" type="button" role="tab">
+                                        Logo Placa V1 <span class="badge bg-secondary ms-1">Lateral</span>
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content" id="logoTabContent">
+                                <!-- Panel Logo V3 -->
+                                <div class="tab-pane fade show active" id="logo-v3-panel" role="tabpanel">
+                                    <div class="d-flex align-items-center gap-3 p-2 bg-light rounded border">
+                                        <div class="border bg-white rounded p-1 d-flex align-items-center justify-content-center" style="width: 80px; height: 50px; overflow: hidden;">
+                                            <img id="preview-logo-v3" src="{{ default_logo_v3 }}" style="max-width: 100%; max-height: 100%; object-fit: contain; {% if not default_logo_v3 %}display: none;{% endif %}" alt="Logo V3" onerror="this.style.display='none'; document.getElementById('no-logo-v3-badge').style.display='block';">
+                                            <span id="no-logo-v3-badge" class="badge bg-light text-muted border small" style="{% if default_logo_v3 %}display: none;{% endif %}">Sin Logo</span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <label class="btn btn-primary btn-sm mb-0">
+                                                    <i class="bi bi-cloud-arrow-up-fill me-1"></i> Subir Logo V3
+                                                    <input type="file" class="d-none logo-file-input" data-version="v3" accept="image/*">
+                                                </label>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm btn-reset-agency-logo" data-version="v3" title="Restablecer logo">
+                                                    <i class="bi bi-building me-1"></i> {% if is_solo_agent %}Potenzia CRM{% else %}Inmobiliaria{% endif %}
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm btn-clear-logo" data-version="v3">
+                                                    <i class="bi bi-x-circle me-1"></i> Sin Logo
+                                                </button>
+                                            </div>
+                                            <div class="text-muted small mt-1" style="font-size: 11px;">Cabecera superior de la Placa V3.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Panel Logo V2 -->
+                                <div class="tab-pane fade" id="logo-v2-panel" role="tabpanel">
+                                    <div class="d-flex align-items-center gap-3 p-2 bg-light rounded border">
+                                        <div class="border bg-white rounded p-1 d-flex align-items-center justify-content-center" style="width: 80px; height: 50px; overflow: hidden;">
+                                            <img id="preview-logo-v2" src="{{ default_logo_v2 }}" style="max-width: 100%; max-height: 100%; object-fit: contain; {% if not default_logo_v2 %}display: none;{% endif %}" alt="Logo V2" onerror="this.style.display='none'; document.getElementById('no-logo-v2-badge').style.display='block';">
+                                            <span id="no-logo-v2-badge" class="badge bg-light text-muted border small" style="{% if default_logo_v2 %}display: none;{% endif %}">Sin Logo</span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <label class="btn btn-primary btn-sm mb-0">
+                                                    <i class="bi bi-cloud-arrow-up-fill me-1"></i> Subir Logo V2
+                                                    <input type="file" class="d-none logo-file-input" data-version="v2" accept="image/*">
+                                                </label>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm btn-reset-agency-logo" data-version="v2" title="Restablecer logo">
+                                                    <i class="bi bi-building me-1"></i> {% if is_solo_agent %}Potenzia CRM{% else %}Inmobiliaria{% endif %}
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm btn-clear-logo" data-version="v2">
+                                                    <i class="bi bi-x-circle me-1"></i> Sin Logo
+                                                </button>
+                                            </div>
+                                            <div class="text-muted small mt-1" style="font-size: 11px;">Pie de página de la Placa V2.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Panel Logo V1 -->
+                                <div class="tab-pane fade" id="logo-v1-panel" role="tabpanel">
+                                    <div class="d-flex align-items-center gap-3 p-2 bg-light rounded border">
+                                        <div class="border bg-white rounded p-1 d-flex align-items-center justify-content-center" style="width: 80px; height: 50px; overflow: hidden;">
+                                            <img id="preview-logo-v1" src="{{ default_logo_v1 }}" style="max-width: 100%; max-height: 100%; object-fit: contain; {% if not default_logo_v1 %}display: none;{% endif %}" alt="Logo V1" onerror="this.style.display='none'; document.getElementById('no-logo-v1-badge').style.display='block';">
+                                            <span id="no-logo-v1-badge" class="badge bg-light text-muted border small" style="{% if default_logo_v1 %}display: none;{% endif %}">Sin Logo</span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <label class="btn btn-primary btn-sm mb-0">
+                                                    <i class="bi bi-cloud-arrow-up-fill me-1"></i> Subir Logo V1
+                                                    <input type="file" class="d-none logo-file-input" data-version="v1" accept="image/*">
+                                                </label>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm btn-reset-agency-logo" data-version="v1" title="Restablecer logo">
+                                                    <i class="bi bi-building me-1"></i> {% if is_solo_agent %}Potenzia CRM{% else %}Inmobiliaria{% endif %}
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm btn-clear-logo" data-version="v1">
+                                                    <i class="bi bi-x-circle me-1"></i> Sin Logo
+                                                </button>
+                                            </div>
+                                            <div class="text-muted small mt-1" style="font-size: 11px;">Columna lateral de datos del agente en Placa V1.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Botón de Guardado Persistente -->
+                        <button type="button" id="btn-save-agent-setup" class="btn btn-success w-100 py-2 fw-bold shadow-sm">
+                            <i class="bi bi-floppy-fill me-2"></i> Guardar mi Configuración Predeterminada
+                        </button>
+                        <div id="save-setup-status" class="alert alert-success d-none py-2 px-3 mt-2 mb-0 small text-center">
+                            <i class="bi bi-check-circle-fill me-1"></i> ¡Configuración y logos guardados con éxito para tu usuario!
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Gallery Selector -->
+            <div class="mb-4">
+                <h5 class="fw-bold mb-3 pb-2 border-bottom text-secondary">Galería de Fotos del Aviso</h5>
+                <div class="p-3 bg-light rounded border text-center mb-3" id="gallery-empty-msg">
+                    <span class="text-muted"><i class="bi bi-images me-2"></i> Selecciona o importa una propiedad para ver y cambiar las fotos aquí.</span>
+                </div>
+                
+                <div class="row row-cols-3 row-cols-md-5 g-2 d-none" id="gallery-grid">
+                    <!-- Dynamic thumbs will go here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Canvas (Right) -->
+        <div class="placa-frame-wrapper">
+            <!-- Shadow wrapper around the canvas to prevent html2canvas shadow bugs -->
+            <div style="box-shadow: 0 1rem 3rem rgba(0,0,0,0.15); border: 1px solid #eaeaea; border-radius: 4px; overflow: hidden; background-color: #ffffff; width: 450px; height: 800px;">
+                <div class="placa-canvas" id="capture-area">
+                <!-- V1 & V2 Layout Container -->
+                <div class="v1-v2-layout" style="width: 100%; height: 100%;">
+                    <!-- Header -->
+                    <div class="placa-header">
+                        <div class="placa-header-left">
+                            <h2 class="placa-brand v1-only">{{ agency.nombre }}</h2>
+                            <div class="v2-only" style="text-align: left; line-height: 1.2;">
+                                <h2 class="placa-agent-header-name" id="placa-agent-header-name-val" style="font-size: 13px; font-weight: 700; text-transform: uppercase; margin: 0; color: #111111;">German Mazzaferro</h2>
+                                <p class="placa-agent-header-phone" id="placa-agent-header-phone-val" style="font-size: 11px; font-weight: 600; color: #444444; margin: 0; margin-top: 1px;">Te. 1161114414</p>
+                            </div>
+                        </div>
+                        <div class="placa-price-box">
+                            <p class="placa-price" id="placa-price-val">USD 385000.-</p>
+                            <p class="placa-price-label">VALOR</p>
+                        </div>
+                    </div>
+
+                    <!-- Title Banner -->
+                    <div class="placa-title-section">
+                        <span class="placa-title-main v1-only">Home For</span>
+                        <span class="placa-title-script v1-only" id="placa-title-script-val">Sale</span>
+                        <span class="placa-title-main v2-only" id="placa-title-v2-val">PROPIEDAD EN VENTA</span>
+                    </div>
+
+                    <!-- Main Photo (Converted from IMG tag to DIV Background-Image to fix html2canvas object-fit bug) -->
+                    <div class="placa-banner-img-container">
+                        <div class="placa-banner-img" id="placa-main-img" style="background-size: cover; background-position: center; width: 100%; height: 100%;"></div>
+                    </div>
+
+                    <!-- Middle Details Section (3 columns) -->
+                    <div class="placa-middle-section">
+                        <!-- Column 1: Features -->
+                        <div class="placa-col placa-col-left">
+                            <div class="placa-feature-item" id="placa-beds-box">
+                                <i class="bi bi-door-closed-fill"></i>
+                                <span id="placa-beds-val">4 HABITACIONES</span>
+                            </div>
+                            <div class="placa-feature-item" id="placa-baths-box">
+                                <i class="bi bi-droplet-fill"></i>
+                                <span id="placa-baths-val">2 BAÑOS</span>
+                            </div>
+                            <div class="placa-feature-item" id="placa-garage-box">
+                                <i class="bi bi-car-front-fill"></i>
+                                <span id="placa-garage-val">1 COCHERA</span>
+                            </div>
+                            <div class="placa-feature-item" id="placa-area-box">
+                                <i class="bi bi-geo-alt-fill"></i>
+                                <span id="placa-area-val">1000 M2</span>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Center Description -->
+                        <div class="placa-col placa-col-center">
+                            <h4 class="placa-middle-title" id="placa-mid-title-val">MODERNA CASA EN OLIVOS</h4>
+                            <p class="placa-middle-desc" id="placa-mid-desc-val">
+                                Hermosa casa de diseño moderno en excelente ubicación. Luminosa, amplios ambientes, jardín con piscina y cochera.
+                            </p>
+                        </div>
+
+                        <!-- Column 3: Company Logo (Converted from IMG tag to DIV Background-Image to fix html2canvas object-fit bug) -->
+                        <div class="placa-col placa-col-right v1-only">
+                            <div class="placa-agent-img-box">
+                                <div class="placa-agent-img" id="placa-agent-img" style="background-size: contain; background-repeat: no-repeat; background-position: center; width: 100%; height: 100%;"></div>
+                            </div>
+                            <h5 class="placa-agent-name" id="placa-agent-name-val">German Mazzaferro</h5>
+                            <p class="placa-agent-phone" id="placa-agent-phone-val">Te. 1161114414</p>
+                        </div>
+                    </div>
+
+                    <!-- Bottom 4 Grid Images (Converted from IMG tag to DIV Background-Image to fix html2canvas object-fit bug) -->
+                    <div class="placa-grid-section">
+                        <div class="placa-grid-item" id="placa-grid-item-1">
+                            <div class="placa-grid-img" id="placa-grid-img-1" style="background-size: cover; background-position: center; width: 100%; height: 100%;"></div>
+                        </div>
+                        <div class="placa-grid-item" id="placa-grid-item-2">
+                            <div class="placa-grid-img" id="placa-grid-img-2" style="background-size: cover; background-position: center; width: 100%; height: 100%;"></div>
+                        </div>
+                        <div class="placa-grid-item" id="placa-grid-item-3">
+                            <div class="placa-grid-img" id="placa-grid-img-3" style="background-size: cover; background-position: center; width: 100%; height: 100%;"></div>
+                        </div>
+                        <div class="placa-grid-item" id="placa-grid-item-4">
+                            <div class="placa-grid-img" id="placa-grid-img-4" style="background-size: cover; background-position: center; width: 100%; height: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Footer (V2 Only) -->
+                    <div class="placa-footer v2-only" style="height: 115px; width: 100%; box-sizing: border-box; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #ffffff;">
+                        <div id="placa-footer-img" style="width: 100%; height: 100%; background-size: contain; background-repeat: no-repeat; background-position: center;"></div>
+                    </div>
+                </div>
+
+                <!-- Placa V3 Layout Container -->
+                <div class="v3-layout" id="v3-layout-root">
+                    <!-- Top Header -->
+                    <div class="v3-header">
+                        <img src="{{ default_logo_v3 or default_company_logo or '/static/img/potenzia_logo_transparent.png' }}" id="placa-v3-header-logo" class="v3-header-logo-img" alt="Logo">
+                    </div>
+
+                    <!-- Hero Photo Container -->
+                    <div class="v3-hero-container">
+                        <div class="v3-hero-bg" id="placa-v3-hero-bg"></div>
+                        
+                        <!-- Top-Left Angled Badge -->
+                        <div class="v3-badge-title">
+                            <h3 class="v3-badge-title-main" id="placa-v3-title-top">MODERNA CASA</h3>
+                            <p class="v3-badge-title-sub" id="placa-v3-title-sub">EXCELENTE UBICACIÓN</p>
+                            <div class="v3-badge-title-line"></div>
+                        </div>
+
+                        <!-- Location Badge -->
+                        <div class="v3-badge-location">
+                            <i class="bi bi-geo-alt-fill"></i>
+                            <span class="v3-badge-location-text" id="placa-v3-location">VIVÍ EN OLIVOS</span>
+                        </div>
+
+                        <!-- Bottom-Left Angled Price Banner -->
+                        <div class="v3-badge-price">
+                            <p class="v3-badge-price-label" id="placa-v3-price-label">PROPIEDAD EN VENTA</p>
+                            <h2 class="v3-badge-price-val" id="placa-v3-price-val">USD | 385.000</h2>
+                        </div>
+                    </div>
+
+                    <!-- Publication Title Banner (V3) -->
+                    <div class="v3-opportunity-banner">
+                        <h4 class="v3-opportunity-text" id="placa-v3-callout">MODERNA CASA EN OLIVOS</h4>
+                    </div>
+
+                    <!-- Features Grid (4 items) -->
+                    <div class="v3-features-grid" id="placa-v3-features-grid">
+                        <div class="v3-feature-col" id="placa-v3-beds-box">
+                            <i class="bi bi-door-closed"></i>
+                            <span id="placa-v3-beds-val">4 HABITACIONES</span>
+                        </div>
+                        <div class="v3-feature-col" id="placa-v3-baths-box">
+                            <i class="bi bi-droplet"></i>
+                            <span id="placa-v3-baths-val">2 BAÑOS</span>
+                        </div>
+                        <div class="v3-feature-col" id="placa-v3-garage-box">
+                            <i class="bi bi-car-front"></i>
+                            <span id="placa-v3-garage-val">1 COCHERA</span>
+                        </div>
+                        <div class="v3-feature-col" id="placa-v3-area-box">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                            <span id="placa-v3-area-val">1000 M2</span>
+                        </div>
+                    </div>
+
+                    <!-- Alternate Description Box (V3) -->
+                    <div class="v3-desc-box" id="placa-v3-desc-box" style="display: none;">
+                        <p class="v3-desc-text" id="placa-v3-desc-val">
+                            Hermosa casa de diseño moderno en excelente ubicación. Luminosa, amplios ambientes, jardín con piscina y cochera.
+                        </p>
+                    </div>
+
+                    <!-- Agent & Matrícula Row -->
+                    <div class="v3-agent-row">
+                        <div>
+                            <h4 class="v3-agent-name" id="placa-v3-agent-name-val">{{ current_user.nombre_display or current_user.usuario }}</h4>
+                        </div>
+                        <div class="v3-agent-divider"></div>
+                        <div class="v3-agent-cred">
+                            <p class="v3-agent-cred-title">Corredor Inmobiliario</p>
+                            <p class="v3-agent-cred-detail">{{ agency.matricula or 'Martillero y Corredor Público Colegiado' }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Contact Bar -->
+                    <div class="v3-contact-footer">
+                        <div class="v3-contact-item" id="placa-v3-phone-item">
+                            <i class="bi bi-telephone-fill"></i>
+                            <span id="placa-v3-phone-val">Te. {{ agency.telefono or 'Consúltenos' }}</span>
+                        </div>
+                        <div class="v3-contact-item" id="placa-v3-email-item">
+                            <i class="bi bi-envelope-fill"></i>
+                            <span id="placa-v3-email-val">{{ agency.email or 'contacto@inmobiliaria.com' }}</span>
+                        </div>
+                        <div class="v3-contact-item" id="placa-v3-web-item">
+                            <i class="bi bi-globe"></i>
+                            <span id="placa-v3-web-val">{{ agency.nombre }}</span>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <!-- Placa Actions -->
+            <div class="w-100 mt-4 d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-success btn-lg px-4" id="btn-download-png">
+                    <i class="bi bi-download me-2"></i> Descargar Placa (PNG)
+                </button>
+                <button type="button" class="btn btn-purple btn-lg px-4 text-white" style="background-color: #6f42c1;" id="btn-save-story" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+                    <i class="bi bi-calendar-event-fill me-2"></i> Programar en Historias
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Paste HTML Fallback Modal -->
+<div class="modal fade" id="htmlModal" tabindex="-1" aria-labelledby="htmlModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="htmlModalLabel"><i class="bi bi-filetype-html me-2"></i> Importar pegando Código Fuente (HTML)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Paso 1: Selecciona el Portal de Origen</label>
+                    <select id="html-portal" class="form-select">
+                        <option value="mercadolibre">Mercado Libre</option>
+                        <option value="zonaprop">ZonaProp</option>
+                        <option value="argenprop">ArgenProp</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Paso 2: Pega el Código HTML Completo</label>
+                    <textarea id="html-source" class="form-control" rows="10" placeholder="Pega el código de la página aquí (Ctrl+U y copia todo)..."></textarea>
+                    <div class="form-text mt-1 text-danger fw-bold">
+                        <i class="bi bi-info-circle-fill me-1"></i> Truco: Abre la publicación en tu navegador, presiona Ctrl+U (o clic derecho -> Ver código fuente de página), selecciona todo con Ctrl+A, cópialo con Ctrl+C y pégalo arriba.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-import-html">
+                    <span class="spinner-border spinner-border-sm d-none" id="html-import-spinner"></span>
+                    Importar HTML
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scheduling Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="scheduleModalLabel"><i class="bi bi-calendar-plus me-2"></i> Programar Placa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Fecha de Publicación</label>
+                    <input type="date" id="schedule-date" class="form-control" value="">
+                </div>
+                <p class="text-muted small">La placa se programará en tu calendario de Historias y se subirá automáticamente en la fecha seleccionada.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-schedule">
+                    <span class="spinner-border spinner-border-sm d-none" id="schedule-spinner"></span>
+                    Programar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Global JavaScript Error Catcher to show errors directly on screen
+    window.addEventListener('error', function(e) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger alert-dismissible fade show shadow-lg';
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.top = '20px';
+        errorDiv.style.left = '20px';
+        errorDiv.style.right = '20px';
+        errorDiv.style.zIndex = '99999';
+        errorDiv.innerHTML = `
+            <h5 class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i> Error de JavaScript Detectado</h5>
+            <p class="mb-0 small">${e.message} en <a href="#" class="text-danger">${e.filename.split('/').pop()}</a> línea ${e.lineno}</p>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(errorDiv);
+    });
+
+    // Global state
+    let scrapedPhotos = [];
+    
+    // Set default date to today
+    document.getElementById('schedule-date').value = new Date().toISOString().split('T')[0];
+
+    // Image URL elements to load defaults
+    const defaultCompanyLogo = "{{ default_company_logo or '/static/img/potenzia_logo_transparent.png' }}";
+    const defaultFooterLogo = "{{ default_footer_logo or default_company_logo or '/static/img/potenzia_logo_transparent.png' }}";
+    const defaultPropImg = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop&q=80";
+    
+    // Elements references
+    const placaPriceVal = document.getElementById('placa-price-val');
+    const placaBedsVal = document.getElementById('placa-beds-val');
+    const placaBathsVal = document.getElementById('placa-baths-val');
+    const placaGarageVal = document.getElementById('placa-garage-val');
+    const placaAreaVal = document.getElementById('placa-area-val');
+    const placaMidTitleVal = document.getElementById('placa-mid-title-val');
+    const placaMidDescVal = document.getElementById('placa-mid-desc-val');
+    const placaTitleScriptVal = document.getElementById('placa-title-script-val');
+    const placaTitleV2Val = document.getElementById('placa-title-v2-val');
+    
+    const placaMainImg = document.getElementById('placa-main-img');
+    const placaGridImg1 = document.getElementById('placa-grid-img-1');
+    const placaGridImg2 = document.getElementById('placa-grid-img-2');
+    const placaGridImg3 = document.getElementById('placa-grid-img-3');
+    const placaGridImg4 = document.getElementById('placa-grid-img-4');
+    const placaAgentImg = document.getElementById('placa-agent-img');
+    const placaFooterImg = document.getElementById('placa-footer-img');
+    
+    // Placa V3 DOM Elements
+    const placaV3HeroBg = document.getElementById('placa-v3-hero-bg');
+    const placaV3HeaderLogo = document.getElementById('placa-v3-header-logo');
+    const placaV3TitleTop = document.getElementById('placa-v3-title-top');
+    const placaV3TitleSub = document.getElementById('placa-v3-title-sub');
+    const placaV3Location = document.getElementById('placa-v3-location');
+    const placaV3PriceLabel = document.getElementById('placa-v3-price-label');
+    const placaV3PriceVal = document.getElementById('placa-v3-price-val');
+    const placaV3Callout = document.getElementById('placa-v3-callout');
+    const placaV3BedsVal = document.getElementById('placa-v3-beds-val');
+    const placaV3BathsVal = document.getElementById('placa-v3-baths-val');
+    const placaV3GarageVal = document.getElementById('placa-v3-garage-val');
+    const placaV3AreaVal = document.getElementById('placa-v3-area-val');
+    const placaV3AgentNameVal = document.getElementById('placa-v3-agent-name-val');
+    const placaV3PhoneVal = document.getElementById('placa-v3-phone-val');
+    const placaV3EmailVal = document.getElementById('placa-v3-email-val');
+    const placaV3WebVal = document.getElementById('placa-v3-web-val');
+    
+    const placaAgentNameVal = document.getElementById('placa-agent-name-val');
+    const placaAgentPhoneVal = document.getElementById('placa-agent-phone-val');
+    const placaAgentHeaderNameVal = document.getElementById('placa-agent-header-name-val');
+    const placaAgentHeaderPhoneVal = document.getElementById('placa-agent-header-phone-val');
+    const formDesignVersion = document.getElementById('form-design-version');
+    
+    // Assign defaults initially
+    setBgImg(placaMainImg, defaultPropImg);
+    setBgImg(placaV3HeroBg, defaultPropImg);
+    setBgImg(placaGridImg1, defaultPropImg);
+    setBgImg(placaGridImg2, defaultPropImg);
+    setBgImg(placaGridImg3, defaultPropImg);
+    setBgImg(placaGridImg4, defaultPropImg);
+    setBgImg(placaAgentImg, defaultCompanyLogo);
+    setBgImg(placaFooterImg, defaultFooterLogo);
+
+    // Initialize layout version class on canvas
+    const initialVersion = formDesignVersion.value;
+    const captureAreaCanvas = document.getElementById('capture-area');
+    if (initialVersion === 'v3') {
+        captureAreaCanvas.classList.add('v3-active');
+    } else if (initialVersion === 'v2') {
+        captureAreaCanvas.classList.add('v2-active');
+    } else {
+        captureAreaCanvas.classList.add('v1-active');
+    }
+
+    // Helper to safely set background image style
+    function setBgImg(element, url) {
+        if (!element) return;
+        const proxiedUrl = getProxyUrl(url);
+        // Escape single quotes in URL if any
+        const safeUrl = proxiedUrl.replace(/'/g, "\\'");
+        element.style.backgroundImage = "url('" + safeUrl + "')";
+    }
+
+    // Helper to proxy image to avoid CORS issues - forces absolute URLs for html2canvas iframe base resolving
+    function getProxyUrl(url) {
+        if (!url) return '';
+        if (url.startsWith('data:')) return url;
+        if (url.startsWith('/static')) {
+            return window.location.origin + url;
+        }
+        return window.location.origin + '/pap/proxy-image?url=' + encodeURIComponent(url);
+    }
+
+    // Update Placa in Real-time from form
+    function updatePlaca() {
+        const price = document.getElementById('form-price').value;
+        const curr = document.getElementById('form-currency').value;
+        placaPriceVal.textContent = `${curr} ${price}.-`;
+        
+        const title = document.getElementById('form-title').value;
+        placaMidTitleVal.textContent = title;
+        
+        const desc = document.getElementById('form-description').value;
+        placaMidDescVal.textContent = desc;
+        
+        const beds = document.getElementById('form-beds').value;
+        placaBedsVal.textContent = `${beds} HABITACIONES`;
+        document.getElementById('placa-beds-box').style.display = beds ? 'flex' : 'none';
+        
+        const baths = document.getElementById('form-baths').value;
+        placaBathsVal.textContent = `${baths} BAÑOS`;
+        document.getElementById('placa-baths-box').style.display = baths ? 'flex' : 'none';
+        
+        const garage = document.getElementById('form-garage').value;
+        placaGarageVal.textContent = `${garage} COCHERA`;
+        document.getElementById('placa-garage-box').style.display = garage ? 'flex' : 'none';
+        
+        const area = document.getElementById('form-area').value;
+        placaAreaVal.textContent = `${area} M2`;
+        document.getElementById('placa-area-box').style.display = area ? 'flex' : 'none';
+        
+        let agentName = document.getElementById('form-agent-name').value;
+        if (!agentName || agentName.includes('.png') || agentName.includes('.jpg') || agentName.includes('/static')) {
+            agentName = "{{ default_agent_name or 'German Mazzaferro' }}";
+            if (!agentName || agentName.includes('.png') || agentName.includes('/static')) {
+                agentName = 'German Mazzaferro';
+            }
+            document.getElementById('form-agent-name').value = agentName;
+        }
+        placaAgentNameVal.textContent = agentName;
+        if (placaAgentHeaderNameVal) placaAgentHeaderNameVal.textContent = agentName;
+        if (placaV3AgentNameVal) placaV3AgentNameVal.textContent = agentName.toUpperCase();
+
+        let agentPhone = document.getElementById('form-agent-phone').value;
+        if (!agentPhone || agentPhone.includes('.png') || agentPhone.includes('.jpg') || agentPhone.includes('/static')) {
+            agentPhone = "{{ default_agent_phone or '+54 11 61114414' }}";
+            document.getElementById('form-agent-phone').value = agentPhone;
+        }
+        placaAgentPhoneVal.textContent = agentPhone;
+        if (placaAgentHeaderPhoneVal) placaAgentHeaderPhoneVal.textContent = agentPhone;
+        if (placaV3PhoneVal) placaV3PhoneVal.textContent = agentPhone;
+        
+        const version = formDesignVersion.value;
+        const isV1 = version === 'v1';
+        const isV2 = version === 'v2';
+        const isV3 = version === 'v3';
+        
+        const logoV1 = document.getElementById('form-logo-v1') ? document.getElementById('form-logo-v1').value : '';
+        const logoV2 = document.getElementById('form-logo-v2') ? document.getElementById('form-logo-v2').value : '';
+        const logoV3 = document.getElementById('form-logo-v3') ? document.getElementById('form-logo-v3').value : '';
+        
+        // V1 Agent Logo
+        if (placaAgentImg) {
+            if (logoV1 && logoV1 !== 'none') {
+                setBgImg(placaAgentImg, logoV1);
+                placaAgentImg.style.visibility = 'visible';
+            } else {
+                placaAgentImg.style.backgroundImage = 'none';
+                placaAgentImg.style.visibility = 'hidden';
+            }
+        }
+        
+        // V2 Footer Logo
+        if (placaFooterImg) {
+            if (logoV2 && logoV2 !== 'none') {
+                setBgImg(placaFooterImg, logoV2);
+                placaFooterImg.style.visibility = 'visible';
+            } else {
+                placaFooterImg.style.backgroundImage = 'none';
+                placaFooterImg.style.visibility = 'hidden';
+            }
+        }
+        
+        // V3 Header Logo
+        if (placaV3HeaderLogo) {
+            if (logoV3 && logoV3 !== 'none') {
+                placaV3HeaderLogo.src = getProxyUrl(logoV3);
+                placaV3HeaderLogo.style.display = 'block';
+            } else {
+                placaV3HeaderLogo.src = '';
+                placaV3HeaderLogo.style.display = 'none';
+            }
+        }
+
+        // Customize cursive Font Family and Font Size of "Sale"
+        const selectedFont = document.getElementById('form-font-sale').value;
+        const selectedSize = document.getElementById('form-font-sale-size').value;
+        placaTitleScriptVal.style.fontFamily = selectedFont;
+        placaTitleScriptVal.style.fontSize = selectedSize + 'px';
+        if (placaTitleV2Val) {
+            placaTitleV2Val.style.fontSize = (selectedSize * 0.55) + 'px';
+        }
+
+        // Update script text dynamically
+        const saleTextSelect = document.getElementById('form-sale-text-select');
+        let saleTextVal = saleTextSelect.value;
+        const customWrapper = document.getElementById('form-sale-text-custom-wrapper');
+        if (saleTextVal === 'custom') {
+            customWrapper.style.display = 'block';
+            saleTextVal = document.getElementById('form-sale-text-custom').value;
+        } else {
+            customWrapper.style.display = 'none';
+        }
+        placaTitleScriptVal.textContent = saleTextVal;
+
+        // V2 Title translation and custom text logic
+        let v2TitleText = '';
+        if (saleTextSelect.value === 'custom') {
+            v2TitleText = saleTextVal; // Exact custom text inputted by the user
+        } else if (saleTextVal === 'Sale') {
+            v2TitleText = 'PROPERTY FOR SALE';
+        } else if (saleTextVal === 'Rent') {
+            v2TitleText = 'PROPERTY FOR RENT';
+        } else if (saleTextVal === 'Venta') {
+            v2TitleText = 'PROPIEDAD EN VENTA';
+        } else if (saleTextVal === 'Alquiler') {
+            v2TitleText = 'PROPIEDAD EN ALQUILER';
+        } else {
+            v2TitleText = saleTextVal;
+        }
+
+        if (placaTitleV2Val) {
+            placaTitleV2Val.textContent = v2TitleText.toUpperCase();
+        }
+
+        // V3 Real-time element updates
+        if (placaV3TitleTop) {
+            placaV3TitleTop.textContent = title.toUpperCase();
+        }
+        if (placaV3TitleSub) {
+            placaV3TitleSub.textContent = (document.getElementById('form-v3-subtitle').value || 'EXCELENTE UBICACIÓN').toUpperCase();
+        }
+        if (placaV3Location) {
+            placaV3Location.textContent = (document.getElementById('form-v3-location').value || 'VIVÍ EN OLIVOS').toUpperCase();
+        }
+        if (placaV3Callout) {
+            placaV3Callout.textContent = (document.getElementById('form-v3-callout').value || title || 'MODERNA CASA EN OLIVOS').toUpperCase();
+        }
+        if (placaV3PriceVal) {
+            placaV3PriceVal.textContent = `${curr} | ${price}`;
+        }
+        if (placaV3PriceLabel) {
+            placaV3PriceLabel.textContent = v2TitleText.toUpperCase();
+        }
+        if (placaV3BedsVal) placaV3BedsVal.textContent = beds ? `${beds} HABITACIONES` : 'HABITACIONES';
+        if (placaV3BathsVal) placaV3BathsVal.textContent = baths ? `${baths} BAÑOS` : 'BAÑOS';
+        if (placaV3GarageVal) placaV3GarageVal.textContent = garage ? `${garage} COCHERA` : 'COCHERA';
+        if (placaV3AreaVal) placaV3AreaVal.textContent = area ? `${area} M2` : 'M2 TOTALES';
+        if (placaV3AgentNameVal) placaV3AgentNameVal.textContent = agentName.toUpperCase();
+        const phoneItem = document.getElementById('placa-v3-phone-item');
+        const emailItem = document.getElementById('placa-v3-email-item');
+        const webItem = document.getElementById('placa-v3-web-item');
+
+        if (placaV3PhoneVal) {
+            placaV3PhoneVal.textContent = agentPhone;
+            if (phoneItem) phoneItem.style.display = agentPhone ? 'flex' : 'none';
+        }
+        
+        const agentEmail = document.getElementById('form-agent-email') ? document.getElementById('form-agent-email').value.trim() : '';
+        if (placaV3EmailVal) {
+            placaV3EmailVal.textContent = agentEmail;
+            if (emailItem) emailItem.style.display = agentEmail ? 'flex' : 'none';
+        }
+        
+        if (placaV3WebVal) {
+            let rawWeb = document.getElementById('form-agent-web') ? document.getElementById('form-agent-web').value : '';
+            rawWeb = (rawWeb || '').replace('https://', '').replace('http://', '').replace(/\/$/, '').trim();
+            placaV3WebVal.textContent = rawWeb;
+            if (webItem) webItem.style.display = rawWeb ? 'flex' : 'none';
+        }
+
+        const matriculaVal = document.getElementById('form-agent-matricula') ? document.getElementById('form-agent-matricula').value : '';
+        const credDetailEl = document.querySelector('.v3-agent-cred-detail');
+        if (credDetailEl) {
+            credDetailEl.textContent = matriculaVal || 'Martillero y Corredor Público Colegiado';
+        }
+
+        // V3 toggle between 4 features and description
+        const v3UseDesc = document.getElementById('form-v3-use-desc') && document.getElementById('form-v3-use-desc').checked;
+        const v3FeaturesGrid = document.getElementById('placa-v3-features-grid');
+        const v3DescBox = document.getElementById('placa-v3-desc-box');
+        const placaV3DescVal = document.getElementById('placa-v3-desc-val');
+        
+        if (placaV3DescVal) {
+            placaV3DescVal.textContent = desc;
+        }
+
+        if (v3UseDesc) {
+            if (v3FeaturesGrid) v3FeaturesGrid.style.display = 'none';
+            if (v3DescBox) v3DescBox.style.display = 'flex';
+        } else {
+            if (v3FeaturesGrid) v3FeaturesGrid.style.display = 'grid';
+            if (v3DescBox) v3DescBox.style.display = 'none';
+        }
+
+        // V2 toggle photo count (5 photos vs 3 photos)
+        const v2PhotoCount = document.getElementById('form-v2-photo-count') ? document.getElementById('form-v2-photo-count').value : '5';
+        const v2PhotoWrapper = document.getElementById('form-v2-photo-count-wrapper');
+        if (v2PhotoWrapper) {
+            v2PhotoWrapper.style.display = isV2 ? 'block' : 'none';
+        }
+        if (isV2 && v2PhotoCount === '3') {
+            captureAreaCanvas.classList.add('v2-photos-3');
+        } else {
+            captureAreaCanvas.classList.remove('v2-photos-3');
+        }
+    }
+
+    // Hook inputs to update real-time
+    document.querySelectorAll('#placa-form input, #placa-form textarea, #placa-form select').forEach(input => {
+        input.addEventListener('input', updatePlaca);
+        input.addEventListener('change', updatePlaca);
+    });
+
+    // Handle design version switching
+    formDesignVersion.addEventListener('change', function() {
+        const version = this.value;
+        captureAreaCanvas.classList.remove('v1-active', 'v2-active', 'v3-active');
+        if (version === 'v3') {
+            captureAreaCanvas.classList.add('v3-active');
+            const tabEl = document.getElementById('tab-logo-v3');
+            if (tabEl && window.bootstrap) bootstrap.Tab.getOrCreateInstance(tabEl).show();
+        } else if (version === 'v2') {
+            captureAreaCanvas.classList.add('v2-active');
+            const tabEl = document.getElementById('tab-logo-v2');
+            if (tabEl && window.bootstrap) bootstrap.Tab.getOrCreateInstance(tabEl).show();
+        } else {
+            captureAreaCanvas.classList.add('v1-active');
+            const tabEl = document.getElementById('tab-logo-v1');
+            if (tabEl && window.bootstrap) bootstrap.Tab.getOrCreateInstance(tabEl).show();
+        }
+        updatePlaca();
+    });
+
+    // Populate from CRM or Tokko dropdown ONLY when clicking "Cargar Ficha" (avoiding arrow key selection storm)
+    document.getElementById('btn-load-property').addEventListener('click', function() {
+        const select = document.getElementById('select-property');
+        const option = select.options[select.selectedIndex];
+        if (!option || !option.value) {
+            alert('Por favor selecciona una propiedad primero.');
+            return;
+        }
+        
+        const portal = option.getAttribute('data-portal');
+        const titulo = (option.getAttribute('data-titulo') || '').trim();
+        
+        document.getElementById('form-title').value = titulo;
+        document.getElementById('form-price').value = option.getAttribute('data-precio') || '';
+        document.getElementById('form-currency').value = option.getAttribute('data-moneda') || 'USD';
+        
+        // Populate V3 location/barrio and publication title intelligently
+        if (titulo) {
+            document.getElementById('form-v3-callout').value = titulo.toUpperCase();
+            if (titulo.includes(' EN ')) {
+                const parts = titulo.split(' EN ');
+                document.getElementById('form-v3-location').value = ('VIVÍ EN ' + parts[parts.length - 1]).toUpperCase();
+                document.getElementById('form-v3-subtitle').value = parts[0].toUpperCase();
+            } else {
+                document.getElementById('form-v3-location').value = 'EXCELENTE UBICACIÓN';
+                document.getElementById('form-v3-subtitle').value = 'BARRIO CERRADO';
+            }
+        }
+        
+        const beds = option.getAttribute('data-dormitorios') || '';
+        document.getElementById('form-beds').value = beds;
+        document.getElementById('form-baths').value = option.getAttribute('data-banos') || '';
+        document.getElementById('form-garage').value = option.getAttribute('data-cocheras') || '';
+        document.getElementById('form-area').value = option.getAttribute('data-m2') || '';
+        document.getElementById('form-description').value = (option.getAttribute('data-desc') || '').trim();
+        
+        const mainFoto = option.getAttribute('data-foto');
+        if (mainFoto) {
+            setBgImg(placaMainImg, mainFoto);
+            setBgImg(placaV3HeroBg, mainFoto);
+            setBgImg(placaGridImg1, mainFoto);
+            setBgImg(placaGridImg2, mainFoto);
+            setBgImg(placaGridImg3, mainFoto);
+            setBgImg(placaGridImg4, mainFoto);
+        }
+        
+        // Handle image galleries
+        if (portal === 'tokko') {
+            const fotosJson = option.getAttribute('data-fotos');
+            try {
+                scrapedPhotos = JSON.parse(fotosJson) || [];
+            } catch (e) {
+                scrapedPhotos = mainFoto ? [mainFoto] : [];
+            }
+        } else {
+            scrapedPhotos = mainFoto ? [mainFoto] : [];
+        }
+        
+        // Distribute images if we have them
+        if (scrapedPhotos.length > 0) {
+            setBgImg(placaMainImg, scrapedPhotos[0]);
+            setBgImg(placaV3HeroBg, scrapedPhotos[0]);
+        }
+        if (scrapedPhotos.length > 1) setBgImg(placaGridImg1, scrapedPhotos[1]);
+        if (scrapedPhotos.length > 2) setBgImg(placaGridImg2, scrapedPhotos[2]);
+        if (scrapedPhotos.length > 3) setBgImg(placaGridImg3, scrapedPhotos[3]);
+        if (scrapedPhotos.length > 4) setBgImg(placaGridImg4, scrapedPhotos[4]);
+
+        renderGallery();
+        updatePlaca();
+    });
+
+    // Import from URL
+    document.getElementById('btn-import-url').addEventListener('click', async function() {
+        const url = document.getElementById('import-url').value.trim();
+        if (!url) {
+            alert('Por favor pegue una URL válida.');
+            return;
+        }
+        
+        const spinner = document.getElementById('import-spinner');
+        const btn = this;
+        
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        
+        try {
+            const resp = await fetch('/pap/scrape', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({url: url})
+            });
+            const result = await resp.json();
+            
+            if (result.success) {
+                loadScrapedData(result.data);
+            } else {
+                alert('Error al raspar automáticamente: ' + result.error + '\n\nTIP: Si el portal bloqueó la consulta por seguridad, utiliza la opción "pegar código HTML" de abajo.');
+            }
+        } catch (e) {
+            alert('Error de red al raspar: ' + e);
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    });
+
+    // Confirm HTML Source Import
+    document.getElementById('btn-confirm-import-html').addEventListener('click', async function() {
+        const htmlSource = document.getElementById('html-source').value.trim();
+        const portal = document.getElementById('html-portal').value;
+        const url = document.getElementById('import-url').value.trim();
+        
+        if (!htmlSource) {
+            alert('Por favor pegue el código HTML fuente.');
+            return;
+        }
+        
+        const spinner = document.getElementById('html-import-spinner');
+        const btn = this;
+        
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        
+        try {
+            const resp = await fetch('/pap/scrape', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    html_content: htmlSource,
+                    portal: portal,
+                    url: url
+                })
+            });
+            const result = await resp.json();
+            
+            if (result.success) {
+                loadScrapedData(result.data);
+                // Close modal
+                const modalEl = document.getElementById('htmlModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                // Clear source
+                document.getElementById('html-source').value = '';
+            } else {
+                alert('Error al procesar el código HTML: ' + result.error);
+            }
+        } catch (e) {
+            alert('Error de red: ' + e);
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    });
+
+    // Helper to load scraped/imported data
+    function loadScrapedData(data) {
+        const titulo = (data.titulo || '').trim();
+        document.getElementById('form-title').value = titulo;
+        document.getElementById('form-price').value = data.precio || '';
+        document.getElementById('form-currency').value = data.moneda || 'USD';
+        document.getElementById('form-beds').value = data.dormitorios || '';
+        document.getElementById('form-baths').value = data.banos || '';
+        document.getElementById('form-garage').value = data.cocheras || '';
+        document.getElementById('form-area').value = data.m2_total || '';
+        document.getElementById('form-description').value = (data.descripcion || '').trim();
+        
+        // Populate V3 location/barrio and publication title intelligently
+        if (titulo) {
+            document.getElementById('form-v3-callout').value = titulo.toUpperCase();
+            if (titulo.includes(' EN ')) {
+                const parts = titulo.split(' EN ');
+                document.getElementById('form-v3-location').value = ('VIVÍ EN ' + parts[parts.length - 1]).toUpperCase();
+                document.getElementById('form-v3-subtitle').value = parts[0].toUpperCase();
+            } else {
+                document.getElementById('form-v3-location').value = 'EXCELENTE UBICACIÓN';
+                document.getElementById('form-v3-subtitle').value = 'BARRIO CERRADO';
+            }
+        }
+        
+        scrapedPhotos = data.fotos || [];
+        renderGallery();
+        
+        // Distribute photos to slots initially
+        if (scrapedPhotos.length > 0) {
+            setBgImg(placaMainImg, scrapedPhotos[0]);
+            setBgImg(placaV3HeroBg, scrapedPhotos[0]);
+        }
+        if (scrapedPhotos.length > 1) setBgImg(placaGridImg1, scrapedPhotos[1]);
+        else setBgImg(placaGridImg1, scrapedPhotos[0] || defaultPropImg);
+        
+        if (scrapedPhotos.length > 2) setBgImg(placaGridImg2, scrapedPhotos[2]);
+        else setBgImg(placaGridImg2, scrapedPhotos[0] || defaultPropImg);
+        
+        if (scrapedPhotos.length > 3) setBgImg(placaGridImg3, scrapedPhotos[3]);
+        else setBgImg(placaGridImg3, scrapedPhotos[0] || defaultPropImg);
+        
+        if (scrapedPhotos.length > 4) setBgImg(placaGridImg4, scrapedPhotos[4]);
+        else setBgImg(placaGridImg4, scrapedPhotos[0] || defaultPropImg);
+        
+        updatePlaca();
+    }
+
+    // Render Scraped Gallery
+    function renderGallery() {
+        const emptyMsg = document.getElementById('gallery-empty-msg');
+        const grid = document.getElementById('gallery-grid');
+        
+        grid.innerHTML = '';
+        
+        if (scrapedPhotos.length === 0) {
+            emptyMsg.classList.remove('d-none');
+            grid.classList.add('d-none');
+            return;
+        }
+        
+        emptyMsg.classList.add('d-none');
+        grid.classList.remove('d-none');
+        
+        scrapedPhotos.forEach((photoUrl, idx) => {
+            const col = document.createElement('div');
+            col.className = 'col';
+            
+            col.innerHTML = `
+                <div class="photo-wrapper">
+                    <img src="${getProxyUrl(photoUrl)}" class="photo-thumbnail" alt="Foto ${idx+1}">
+                    <span class="photo-badge">#${idx+1}</span>
+                </div>
+            `;
+            
+            col.querySelector('img').addEventListener('click', function() {
+                openSlotSelector(photoUrl);
+            });
+            
+            grid.appendChild(col);
+        });
+    }
+
+    // Modal / Dropdown custom selector to place image
+    function openSlotSelector(photoUrl) {
+        const slot = prompt("¿Dónde quieres colocar esta foto?\nEscribe el número:\n1 - Foto Principal (Banner)\n2 - Foto Grid Inferior 1\n3 - Foto Grid Inferior 2\n4 - Foto Grid Inferior 3\n5 - Foto Grid Inferior 4");
+        
+        if (slot === '1') {
+            setBgImg(placaMainImg, photoUrl);
+            setBgImg(placaV3HeroBg, photoUrl);
+        }
+        else if (slot === '2') setBgImg(placaGridImg1, photoUrl);
+        else if (slot === '3') setBgImg(placaGridImg2, photoUrl);
+        else if (slot === '4') setBgImg(placaGridImg3, photoUrl);
+        else if (slot === '5') setBgImg(placaGridImg4, photoUrl);
+    }
+
+    // --- AGENT SETUP & LOGOS MANAGER LOGIC ---
+
+    // 1. Upload Logo from PC (Native file upload via AJAX)
+    document.querySelectorAll('.logo-file-input').forEach(input => {
+        input.addEventListener('change', async function() {
+            const version = this.getAttribute('data-version') || 'v3';
+            if (!this.files || !this.files[0]) return;
+            
+            const file = this.files[0];
+            const formData = new FormData();
+            formData.append('logo_file', file);
+            formData.append('version', version);
+            
+            try {
+                const resp = await fetch('/pap/upload-logo', {
+                    method: 'POST',
+                    body: formData
+                });
+                const res = await resp.json();
+                if (res.success && res.url) {
+                    // Update hidden input
+                    const logoInput = document.getElementById(`form-logo-${version}`);
+                    if (logoInput) logoInput.value = res.url;
+                    
+                    // Update preview thumbnail
+                    const previewImg = document.getElementById(`preview-logo-${version}`);
+                    const noLogoBadge = document.getElementById(`no-logo-${version}-badge`);
+                    if (previewImg) {
+                        previewImg.src = res.url;
+                        previewImg.style.display = 'block';
+                    }
+                    if (noLogoBadge) noLogoBadge.style.display = 'none';
+                    
+                    updatePlaca();
+                    logDebug(`Logo ${version} subido y aplicado: ` + res.url);
+                } else {
+                    alert('Error al subir el logo: ' + (res.error || 'Error desconocido'));
+                }
+            } catch (err) {
+                alert('Error de red al subir logo: ' + err);
+            }
+            this.value = ''; // reset file input
+        });
+    });
+
+    // 2. Reset to Inmobiliaria default logo
+    document.querySelectorAll('.btn-reset-agency-logo').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const version = this.getAttribute('data-version') || 'v3';
+            const fallbackLogo = (version === 'v2') ? defaultFooterLogo : defaultCompanyLogo;
+            
+            const logoInput = document.getElementById(`form-logo-${version}`);
+            if (logoInput) logoInput.value = fallbackLogo;
+            
+            const previewImg = document.getElementById(`preview-logo-${version}`);
+            const noLogoBadge = document.getElementById(`no-logo-${version}-badge`);
+            if (previewImg) {
+                previewImg.src = fallbackLogo;
+                previewImg.style.display = 'block';
+            }
+            if (noLogoBadge) noLogoBadge.style.display = 'none';
+            
+            updatePlaca();
+        });
+    });
+
+    // 3. Clear logo ("Sin Logo - Agente Suelto")
+    document.querySelectorAll('.btn-clear-logo').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const version = this.getAttribute('data-version') || 'v3';
+            
+            const logoInput = document.getElementById(`form-logo-${version}`);
+            if (logoInput) logoInput.value = 'none';
+            
+            const previewImg = document.getElementById(`preview-logo-${version}`);
+            const noLogoBadge = document.getElementById(`no-logo-${version}-badge`);
+            if (previewImg) {
+                previewImg.style.display = 'none';
+            }
+            if (noLogoBadge) noLogoBadge.style.display = 'block';
+            
+            updatePlaca();
+        });
+    });
+
+    // 4. Save Agent Setup Persistently (User-Scoped)
+    const btnSaveAgentSetup = document.getElementById('btn-save-agent-setup');
+    if (btnSaveAgentSetup) {
+        btnSaveAgentSetup.addEventListener('click', async function() {
+            const btn = this;
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Guardando configuración...';
+            
+            const payload = {
+                agent_name: document.getElementById('form-agent-name').value,
+                agent_phone: document.getElementById('form-agent-phone').value,
+                agent_email: document.getElementById('form-agent-email').value,
+                agent_web: document.getElementById('form-agent-web').value,
+                matricula: document.getElementById('form-agent-matricula').value,
+                logo_v1: document.getElementById('form-logo-v1') ? document.getElementById('form-logo-v1').value : '',
+                logo_v2: document.getElementById('form-logo-v2') ? document.getElementById('form-logo-v2').value : '',
+                logo_v3: document.getElementById('form-logo-v3') ? document.getElementById('form-logo-v3').value : ''
+            };
+            
+            try {
+                const resp = await fetch('/pap/save-agent-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const res = await resp.json();
+                if (res.success) {
+                    const statusEl = document.getElementById('save-setup-status');
+                    if (statusEl) {
+                        statusEl.classList.remove('d-none');
+                        setTimeout(() => statusEl.classList.add('d-none'), 4000);
+                    }
+                    updatePlaca();
+                } else {
+                    alert('Error al guardar: ' + (res.error || 'Error desconocido'));
+                }
+            } catch (err) {
+                alert('Error de red al guardar: ' + err);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        });
+    }
+
+    // Bind real-time input events for agent fields
+    ['form-agent-name', 'form-agent-phone', 'form-agent-email', 'form-agent-web', 'form-agent-matricula'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', updatePlaca);
+        }
+    });
+
+    // --- VISUAL DIAGNOSTIC LOGGER ---
+    function logDebug(msg) {
+        console.log('[DEBUG-PAP]', msg);
+    }
+
+    // --- NATIVE CANVAS RENDERING ENGINE (100% Stable, Bypass all library bugs) ---
+
+    // Helper to load image asynchronously with fallback to null on error
+    function loadImage(src) {
+        logDebug('Iniciando carga de imagen: ' + (src ? src.substring(0, 60) + '...' : 'VACIO'));
+        return new Promise((resolve) => {
+            if (!src || src === 'none' || src === 'null' || src === 'undefined') {
+                logDebug('No hay URL o es vacio, resolviendo con null');
+                resolve(null);
+                return;
+            }
+            const img = new Image();
+            if (src.startsWith('http') && !src.startsWith(window.location.origin)) {
+                img.crossOrigin = 'anonymous';
+            }
+            img.onload = () => {
+                logDebug('Imagen cargada con éxito: ' + src.substring(0, 30));
+                resolve(img);
+            };
+            img.onerror = (e) => {
+                logDebug('ERROR al cargar imagen (usando fallback): ' + src.substring(0, 30));
+                resolve(null);
+            };
+            img.src = src;
+        });
+    }
+
+    // Helper to draw image using "cover" aspect-ratio fit
+    function drawImageCover(ctx, img, x, y, w, h) {
+        if (!img || !img.width || !img.height) return;
+        const imgRatio = img.width / img.height;
+        const canvasRatio = w / h;
+        let sx, sy, sw, sh;
+        if (imgRatio > canvasRatio) {
+            sh = img.height;
+            sw = sh * canvasRatio;
+            sx = (img.width - sw) / 2;
+            sy = 0;
+        } else {
+            sw = img.width;
+            sh = sw / canvasRatio;
+            sx = 0;
+            sy = (img.height - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    }
+
+    // Helper to draw image using "contain" aspect-ratio fit (for logos)
+    function drawImageContain(ctx, img, x, y, w, h) {
+        if (!img || !img.width || !img.height) return;
+        const imgRatio = img.width / img.height;
+        const destRatio = w / h;
+        let dx, dy, dw, dh;
+        if (imgRatio > destRatio) {
+            dw = w;
+            dh = dw / imgRatio;
+            dx = x;
+            dy = y + (h - dh) / 2;
+        } else {
+            dh = h;
+            dw = dh * imgRatio;
+            dx = x + (w - dw) / 2;
+            dy = y;
+        }
+        ctx.drawImage(img, dx, dy, dw, dh);
+    }
+
+    // Helper to wrap and draw text on canvas
+    function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+        if (!text) return;
+        const words = text.split(' ');
+        let line = '';
+        let lines = [];
+        
+        for (let n = 0; n < words.length; n++) {
+            let testLine = line + words[n] + ' ';
+            let metrics = ctx.measureText(testLine);
+            let testWidth = metrics.width;
+            if (testWidth > maxWidth && n > 0) {
+                lines.push(line.trim());
+                line = words[n] + ' ';
+            } else {
+                line = testLine;
+            }
+        }
+        lines.push(line.trim());
+        
+        if (maxLines && lines.length > maxLines) {
+            lines = lines.slice(0, maxLines);
+            lines[maxLines - 1] += '...';
+        }
+        
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], x, y + (i * lineHeight));
+        }
+    }
+
+    // Shared function to render the entire plaque onto a 1080x1920 canvas
+    function renderPlacaToCanvas() {
+        logDebug('Obteniendo valores del formulario para renderizado...');
+        const price = document.getElementById('form-price').value;
+        const curr = document.getElementById('form-currency').value;
+        const priceText = `${curr} ${price}.-`;
+        const title = document.getElementById('form-title').value;
+        const desc = document.getElementById('form-description').value;
+        const beds = document.getElementById('form-beds').value;
+        const baths = document.getElementById('form-baths').value;
+        const garage = document.getElementById('form-garage').value;
+        const area = document.getElementById('form-area').value;
+        const agentName = document.getElementById('form-agent-name').value;
+        const agentPhone = document.getElementById('form-agent-phone').value;
+        
+        const fontSaleSelector = document.getElementById('form-font-sale');
+        const selectedFontRaw = fontSaleSelector.value;
+        const fontSaleName = selectedFontRaw.split(',')[0].replace(/['"]/g, '').trim();
+        const fontSaleSizeVal = document.getElementById('form-font-sale-size').value;
+        
+        // Cursive text value
+        const saleTextSelect = document.getElementById('form-sale-text-select');
+        let saleTextVal = saleTextSelect.value;
+        if (saleTextVal === 'custom') {
+            saleTextVal = document.getElementById('form-sale-text-custom').value;
+        }
+        
+        const mainImgUrl = getStyleBgUrl(document.getElementById('placa-main-img'));
+        const grid1Url = getStyleBgUrl(document.getElementById('placa-grid-img-1'));
+        const grid2Url = getStyleBgUrl(document.getElementById('placa-grid-img-2'));
+        const grid3Url = getStyleBgUrl(document.getElementById('placa-grid-img-3'));
+        const grid4Url = getStyleBgUrl(document.getElementById('placa-grid-img-4'));
+        
+        const isV1Active = formDesignVersion.value === 'v1';
+        const isV2Active = formDesignVersion.value === 'v2';
+        const isV3Active = formDesignVersion.value === 'v3';
+        
+        const logoV1Url = (document.getElementById('form-logo-v1') ? document.getElementById('form-logo-v1').value : '') || '';
+        const logoV2Url = (document.getElementById('form-logo-v2') ? document.getElementById('form-logo-v2').value : '') || '';
+        const logoV3Url = (document.getElementById('form-logo-v3') ? document.getElementById('form-logo-v3').value : '') || '';
+
+        function getStyleBgUrl(el) {
+            if (!el || !el.style.backgroundImage) return '';
+            const bg = el.style.backgroundImage;
+            const match = bg.match(/url\(['"]?([^'"]+?)['"]?\)/);
+            return match ? match[1] : '';
+        }
+
+        logDebug('Esperando a que las fuentes del navegador estén listas (status: ' + document.fonts.status + ')...');
+        return document.fonts.ready.then(() => {
+            logDebug('Fuentes listas. Iniciando carga de las imágenes...');
+            return Promise.all([
+                loadImage(mainImgUrl),
+                loadImage(logoV1Url !== 'none' ? logoV1Url : null),
+                loadImage(grid1Url),
+                loadImage(grid2Url),
+                loadImage(grid3Url),
+                loadImage(grid4Url),
+                loadImage(logoV2Url !== 'none' ? logoV2Url : null),
+                loadImage(logoV3Url !== 'none' ? logoV3Url : null)
+            ]);
+        })
+        .then(([mainImg, logoV1Img, g1, g2, g3, g4, logoV2Img, logoV3Img]) => {
+            logDebug('Todas las imágenes cargadas.');
+            
+            try {
+                logDebug('Inicializando canvas 1080x1920 (acoplado a DOM en -9999px)...');
+                const canvas = document.createElement('canvas');
+                canvas.width = 1080;
+                canvas.height = 1920;
+                canvas.style.position = 'fixed';
+                canvas.style.left = '-9999px';
+                canvas.style.top = '-9999px';
+                document.body.appendChild(canvas);
+                
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('No se pudo obtener el contexto 2D del canvas');
+                }
+                
+                // 1. Background White
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, 1080, 1920);
+                logDebug('Fondo blanco pintado.');
+
+                // --- PLACA V3 RENDERING ---
+                if (isV3Active) {
+                    logDebug('Dibujando Placa V3 en 1080x1920 con proporciones exactas 2.4x...');
+                    
+                    // 1. Header (y: 0 to 144): Logo Centrado (si existe)
+                    if (logoV3Img && logoV3Img.width) {
+                        drawImageContain(ctx, logoV3Img, 300, 22, 480, 100);
+                    }
+
+                    // 2. Hero Photo (y: 144 to 1296, height: 1152)
+                    drawImageCover(ctx, mainImg, 0, 144, 1080, 1152);
+
+                    // 3. Top-Left Angled Badge (Brand Violet #522cb8, y: 144 to 310)
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(0, 144);
+                    ctx.lineTo(590, 144);
+                    ctx.lineTo(480, 310);
+                    ctx.lineTo(0, 310);
+                    ctx.closePath();
+                    ctx.fillStyle = '#522cb8';
+                    ctx.fill();
+
+                    // Top Badge Texts
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '800 32px Montserrat';
+                    const v3TitleTop = (document.getElementById('form-title').value || 'MODERNA CASA EN OLIVOS').toUpperCase();
+                    const v3TitleLines = getWrappedLines(v3TitleTop, 440).slice(0, 2);
+                    
+                    let curBadgeY = 195;
+                    if (v3TitleLines.length === 1) {
+                        ctx.fillText(v3TitleLines[0], 40, curBadgeY);
+                        curBadgeY += 45;
+                    } else if (v3TitleLines.length > 1) {
+                        ctx.fillText(v3TitleLines[0], 40, curBadgeY);
+                        ctx.font = '800 27px Montserrat';
+                        ctx.fillText(v3TitleLines[1], 40, curBadgeY + 36);
+                        curBadgeY += 75;
+                    }
+
+                    // Subtitle
+                    const v3Subtitle = (document.getElementById('form-v3-subtitle').value || 'EXCELENTE UBICACIÓN').toUpperCase();
+                    ctx.fillStyle = '#e0d8ff';
+                    ctx.font = '600 22px Montserrat';
+                    ctx.fillText(v3Subtitle, 40, curBadgeY);
+
+                    // White accent line
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(40, curBadgeY + 14, 80, 4);
+                    ctx.restore();
+
+                    // 4. Location Badge (floating on photo at y=456)
+                    const v3LocationText = (document.getElementById('form-v3-location').value || 'VIVÍ EN OLIVOS').toUpperCase();
+                    ctx.save();
+                    ctx.font = '700 21px Montserrat';
+                    const locTextWidth = ctx.measureText(v3LocationText).width;
+                    const locBadgeWidth = Math.min(900, Math.max(240, locTextWidth + 85));
+                    const locBadgeHeight = 60;
+                    const locBadgeX = 35;
+                    const locBadgeY = 456;
+                    
+                    // Rounded rect background with soft shadow
+                    ctx.shadowColor = 'rgba(82, 44, 184, 0.25)';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 6;
+                    ctx.fillStyle = '#ffffff';
+                    
+                    const r = 12;
+                    ctx.beginPath();
+                    ctx.moveTo(locBadgeX + r, locBadgeY);
+                    ctx.lineTo(locBadgeX + locBadgeWidth - r, locBadgeY);
+                    ctx.quadraticCurveTo(locBadgeX + locBadgeWidth, locBadgeY, locBadgeX + locBadgeWidth, locBadgeY + r);
+                    ctx.lineTo(locBadgeX + locBadgeWidth, locBadgeY + locBadgeHeight - r);
+                    ctx.quadraticCurveTo(locBadgeX + locBadgeWidth, locBadgeY + locBadgeHeight, locBadgeX + locBadgeWidth - r, locBadgeY + locBadgeHeight);
+                    ctx.lineTo(locBadgeX + r, locBadgeY + locBadgeHeight);
+                    ctx.quadraticCurveTo(locBadgeX, locBadgeY + locBadgeHeight, locBadgeX, locBadgeY + locBadgeHeight - r);
+                    ctx.lineTo(locBadgeX, locBadgeY + r);
+                    ctx.quadraticCurveTo(locBadgeX, locBadgeY, locBadgeX + r, locBadgeY);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.shadowColor = 'transparent';
+
+                    // Pin Icon + Location Text (\uf3e7 is bi-geo-alt-fill)
+                    ctx.font = '28px "bootstrap-icons"';
+                    ctx.fillStyle = '#522cb8';
+                    ctx.textAlign = 'left';
+                    ctx.fillText('\uf3e7', locBadgeX + 20, locBadgeY + 41);
+
+                    ctx.font = '700 21px Montserrat';
+                    ctx.fillStyle = '#522cb8';
+                    ctx.fillText(v3LocationText, locBadgeX + 62, locBadgeY + 39);
+                    ctx.restore();
+
+                    // 5. Bottom-Left Angled Price Banner (y: 1140 to 1296, height 156)
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(0, 1140);
+                    ctx.lineTo(480, 1140);
+                    ctx.lineTo(570, 1296);
+                    ctx.lineTo(0, 1296);
+                    ctx.closePath();
+                    ctx.fillStyle = '#522cb8';
+                    ctx.fill();
+
+                    let v3PriceLabel = 'PROPIEDAD EN VENTA';
+                    if (saleTextSelect.value === 'custom') {
+                        v3PriceLabel = saleTextVal.toUpperCase();
+                    } else if (saleTextVal === 'Rent' || saleTextVal === 'Alquiler') {
+                        v3PriceLabel = 'PROPIEDAD EN ALQUILER';
+                    } else if (saleTextVal === 'Sale') {
+                        v3PriceLabel = 'PROPERTY FOR SALE';
+                    }
+
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#e0d8ff';
+                    ctx.font = '600 20px Montserrat';
+                    ctx.fillText(v3PriceLabel, 40, 1188);
+
+                    // Price
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '800 58px Montserrat';
+                    const v3PriceDisplay = `${curr} | ${price}`;
+                    ctx.fillText(v3PriceDisplay, 40, 1265);
+                    ctx.restore();
+
+                    // 6. Publication Title Banner (y: 1296 to 1426, height 130)
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 1296, 1080, 130);
+
+                    ctx.strokeStyle = '#f1f5f9';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 1426);
+                    ctx.lineTo(1080, 1426);
+                    ctx.stroke();
+
+                    // Publication Title Text (Centered, Bold, Black, without speaker icon)
+                    const v3CalloutText = (document.getElementById('form-v3-callout').value || document.getElementById('form-title').value || '').toUpperCase();
+                    ctx.textAlign = 'center';
+                    ctx.font = '800 30px Montserrat';
+                    ctx.fillStyle = '#111111'; // Texto en Negro
+                    ctx.fillText(v3CalloutText, 540, 1370);
+
+                    // 7. 4 Features Grid OR Description Box (y: 1445 to 1640, height 195)
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 1445, 1080, 195);
+
+                    const v3UseDescCanvas = document.getElementById('form-v3-use-desc') && document.getElementById('form-v3-use-desc').checked;
+
+                    if (v3UseDescCanvas) {
+                        // Render Description text centered
+                        ctx.textAlign = 'center';
+                        ctx.font = '500 22px Montserrat';
+                        ctx.fillStyle = '#334155';
+                        const descLines = getWrappedLines(desc, 960).slice(0, 4);
+                        const lineSpacing = 32;
+                        const totalDescHeight = descLines.length * lineSpacing;
+                        let startDescY = 1445 + (195 - totalDescHeight) / 2 + 20;
+                        descLines.forEach((dLine, idx) => {
+                            ctx.fillText(dLine, 540, startDescY + (idx * lineSpacing));
+                        });
+                    } else {
+                        // 4 Features Grid
+                        ctx.strokeStyle = '#f1f5f9';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(270, 1465); ctx.lineTo(270, 1615);
+                        ctx.moveTo(540, 1465); ctx.lineTo(540, 1615);
+                        ctx.moveTo(810, 1465); ctx.lineTo(810, 1615);
+                        ctx.stroke();
+
+                        // Col 1: Beds (\uf306 is bi-door-closed)
+                        ctx.textAlign = 'center';
+                        ctx.font = '38px "bootstrap-icons"';
+                        ctx.fillStyle = '#522cb8';
+                        ctx.fillText('\uf306', 135, 1515);
+                        ctx.font = '700 17px Montserrat';
+                        ctx.fillStyle = '#1e293b';
+                        ctx.fillText(beds ? `${beds} HABITACIONES` : 'HABITACIONES', 135, 1575);
+
+                        // Col 2: Baths (\uf30d is bi-droplet)
+                        ctx.font = '38px "bootstrap-icons"';
+                        ctx.fillStyle = '#522cb8';
+                        ctx.fillText('\uf30d', 405, 1515);
+                        ctx.font = '700 17px Montserrat';
+                        ctx.fillStyle = '#1e293b';
+                        ctx.fillText(baths ? `${baths} BAÑOS` : 'BAÑOS', 405, 1575);
+
+                        // Col 3: Garage (\uf7e1 is bi-car-front)
+                        ctx.font = '38px "bootstrap-icons"';
+                        ctx.fillStyle = '#522cb8';
+                        ctx.fillText('\uf7e1', 675, 1515);
+                        ctx.font = '700 17px Montserrat';
+                        ctx.fillStyle = '#1e293b';
+                        ctx.fillText(garage ? `${garage} COCHERA` : 'COCHERA', 675, 1575);
+
+                        // Col 4: Area (\uf14d is bi-arrows-fullscreen)
+                        ctx.font = '38px "bootstrap-icons"';
+                        ctx.fillStyle = '#522cb8';
+                        ctx.fillText('\uf14d', 945, 1515);
+                        ctx.font = '700 17px Montserrat';
+                        ctx.fillStyle = '#1e293b';
+                        ctx.fillText(area ? `${area} M2` : 'M2 TOTALES', 945, 1575);
+                    }
+
+                    // Bottom horizontal border
+                    ctx.strokeStyle = '#f1f5f9';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 1640); ctx.lineTo(1080, 1640);
+                    ctx.stroke();
+
+                    // 8. Agent & Matrícula Row (y: 1640 to 1818, height 178)
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 1640, 1080, 178);
+
+                    // Sanitize agent name to prevent image path mistakenly appearing
+                    let cleanAgentName = agentName;
+                    if (!cleanAgentName || cleanAgentName.includes('.png') || cleanAgentName.includes('.jpg') || cleanAgentName.includes('/static')) {
+                        cleanAgentName = 'German Mazzaferro';
+                    }
+
+                    // Agent Name Left
+                    ctx.textAlign = 'left';
+                    ctx.font = '800 32px Montserrat';
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillText(cleanAgentName.toUpperCase(), 45, 1735);
+
+                    // Vertical Divider Line
+                    ctx.strokeStyle = '#cbd5e1';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(500, 1665);
+                    ctx.lineTo(500, 1793);
+                    ctx.stroke();
+
+                    // Credentials Right
+                    ctx.textAlign = 'right';
+                    ctx.fillStyle = '#522cb8';
+                    ctx.font = '700 24px Montserrat';
+                    ctx.fillText('Corredor Inmobiliario', 1035, 1690);
+
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = '500 17px Montserrat';
+                    ctx.fillText({{ (current_user.nombre_display or current_user.usuario) | tojson }}, 1035, 1726);
+                    ctx.font = '500 15px Montserrat';
+                    ctx.fillText({{ (agency.matricula or 'Martillero y Corredor Público Colegiado') | tojson }}, 1035, 1762);
+
+                    // 9. Bottom Contact Footer (y: 1818 to 1920, height 102 - slim & sleek, exact match to 42px preview)
+                    const footerStartY = 1818;
+                    const footerHeight = 102;
+                    ctx.fillStyle = '#522cb8';
+                    ctx.fillRect(0, footerStartY, 1080, footerHeight);
+
+                    // Sanitize phone number to prevent image path mistakenly appearing
+                    let cleanPhone = (agentPhone || '').trim();
+                    if (cleanPhone.includes('.png') || cleanPhone.includes('.jpg') || cleanPhone.includes('/static')) {
+                        cleanPhone = {{ (agency.telefono or '') | tojson }};
+                    }
+
+                    const v3Email = (document.getElementById('form-agent-email') ? document.getElementById('form-agent-email').value : '').trim();
+                    let v3Web = (document.getElementById('form-agent-web') ? document.getElementById('form-agent-web').value : '').replace('https://', '').replace('http://', '').replace(/\/$/, '').trim();
+
+                    // Build dynamic list of active items
+                    const footerItems = [];
+                    if (cleanPhone) {
+                        footerItems.push({ icon: '\uf5b4', text: cleanPhone });
+                    }
+                    if (v3Email) {
+                        footerItems.push({ icon: '\uf32c', text: v3Email });
+                    }
+                    if (v3Web) {
+                        footerItems.push({ icon: '\uf3ee', text: v3Web });
+                    }
+
+                    if (footerItems.length > 0) {
+                        const padX = 45;
+                        const availWidth = 1080 - (padX * 2);
+                        const iconWidth = 24;
+                        const iconGap = 8;
+                        const minGap = 24;
+
+                        let fontSize = 18;
+
+                        // Measure and auto-scale font size if needed to guarantee no overflow
+                        while (fontSize >= 14) {
+                            ctx.font = '600 ' + fontSize + 'px Montserrat';
+                            let totalW = 0;
+                            for (let it of footerItems) {
+                                totalW += iconWidth + iconGap + ctx.measureText(it.text).width;
+                            }
+                            const reqW = totalW + (footerItems.length - 1) * minGap;
+                            if (reqW <= availWidth || fontSize === 14) {
+                                break;
+                            }
+                            fontSize--;
+                        }
+
+                        // Calculate item widths at chosen font size
+                        ctx.font = '600 ' + fontSize + 'px Montserrat';
+                        for (let it of footerItems) {
+                            it.textWidth = ctx.measureText(it.text).width;
+                            it.totalWidth = iconWidth + iconGap + it.textWidth;
+                        }
+
+                        let totalW = footerItems.reduce((acc, it) => acc + it.totalWidth, 0);
+                        // Truncate if still exceeds at 14px
+                        while (totalW + (footerItems.length - 1) * minGap > availWidth) {
+                            let longest = footerItems.reduce((prev, curr) => curr.text.length > prev.text.length ? curr : prev);
+                            if (longest.text.length <= 6) break;
+                            longest.text = longest.text.slice(0, -4) + '...';
+                            longest.textWidth = ctx.measureText(longest.text).width;
+                            longest.totalWidth = iconWidth + iconGap + longest.textWidth;
+                            totalW = footerItems.reduce((acc, it) => acc + it.totalWidth, 0);
+                        }
+
+                        // Calculate exact X positions with flexbox space-between distribution
+                        const n = footerItems.length;
+                        const positions = [];
+                        if (n === 3) {
+                            const gap = (availWidth - totalW) / 2;
+                            positions.push(padX);
+                            positions.push(padX + footerItems[0].totalWidth + gap);
+                            positions.push(1080 - padX - footerItems[2].totalWidth);
+                        } else if (n === 2) {
+                            positions.push(padX);
+                            positions.push(1080 - padX - footerItems[1].totalWidth);
+                        } else if (n === 1) {
+                            positions.push((1080 - footerItems[0].totalWidth) / 2);
+                        }
+
+                        // Render items vertically centered with textBaseline = 'middle'
+                        const centerY = footerStartY + (footerHeight / 2);
+                        ctx.textBaseline = 'middle';
+                        ctx.textAlign = 'left';
+
+                        footerItems.forEach((it, idx) => {
+                            const curX = positions[idx];
+
+                            // Draw icon
+                            ctx.font = '22px "bootstrap-icons"';
+                            ctx.fillStyle = '#d1d1e6';
+                            ctx.fillText(it.icon, curX, centerY);
+
+                            // Draw text
+                            ctx.font = '600 ' + fontSize + 'px Montserrat';
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillText(it.text, curX + iconWidth + iconGap, centerY);
+                        });
+
+                        // Reset baseline
+                        ctx.textBaseline = 'alphabetic';
+                    }
+
+                    logDebug('Placa V3 dibujada con éxito y distribución dinámica de footer.');
+                    return canvas;
+                }
+            
+            // 2. Header
+            ctx.fillStyle = '#111111';
+            ctx.textAlign = 'left';
+            if (isV2Active) {
+                // V2 Agent details in header
+                ctx.font = 'bold 26px Montserrat';
+                ctx.fillText(agentName.toUpperCase(), 60, 96);
+                ctx.fillStyle = '#444444';
+                ctx.font = '600 22px Montserrat';
+                ctx.fillText(agentPhone, 60, 128);
+            } else {
+                // V1 original brand header
+                ctx.font = 'bold 26px Montserrat';
+                ctx.fillText({{ (agency.nombre or 'INMOBILIARIA') | tojson }}.toUpperCase(), 60, 96);
+            }
+            
+            ctx.fillStyle = '#111111';
+            ctx.textAlign = 'right';
+            ctx.font = '800 38px Montserrat';
+            ctx.fillText(priceText, 1020, 96);
+            ctx.fillStyle = '#666666';
+            ctx.font = '500 19px Montserrat';
+            ctx.fillText('VALOR', 1020, 128);
+            logDebug('Cabecera y precios dibujados.');
+            
+            // 3. Title Section
+            ctx.fillStyle = '#111111';
+             if (isV2Active) {
+                // V2 Translation and custom text logic
+                ctx.textAlign = 'center';
+                ctx.font = '300 ' + (fontSaleSizeVal * 1.32) + 'px Montserrat';
+                let titleTextV2 = '';
+                if (saleTextSelect.value === 'custom') {
+                    titleTextV2 = saleTextVal; // exact custom text
+                } else if (saleTextVal === 'Sale') {
+                    titleTextV2 = 'PROPERTY FOR SALE';
+                } else if (saleTextVal === 'Rent') {
+                    titleTextV2 = 'PROPERTY FOR RENT';
+                } else if (saleTextVal === 'Venta') {
+                    titleTextV2 = 'PROPIEDAD EN VENTA';
+                } else if (saleTextVal === 'Alquiler') {
+                    titleTextV2 = 'PROPIEDAD EN ALQUILER';
+                } else {
+                    titleTextV2 = saleTextVal;
+                }
+                const finalTitleText = titleTextV2.toUpperCase();
+                ctx.fillText(finalTitleText, 540, 266);
+                logDebug('Título V2 "' + finalTitleText + '" dibujado.');
+            } else {
+                // V1 "HOME FOR Sale"
+                ctx.textAlign = 'center';
+                ctx.font = '300 82px Montserrat';
+                const homeForText = 'HOME FOR';
+                const homeForWidth = ctx.measureText(homeForText).width;
+                
+                ctx.font = `400 ${fontSaleSizeVal * 2.4}px ${fontSaleName}`;
+                const saleWidth = ctx.measureText(saleTextVal).width;
+                
+                const totalWidth = homeForWidth + 24 + saleWidth;
+                const startX = (1080 - totalWidth) / 2;
+                
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#111111';
+                ctx.font = '300 82px Montserrat';
+                ctx.fillText(homeForText, startX, 230);
+                
+                ctx.font = `400 ${fontSaleSizeVal * 2.4}px ${fontSaleName}`;
+                ctx.fillText(saleTextVal, startX + homeForWidth + 24, 230);
+                logDebug('Título V1 "Home For ' + saleTextVal + '" dibujado.');
+            }
+            
+            // 4. Main Photo (Cover)
+            drawImageCover(ctx, mainImg, 0, 276, 1080, 696);
+            logDebug('Foto principal dibujada.');
+            
+            // 5. Middle Section (Y from 972 to 1300)
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 19px Montserrat';
+            ctx.textAlign = 'left';
+            
+            // Helper to get wrapped lines for height pre-calculation
+            function getWrappedLines(txt, maxWidth) {
+                if (!txt) return [];
+                const words = txt.split(' ');
+                let line = '';
+                let lines = [];
+                for (let n = 0; n < words.length; n++) {
+                    let testLine = line + words[n] + ' ';
+                    let metrics = ctx.measureText(testLine);
+                    if (metrics.width > maxWidth && n > 0) {
+                        lines.push(line.trim());
+                        line = words[n] + ' ';
+                    } else {
+                        line = testLine;
+                    }
+                }
+                lines.push(line.trim());
+                return lines;
+            }
+
+            // 1. LEFT COLUMN: VERTICALLY CENTERED FEATURES
+            let activeFeatures = [];
+            if (beds) activeFeatures.push({ icon: '\uf306', text: beds + ' HABITACIONES' });
+            if (baths) activeFeatures.push({ icon: '\uf30d', text: baths + ' BAÑOS' });
+            if (garage) activeFeatures.push({ icon: '\uf7e0', text: garage + ' COCHERA' });
+            if (area) activeFeatures.push({ icon: '\uf3e7', text: area + ' M2' });
+
+            const featureLineHeight = 32;
+            const featureGap = 16;
+            const totalFeaturesHeight = (activeFeatures.length * featureLineHeight) + ((activeFeatures.length - 1) * featureGap);
+            // Center in the y=972 to y=1300 (height 328) space
+            let currentFeatureY = 972 + (328 - totalFeaturesHeight) / 2 + 20; 
+            
+            activeFeatures.forEach(feat => {
+                // Draw Icon
+                ctx.font = '22px "bootstrap-icons"';
+                ctx.fillStyle = '#111111';
+                ctx.textAlign = 'left';
+                ctx.fillText(feat.icon, 60, currentFeatureY);
+                
+                // Draw Label
+                ctx.font = 'bold 17px Montserrat';
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillText(feat.text, 100, currentFeatureY - 2);
+                
+                currentFeatureY += featureLineHeight + featureGap;
+            });
+            
+            // Column separator lines
+            ctx.strokeStyle = '#eaeaea';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(350, 1010);
+            ctx.lineTo(350, 1270);
+            ctx.stroke();
+            
+            if (!isV2Active) {
+                ctx.beginPath();
+                ctx.moveTo(760, 1010);
+                ctx.lineTo(760, 1270);
+                ctx.stroke();
+            }
+            
+            // 2. CENTER COLUMN: VERTICALLY CENTERED TITLE & DESCRIPTION BLOCK
+            ctx.textAlign = 'center';
+            
+            const descWrapWidth = isV2Active ? 610 : 370;
+            const textCenterX = isV2Active ? 715 : 555;
+            
+            ctx.font = '800 24px Montserrat';
+            const titleLines = getWrappedLines(title.toUpperCase(), descWrapWidth).slice(0, 3);
+            
+            ctx.font = '400 19px Montserrat';
+            const descLines = getWrappedLines(desc, descWrapWidth).slice(0, 5);
+            
+            const titleSpacing = 30;
+            const descSpacing = 26;
+            const blockGap = descLines.length > 0 ? 18 : 0;
+            
+            const totalTitleHeight = titleLines.length * titleSpacing;
+            const totalDescHeight = descLines.length * descSpacing;
+            const totalCenterBlockHeight = totalTitleHeight + blockGap + totalDescHeight;
+            
+            // Center the entire block in the y=972 to y=1300 (height 328) space
+            let currentCenterY = 972 + (328 - totalCenterBlockHeight) / 2;
+            
+            // Draw title lines
+            ctx.fillStyle = '#111111';
+            ctx.font = '800 24px Montserrat';
+            titleLines.forEach(tLine => {
+                ctx.fillText(tLine, textCenterX, currentCenterY + 22); // +22 baseline adjustment
+                currentCenterY += titleSpacing;
+            });
+            
+            // Draw description lines
+            if (descLines.length > 0) {
+                currentCenterY += blockGap;
+                ctx.fillStyle = '#555555';
+                ctx.font = '400 19px Montserrat';
+                descLines.forEach(dLine => {
+                    ctx.fillText(dLine, textCenterX, currentCenterY + 17); // +17 baseline adjustment
+                    currentCenterY += descSpacing;
+                });
+            }
+            logDebug('Características y descripción dibujadas.');
+            
+            if (!isV2Active) {
+                // 3. RIGHT COLUMN: VERTICALLY CENTERED LOGO, NAME & PHONE (V1 ONLY)
+                const logoHeight = 130;
+                const nameSpacing = 30;
+                const phoneSpacing = 24;
+                const logoToNameGap = 15;
+                const nameToPhoneGap = 6;
+                
+                const totalRightHeight = logoHeight + logoToNameGap + nameSpacing + nameToPhoneGap + phoneSpacing;
+                let currentRightY = 972 + (328 - totalRightHeight) / 2;
+                
+                // Draw agent logo (if present)
+                if (logoV1Img && logoV1Img.width) {
+                    drawImageContain(ctx, logoV1Img, 830, currentRightY, 170, logoHeight);
+                    currentRightY += logoHeight + logoToNameGap;
+                } else {
+                    currentRightY += 20;
+                }
+                
+                // Draw agent name
+                ctx.fillStyle = '#111111';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 19px Montserrat';
+                ctx.fillText(agentName.toUpperCase(), 915, currentRightY + 16);
+                currentRightY += nameSpacing + nameToPhoneGap;
+                
+                // Draw agent phone
+                ctx.fillStyle = '#444444';
+                ctx.font = '600 22px Montserrat';
+                ctx.fillText(agentPhone, 915, currentRightY + 18);
+                logDebug('Datos del agente dibujados.');
+            }
+            
+            // Separator Line under middle section
+            ctx.strokeStyle = '#eaeaea';
+            ctx.beginPath();
+            ctx.moveTo(0, 1300);
+            ctx.lineTo(1080, 1300);
+            ctx.stroke();
+            
+            // 6. Bottom Grid and Footer
+            if (isV2Active) {
+                const v2PhotoCountCanvas = document.getElementById('form-v2-photo-count') ? document.getElementById('form-v2-photo-count').value : '5';
+                if (v2PhotoCountCanvas === '3') {
+                    // 2 photos side by side (3 photos total mode)
+                    drawImageCover(ctx, g1, 60, 1315, 466, 315);
+                    drawImageCover(ctx, g2, 540, 1315, 466, 315);
+                    logDebug('Grilla de 2 fotos inferior V2 (modo 3 fotos) dibujada.');
+                } else {
+                    // 4 photos in 2x2 grid (5 photos total mode)
+                    drawImageCover(ctx, g1, 60, 1315, 466, 150);
+                    drawImageCover(ctx, g2, 540, 1315, 466, 150);
+                    drawImageCover(ctx, g3, 60, 1480, 466, 150);
+                    drawImageCover(ctx, g4, 540, 1480, 466, 150);
+                    logDebug('Grilla de 4 fotos inferior V2 (modo 5 fotos) dibujada.');
+                }
+                
+                // Draw line above footer
+                ctx.strokeStyle = '#eaeaea';
+                ctx.beginPath();
+                ctx.moveTo(0, 1644);
+                ctx.lineTo(1080, 1644);
+                ctx.stroke();
+                
+                // Draw footer logo image with padding to shrink it and center it beautifully (if present)
+                if (logoV2Img && logoV2Img.width) {
+                    drawImageContain(ctx, logoV2Img, 168, 1692, 744, 180);
+                    logDebug('Footer de placa V2 dibujado.');
+                }
+            } else {
+                // V1 layout original coordinates
+                drawImageCover(ctx, g1, 60, 1330, 466, 245);
+                drawImageCover(ctx, g2, 540, 1330, 466, 245);
+                drawImageCover(ctx, g3, 60, 1590, 466, 245);
+                drawImageCover(ctx, g4, 540, 1590, 466, 245);
+                logDebug('Grilla de 4 fotos inferior V1 dibujada.');
+            }
+            
+            return canvas;
+            } catch (err) {
+                logDebug('ERROR interno en dibujo de canvas: ' + err.message);
+                throw err;
+            }
+        });
+    }
+
+    // RENDER AND DOWNLOAD PNG
+    document.getElementById('btn-download-png').addEventListener('click', function() {
+        logDebug('--- Inicio de Proceso de Descarga ---');
+        const btn = this;
+        btn.disabled = true;
+        
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generando...';
+
+        renderPlacaToCanvas()
+            .then(canvas => {
+                logDebug('Generando Data URL desde el lienzo...');
+                const dataUrl = canvas.toDataURL('image/png');
+                logDebug('Data URL obtenida, longitud: ' + dataUrl.length);
+                
+                // Remove canvas from DOM after data URL is generated
+                if (canvas.parentNode) {
+                    canvas.parentNode.removeChild(canvas);
+                }
+                
+                logDebug('Disparando descarga del archivo...');
+                const link = document.createElement('a');
+                link.download = 'placa_' + Date.now() + '.png';
+                link.href = dataUrl;
+                link.click();
+                logDebug('Descarga completada.');
+            })
+            .catch(err => {
+                logDebug('ERROR DETECTADO: ' + err.message);
+                console.error('Error generating canvas:', err);
+                alert('Error generando imagen: ' + err);
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                logDebug('--- Fin de Proceso ---');
+            });
+    });
+
+    // SCHEDULE / SAVE STORY IN CRM
+    document.getElementById('btn-confirm-schedule').addEventListener('click', function() {
+        const date = document.getElementById('schedule-date').value;
+        if (!date) {
+            alert('Selecciona una fecha.');
+            return;
+        }
+        
+        const spinner = document.getElementById('schedule-spinner');
+        const btn = this;
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+
+        renderPlacaToCanvas()
+            .then(canvas => {
+                const base64Img = canvas.toDataURL('image/png');
+                if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+                
+                // Post to CRM endpoint
+                return fetch('/pap/save_story', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        image: base64Img,
+                        date: date
+                    })
+                });
+            })
+            .then(resp => resp.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    // Close modal
+                    const modalEl = document.getElementById('scheduleModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                } else {
+                    alert('Error al programar: ' + result.error);
+                }
+            })
+            .catch(err => {
+                console.error('Error scheduling:', err);
+                alert('Error al renderizar o guardar historia: ' + err);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                spinner.classList.add('d-none');
+            });
+    });
+
+    // Initialize layout with defaults on load
+    updatePlaca();
+
+</script>
+{% endblock %}

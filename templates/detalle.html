@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ prop.titulo }}{% endblock %}
+{% block header %}Ficha de Propiedad{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Columna Izquierda: Info y Fotos -->
+    <div class="col-lg-8">
+        <div class="card mb-4 overflow-hidden">
+            {% if prop.foto_url %}
+            <img src="{{ prop.foto_url }}" class="img-fluid w-100" style="max-height: 400px; object-fit: cover;">
+            {% endif %}
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <span class="badge portal-{{ prop.portal }} mb-2">{{ prop.portal|capitalize }}</span>
+                        <h2 class="card-title">{{ prop.titulo }}</h2>
+                        <p class="text-muted h5"><i class="bi bi-geo-alt"></i> {{ prop.direccion }}</p>
+                    </div>
+                    <div class="text-end">
+                        <h2 class="text-primary">{{ prop.moneda }} {{ "{:,.0f}".format(prop.precio) if prop.precio else
+                            "Consultar" }}</h2>
+                        <div class="d-flex flex-column align-items-end gap-1">
+                            <span class="badge bg-info text-dark">{{ prop.estado|capitalize }}</span>
+                            {% if bloqueado %}
+                            <span class="badge bg-danger"><i class="bi bi-shield-lock me-1"></i>LISTA NEGRA</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if bloqueado %}
+                <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                    <div>
+                        <strong>NÚMERO BLOQUEADO:</strong> Este teléfono está en la Lista Negra.
+                        No se enviarán mensajes automáticos ni seguimientos.
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 border rounded text-center">
+                            <i class="bi bi-door-open h4 d-block"></i>
+                            <span class="d-block fw-bold">{{ prop.ambientes or '?' }}</span>
+                            <small class="text-muted">Ambientes</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 border rounded text-center">
+                            <i class="bi bi-aspect-ratio h4 d-block"></i>
+                            <span class="d-block fw-bold">{{ prop.m2_total|int if prop.m2_total else '?' }} m²</span>
+                            <small class="text-muted">Superficie</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 border rounded text-center">
+                            <i class="bi bi-building h4 d-block"></i>
+                            <span class="d-block fw-bold">{{ prop.tipo_propiedad or 'Propiedad' }}</span>
+                            <small class="text-muted">Tipo</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 border rounded text-center">
+                            <i class="bi bi-calendar-check h4 d-block"></i>
+                            <span class="d-block fw-bold">{{ prop.fecha_captacion[:10] }}</span>
+                            <small class="text-muted">Captado</small>
+                        </div>
+                    </div>
+                </div>
+
+                <h5>Descripción</h5>
+                <p class="card-text">{{ prop.descripcion }}</p>
+
+                <hr>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{{ prop.url }}" target="_blank" class="btn btn-outline-secondary">
+                        <i class="bi bi-box-arrow-up-right"></i> Ver en {{ prop.portal|capitalize }}
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial de Seguimiento -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Historial de Seguimiento</h5>
+            </div>
+            <div class="card-body">
+                {% if comms %}
+                <div class="timeline">
+                    {% for c in comms %}
+                    <div class="border-start ps-3 pb-3 position-relative">
+                        <div class="position-absolute top-0 start-0 translate-middle-x bg-white"
+                            style="margin-left: -1px;">
+                            <i
+                                class="bi bi-{{ 'whatsapp text-success' if c.tipo == 'whatsapp' else 'envelope text-primary' }} h5"></i>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <h6 class="mb-0">{{ c.tipo|capitalize }} - Paso {{ c.paso }}</h6>
+                            <small class="text-muted">{{ c.fecha_enviada or c.fecha_programada }}</small>
+                        </div>
+                        <p class="small text-muted mt-1">{{ c.mensaje|truncate(150) }}</p>
+                        <span class="badge bg-{{ 'success' if c.estado == 'enviada' else 'warning' }} btn-sm">{{
+                            c.estado }}</span>
+                        {% if c.estado == 'pendiente' %}
+                        <a href="{{ url_for('marcar_enviada', cid=c.id) }}" class="btn btn-sm btn-link py-0">Marcar como
+                            enviado</a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Aún no hay comunicaciones registradas.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Derecha: Contacto y Gestión -->
+    <div class="col-lg-4">
+        <div class="card mb-4 border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Gestión de Captación</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Dato de Contacto</label>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="text" class="form-control" value="{{ prop.nombre_contacto or 'Desconocido' }}"
+                            readonly>
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                        <input type="text" class="form-control" value="{{ prop.telefono or 'No disponible' }}" readonly>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('preparar_mensaje', prop_id=prop.id, paso=1, tipo='whatsapp') }}"
+                        class="btn btn-success" {% if not prop.telefono or bloqueado %}disabled
+                        title="{{ 'Bloqueado' if bloqueado else 'Falta teléfono' }}" {% endif %}>
+                        <i class="bi bi-whatsapp"></i> Enviar Primer WhatsApp
+                    </a>
+                    <a href="{{ url_for('preparar_mensaje', prop_id=prop.id, paso=1, tipo='email') }}"
+                        class="btn btn-primary" {% if not prop.email_contacto %}disabled title="Falta email" {% endif
+                        %}>
+                        <i class="bi bi-envelope"></i> Enviar Primer Email
+                    </a>
+
+                    <button class="btn btn-outline-info mt-2" data-bs-toggle="collapse"
+                        data-bs-target="#followupTemplates" {% if bloqueado %}disabled{% endif %}>
+                        <i class="bi bi-chevron-down"></i> Siguientes Pasos
+                    </button>
+                    <div class="collapse mt-2" id="followupTemplates">
+                        <div class="d-grid gap-1">
+                            <a href="{{ url_for('preparar_mensaje', prop_id=prop.id, paso=2, tipo='whatsapp') }}"
+                                class="btn btn-sm btn-outline-success text-start">Paso 2: Follow-up (WA)</a>
+                            <a href="{{ url_for('preparar_mensaje', prop_id=prop.id, paso=3, tipo='whatsapp') }}"
+                                class="btn btn-sm btn-outline-success text-start">Paso 3: Cierre (WA)</a>
+                        </div>
+                    </div>
+
+                    {% if not bloqueado %}
+                    <button class="btn btn-outline-danger mt-3" data-bs-toggle="modal" data-bs-target="#blacklistModal">
+                        <i class="bi bi-shield-slash"></i> Bloquear en CRM
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Lista Negra -->
+        <div class="modal fade" id="blacklistModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form action="{{ url_for('add_blacklist_route') }}" method="POST">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">¿Bloquear este número?</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Se bloqueará el número <strong>{{ prop.telefono }}</strong> para evitar cualquier envío
+                                automático.</p>
+                            <input type="hidden" name="telefono" value="{{ prop.telefono }}">
+                            <div class="mb-3">
+                                <label class="form-label">Motivo del bloqueo</label>
+                                <textarea name="motivo" class="form-control" rows="2"
+                                    placeholder="Ej: Me pidió que no lo llame"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light" data-bs-modal="dismiss">Cancelar</button>
+                            <button type="submit" class="btn btn-danger">Confirmar Bloqueo</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Actualizar Estado</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('actualizar_estado', prop_id=prop.id) }}" method="POST">
+            <div class="mb-3">
+                <select name="estado" class="form-select">
+                    <option value="nueva" {% if prop.estado=='nueva' %}selected{% endif %}>Nueva Opportunity
+                    </option>
+                    <option value="contactada" {% if prop.estado=='contactada' %}selected{% endif %}>Contactada
+                    </option>
+                    <option value="en_seguimiento" {% if prop.estado=='en_seguimiento' %}selected{% endif %}>En
+                        Seguimiento</option>
+                    <option value="captada" {% if prop.estado=='captada' %}selected{% endif %}>Captada
+                        (Autorizada)</option>
+                    <option value="descartada" {% if prop.estado=='descartada' %}selected{% endif %}>Descartada
+                    </option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Notas</label>
+                <textarea name="notas" class="form-control" rows="3">{{ prop.notas or '' }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+        </form>
+    </div>
+</div>
+</div>
+</div>
+
+<style>
+    .portal-zonaprop {
+        background-color: #e31e24 !important;
+        color: white !important;
+    }
+
+    .portal-mercadolibre {
+        background-color: #fff159 !important;
+        color: #333 !important;
+    }
+
+    .portal-argenprop {
+        background-color: #7c3aed !important;
+        color: white !important;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,8 @@
+{
+  "id": "meta_ai",
+  "name": "Meta AI Chatbot Connector",
+  "version": "1.0.0",
+  "description": "Decoupled webhook and agent integration for Meta AI Chatbot CRM connections.",
+  "author": "German Mazzaferro",
+  "enabled": true
+}

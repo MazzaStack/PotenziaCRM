@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Mis Operaciones Tokko{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root { --ferrari-red: {{ agency.color_primario or '#0d6efd' }}; --ferrari-dark: {{ agency.color_secundario or '#1a1a2e' }}; }
+
+  .ops-hero {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    color: white;
+    margin-bottom: 2rem;
+  }
+  .vincular-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .vincular-card .form-control {
+    border-radius: 10px;
+  }
+
+  /* Autocomplete */
+  .autocomplete-box {
+    position: absolute;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    z-index: 1000;
+    width: 100%;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .autocomplete-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover { background: #f8f9fa; }
+  .autocomplete-item .match-score {
+    font-size: 0.72rem;
+    background: #e8f4f8;
+    color: #0077b6;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .vinculado-badge {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Tabla de operaciones */
+  .ops-table-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    overflow: hidden;
+  }
+  .ops-table thead th {
+    background: var(--ferrari-dark);
+    color: white;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 14px;
+    border: none;
+  }
+  .ops-table tbody td {
+    padding: 12px 14px;
+    font-size: 0.88rem;
+    vertical-align: middle;
+    border-color: #f0f0f0;
+  }
+  .ops-table tbody tr:hover { background: #f8f9fa; }
+  .prop-thumb {
+    width: 50px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #f0f0f0;
+  }
+  .btn-importar-selected {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 24px;
+    font-weight: 700;
+    transition: all 0.2s;
+  }
+  .btn-importar-selected:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(39,174,96,0.4); color:white; }
+  .btn-importar-selected:disabled { opacity: 0.5; transform: none; }
+  .select-all-btn {
+    background: transparent;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .select-all-btn:hover { background: #f8f9fa; }
+  .empty-ops { text-align:center; padding: 3rem; color: #6c757d; }
+</style>
+{% endblock %}
+
+{% block header %}📦 Mis Operaciones en Tokko{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="ops-hero">
+  <h3 class="fw-bold mb-1">Mis Propiedades como Productor</h3>
+  <p style="opacity:0.75; font-size:0.9rem; margin-bottom:0;">
+    Visualizá y descargá las propiedades donde figurás como productor en Tokko Broker.
+  </p>
+</div>
+
+<!-- Vincular Productor Indicador -->
+<div class="card p-3 mb-4 border-0 bg-white shadow-sm">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <i class="bi bi-person-check-fill me-2 text-danger"></i>
+      {% if productor_vinculado %}
+        Productor Vinculado: <span class="badge bg-success font-monospace">{{ productor_vinculado }}</span>
+      {% else %}
+        <span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle"></i> Productor No Vinculado</span>
+      {% endif %}
+    </div>
+    <a href="{{ url_for('configuracion') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-gear me-1"></i> Configurar Vinculación
+    </a>
+  </div>
+</div>
+
+<!-- Tabla de Operaciones -->
+{% if props %}
+<form method="POST" action="{{ url_for('tokko.importar_operaciones') }}" id="importForm">
+  <div class="ops-table-container">
+    <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="select-all-btn" onclick="toggleAll()">Seleccionar Todo</button>
+        <span class="text-muted small">{{ props|length }} propiedad(es) encontradas</span>
+      </div>
+      <button type="submit" class="btn-importar-selected" id="btnImportar" disabled
+              onclick="return confirm('¿Importar las propiedades seleccionadas al Seguimiento de Operaciones?')">
+        <i class="bi bi-cloud-download me-1"></i> Importar al Seguimiento (<span id="countSelected">0</span>)
+      </button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table ops-table mb-0">
+        <thead>
+          <tr>
+            <th style="width:40px"></th>
+            <th>Propiedad</th>
+            <th>Tipo</th>
+            <th>Precio</th>
+            <th>Barrio</th>
+            <th>Estado</th>
+            <th>Ver</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in props %}
+          <tr>
+            <td>
+              <input type="checkbox" name="tokko_ids" value="{{ p.tokko_id }}"
+                     class="form-check-input prop-check" onchange="updateCount()"
+                     style="accent-color:var(--ferrari-red); width:18px; height:18px;">
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                {% if p.foto_principal %}
+                <img src="{{ p.foto_principal }}" class="prop-thumb" onerror="this.style.display='none'">
+                {% endif %}
+                <div>
+                  <div class="fw-bold" style="font-size:0.85rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    {{ p.titulo or 'Sin título' }}
+                  </div>
+                  <div class="text-muted" style="font-size:0.72rem;">Tokko ID: {{ p.tokko_id }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge" style="background:#f0f4ff; color:#4361ee; font-size:0.75rem;">
+                {{ p.tipo_propiedad or '—' }}
+              </span>
+            </td>
+            <td>
+              {% if p.precio and p.precio > 0 %}
+              <strong>{{ p.moneda }} {{ "{:,.0f}".format(p.precio).replace(",",".") }}</strong>
+              {% else %}—{% endif %}
+            </td>
+            <td>{{ p.barrio or '—' }}</td>
+            <td>
+              <span class="badge bg-success-subtle text-success">Activa</span>
+            </td>
+            <td>
+              {% if p.url_ficha %}
+              <a href="{{ p.url_ficha }}" target="_blank" class="btn btn-sm btn-outline-secondary py-0">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</form>
+
+{% elif productor_vinculado %}
+<div class="empty-ops">
+  <i class="bi bi-house-x" style="font-size:3rem; color:#dee2e6;"></i>
+  <h6 class="mt-3 fw-bold">No encontramos propiedades a tu nombre</h6>
+  <p class="text-muted small">
+    No hay propiedades activas en Tokko donde <strong>{{ productor_vinculado }}</strong> figure como productor.<br>
+    Asegurate de que el nombre sea correcto y que la cartera esté sincronizada.
+  </p>
+  <a href="{{ url_for('tokko.cartera') }}" class="btn btn-sm btn-outline-secondary mt-2">
+    Ver cartera completa
+  </a>
+</div>
+
+{% else %}
+<div class="empty-ops">
+  <i class="bi bi-person-exclamation" style="font-size:3rem; color:#dee2e6;"></i>
+  <h6 class="mt-3 fw-bold">Vinculá tu nombre en Tokko primero</h6>
+  <p class="text-muted small">
+    Escribí tu nombre arriba para encontrar las propiedades donde sos productor.
+  </p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Selección de checkboxes
+function updateCount() {
+  const count = document.querySelectorAll('.prop-check:checked').length;
+  document.getElementById('countSelected').textContent = count;
+  document.getElementById('btnImportar').disabled = count === 0;
+}
+
+let allChecked = false;
+function toggleAll() {
+  allChecked = !allChecked;
+  document.querySelectorAll('.prop-check').forEach(c => { c.checked = allChecked; });
+  updateCount();
+}
+</script>
+{% endblock %}
